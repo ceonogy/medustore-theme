@@ -10,14 +10,18 @@
  *     <backend>/src/admin/i18n/index.ts
  *
  * Medusa merges those over the core translations at build time
- * (deepMerge(coreTranslations, customResources)), so no core file is edited and
- * nothing inside node_modules is touched. Re-running after a Medusa upgrade
- * re-syncs the dictionary against the new English source of truth.
+ * (deepMerge(coreTranslations, customResources)), so no core source file is
+ * edited. Re-running after a Medusa upgrade re-syncs the dictionary against the
+ * new English source of truth.
  *
  * Merge order (later wins):
  *   1. core en.json        — the full key set (source of truth for keys)
  *   2. core vi.json        — Medusa's shipped Vietnamese
  *   3. overrides/*.json    — our translations (sorted by filename)
+ *
+ * It also makes Vietnamese the Admin's *default* language (see
+ * "Default language" below); pass --no-default-vi to keep Medusa's stock
+ * behaviour.
  *
  * Usage:
  *   node tools/admin-vi-i18n/patch-vi.mjs --admin-path /home/medusa
@@ -55,6 +59,7 @@ const flags = {
   restart: args.includes("--restart"),
   json: args.includes("--json"),
   quiet: args.includes("--quiet"),
+  noDefaultVi: args.includes("--no-default-vi"),
   help: args.includes("--help") || args.includes("-h"),
 };
 
@@ -71,6 +76,8 @@ Options:
   --dry-run           Build the output but do not write it
   --build             Run \`yarn build\` (medusa build) after writing
   --restart           pm2 restart medusa after writing
+  --no-default-vi     Keep Medusa's stock language default instead of
+                      making Vietnamese the Admin's default language
   --json              Emit machine-readable JSON
   --quiet             Only print the summary line
   -h, --help          Show this help
@@ -262,6 +269,203 @@ function loadOverrides() {
   return { files, merged };
 }
 
+// ------------------------------------------------- Vietnamese as the default
+//
+// Medusa ships:
+//
+//     detection: { ..., order: ["cookie","localStorage","header"] },
+//     fallbackLng: "en"
+//
+// i18next-browser-languagedetector registers no "header" lookup, so a browser
+// with no stored language detects nothing and i18next falls back to
+// `fallbackLng` — which is why a fresh Admin session always opened in English
+// whatever the browser language was.
+//
+// This step rewrites that fallback to ["vi", "en"] — Vietnamese first (so the
+// Admin opens in Vietnamese), English second (so a key added by a future
+// Medusa release still renders instead of showing its raw dotted name) — and
+// drops the dead "header" entries. Someone who explicitly chooses another
+// language under Profile → Language is remembered in the cookie/localStorage
+// lookups, so that choice keeps winning over the default.
+//
+// Only the shipped @medusajs/dashboard package files are touched — the same
+// package the core translations are read from — and a plain re-run after
+// `yarn install` re-applies the change. Pass --no-default-vi to skip it.
+
+// `detection: { caches: [..., "header"], lookupCookie, lookupLocalStorage, order: [..., "header"] }`
+const RE_STOCK_DETECTION =
+  /detection:\s*\{\s*caches:\s*\[\s*"cookie"\s*,\s*"localStorage"\s*,\s*"header"\s*\]\s*,\s*lookupCookie:\s*"lng"\s*,\s*lookupLocalStorage:\s*"lng"\s*,\s*order:\s*\[\s*"cookie"\s*,\s*"localStorage"\s*,\s*"header"\s*\]\s*\}/g;
+
+const FIXED_DETECTION = [
+  "detection: {",
+  '    caches: ["cookie", "localStorage"],',
+  '    lookupCookie: "lng",',
+  '    lookupLocalStorage: "lng",',
+  '    order: ["cookie", "localStorage"]',
+  "  }",
+].join("\n");
+
+// `order: [...] }, fallbackLng: …` — anchored on the block above so that only
+// the i18n config's fallback is rewritten, never some other "en". Accepts any
+// current value so a re-run (or an upgrade from an older form) is idempotent.
+const RE_STOCK_FALLBACK =
+  /(order:\s*\[\s*"cookie"\s*,\s*"localStorage"\s*(?:,\s*"header")?\s*\]\s*\}\s*,\s*fallbackLng:\s*)(?:"[a-z]+"|\[[^\]]*\])/g;
+const FIXED_FALLBACK = '$1["vi", "en"]';
+// Vietnamese first (the Admin's default), English second (safety net for any
+// key a future Medusa release adds before this tool is re-run).
+const ALREADY_FIXED =
+  /order:\s*\[\s*"cookie"\s*,\s*"localStorage"\s*(?:,\s*"header")?\s*\]\s*\}\s*,\s*fallbackLng:\s*\[\s*"vi"\s*,\s*"en"\s*\]/;
+
+function findDashboardPackage(medusaRoot, backendDir) {
+  const candidates = [
+    ...new Set([
+      path.join(medusaRoot, "node_modules", "@medusajs", "dashboard"),
+      path.join(backendDir, "node_modules", "@medusajs", "dashboard"),
+    ]),
+  ];
+  for (const dir of candidates) {
+    if (fs.existsSync(path.join(dir, "package.json"))) return dir;
+  }
+  return null;
+}
+
+/** `dist` .js/.mjs is what `medusa build` bundles; `src/i18n` .ts is what
+ *  `medusa develop` may compile from. Both are scanned, neither is required. */
+function candidateLanguageFiles(pkgDir) {
+  const out = [];
+  const walk = (dir, depth) => {
+    if (depth > 5) return;
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(full, depth + 1);
+      } else if (/\.(js|mjs|ts)$/.test(entry.name)) {
+        out.push(full);
+      }
+    }
+  };
+  walk(path.join(pkgDir, "dist"), 0);
+  walk(path.join(pkgDir, "src", "i18n"), 0);
+  return out.sort();
+}
+
+/** Replace `re` exactly once. Zero matches = nothing to do; more than one =
+ *  we cannot tell which occurrence is ours, so refuse to guess. */
+function replaceOnce(text, re, replacement) {
+  const hits = text.match(re);
+  if (hits === null) return { text, applied: false };
+  if (hits.length > 1) {
+    throw new Error(
+      `pattern matched ${hits.length} times in one file (expected 1): ${re}`,
+    );
+  }
+  return { text: text.replace(re, replacement), applied: true };
+}
+
+function applyDefaultLanguage({ medusaRoot, backendDir }, { write, enabled }) {
+  const result = {
+    status: "disabled",
+    files: [],
+    unchanged: [],
+    applied: false,
+  };
+
+  if (!enabled) return result;
+
+  const pkgDir = findDashboardPackage(medusaRoot, backendDir);
+  if (!pkgDir) {
+    return { ...result, status: "package-missing" };
+  }
+
+  let changedAny = false;
+  const changed = [];
+  const unchanged = [];
+
+  for (const file of candidateLanguageFiles(pkgDir)) {
+    let text;
+    try {
+      text = fs.readFileSync(file, "utf8");
+    } catch {
+      continue;
+    }
+    const rel = path.relative(pkgDir, file);
+    const actions = [];
+    let next = text;
+    let fileChanged = false;
+
+    // 1. drop Medusa's dead "header" lookup — i18next-browser-languagedetector
+    //    registers no such detector, so it silently did nothing.
+    const det = replaceOnce(next, RE_STOCK_DETECTION, FIXED_DETECTION);
+    next = det.text;
+    if (det.applied) {
+      actions.push('drop dead "header" lookup');
+      fileChanged = true;
+    }
+
+    // 2. Vietnamese default with English as the safety net
+    const already = ALREADY_FIXED.test(next);
+    if (!already) {
+      const fb = replaceOnce(next, RE_STOCK_FALLBACK, FIXED_FALLBACK);
+      next = fb.text;
+      if (fb.applied) {
+        actions.push("fallbackLng=[vi,en]");
+        fileChanged = true;
+      }
+    }
+
+    if (fileChanged) {
+      changedAny = true;
+      changed.push({ file: rel, actions });
+      if (write) {
+        fs.writeFileSync(file, next, "utf8");
+        result.applied = true;
+      }
+    } else if (already) {
+      unchanged.push({ file: rel, actions: ["fallbackLng=[vi,en]"] });
+    }
+  }
+
+  result.files = changed;
+  result.unchanged = unchanged;
+
+  if (changed.length === 0 && unchanged.length === 0) {
+    result.status = "not-found";
+    result.files = [];
+  } else if (changed.length > 0) {
+    result.status = write ? "patched" : "would-patch";
+  } else {
+    result.status = "already-patched";
+    result.applied = false;
+  }
+
+  return result;
+}
+
+function describeDefaultLanguage(r) {
+  switch (r.status) {
+    case "disabled":
+      return "left stock (Vietnamese default disabled)";
+    case "package-missing":
+      return "@medusajs/dashboard not found";
+    case "not-found":
+      return "Medusa's i18n config was not recognised — check manually";
+    case "already-patched":
+      return "vi + en (already applied)";
+    case "would-patch":
+      return `vi + en (would patch ${r.files.length} file(s) — run without --check)`;
+    case "patched":
+      return `vi + en (patched ${r.files.length} file(s))`;
+    default:
+      return r.status;
+  }
+}
+
 // ------------------------------------------------------------------ reporting
 
 const INDEX_TEMPLATE = `import vi from "./json/vi.json" with { type: "json" }
@@ -325,6 +529,14 @@ async function main() {
     existing !== null &&
     JSON.stringify(flatten(existing)) === JSON.stringify(flatVi);
 
+  const shouldWrite = !flags.check && !flags.dryRun;
+
+  // Must happen before `medusa build`, which regenerates the served bundle.
+  const defaultLanguage = applyDefaultLanguage(
+    { medusaRoot, backendDir },
+    { write: shouldWrite, enabled: !flags.noDefaultVi },
+  );
+
   const report = {
     adminPath,
     medusaRoot,
@@ -345,6 +557,7 @@ async function main() {
     newlyTranslated: newlyTranslated.length,
     unknownOverrides,
     upToDate,
+    defaultLanguage,
     wrote: false,
     built: false,
     restarted: false,
@@ -364,6 +577,7 @@ async function main() {
     log(
       `  drift          : ${upToDate ? "none (output up to date)" : "output differs — run without --check"}`,
     );
+    log(`  default lang   : ${describeDefaultLanguage(defaultLanguage)}`);
     if (report.stillEnglish) {
       log("  keys still in English:");
       for (const s of report.stillEnglishSamples) {
@@ -384,7 +598,24 @@ async function main() {
     );
   }
 
-  const shouldWrite = !flags.check && !flags.dryRun;
+  if (shouldWrite && !flags.json && !flags.check) {
+    log("");
+    log("── Default language ─────────────────────────────────────────");
+    log(`  ${describeDefaultLanguage(defaultLanguage)}`);
+    for (const f of defaultLanguage.files) {
+      log(`    ${f.file}: ${f.actions.join(", ")}`);
+    }
+    for (const f of defaultLanguage.unchanged ?? []) {
+      log(`    ${f.file}: already applied`);
+    }
+    if (defaultLanguage.status === "not-found") {
+      log("  warning: Medusa's i18n config changed shape; the Admin will");
+      log("           keep opening in English until this is updated.");
+    }
+    if (defaultLanguage.status === "patched" && !flags.build) {
+      log("  Re-run with --build for the change to reach the served bundle.");
+    }
+  }
 
   if (shouldWrite) {
     writeJson(jsonOut, unflatten(flatVi));
