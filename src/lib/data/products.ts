@@ -22,7 +22,8 @@ export const retrieveProduct = async (productId: string, regionId: string) => {
     const { product } = await sdk.store.product.retrieve(productId, {
       region_id: regionId,
       fields:
-        "*variants.calculated_price,+variants.inventory_quantity,*variants.images,+metadata,+tags,",
+        "*variants.calculated_price,+variants.inventory_quantity,*variants.images,+metadata,+tags," +
+        "+material,+origin_country,+weight,+length,+width,+height,+type",
     });
     return product;
   } catch (error) {

@@ -1,8 +1,17 @@
 #!/usr/bin/env node
 /**
- * Seeds the Demo Store catalogue: five Vietnamese categories and twenty
- * fashion products with multi-image galleries sourced from dummyjson.com,
- * priced in VND (Việt Nam region) and EUR (Europe region).
+ * Seeds the Demo Store catalogue: seven Vietnamese categories and twenty-five
+ * fashion products with multi-image galleries, priced in VND (Việt Nam region)
+ * and EUR (Europe region).
+ *
+ * Galleries are pulled from dummyjson.com, except for the five trousers
+ * products: dummyjson stocks no pants, so those use CC0 / public-domain photos
+ * from Openverse (rawpixel, StockSnap) and Wikimedia Commons instead.
+ *
+ * Each product also carries its detail attributes — Chất liệu, Xuất xứ, Loại,
+ * Khối lượng, Kích thước — from the SPECS table below. They are patched only
+ * when a value is missing or differs, so re-running against an existing
+ * catalogue stays idempotent (and backfills the twenty older products).
  *
  * The four stock Medusa seed products are removed afterwards so the storefront
  * shows only Vietnamese content (pass --keep-seed-products to leave them).
@@ -94,6 +103,8 @@ const CATEGORY_PLAN = [
   { match: "Pants", name: "Giày dép", handle: "giay-dep" },
   { match: "Merch", name: "Phụ kiện", handle: "phu-kien" },
   { match: null, name: "Túi xách", handle: "tui-xach" },
+  { match: null, name: "Quần nam", handle: "quan-nam" },
+  { match: null, name: "Quần nữ", handle: "quan-nu" },
 ];
 
 const SIZE_APPAREL = { title: "Kích cỡ", values: ["S", "M", "L"] };
@@ -330,7 +341,315 @@ const CATALOG = [
     option: { title: "Màu sắc", values: ["Xanh"] },
     price: { vnd: 390_000, eur: 14 },
   },
+
+  // ------------------------------------------------------------------ quần
+  // dummyjson.com sells no trousers, so these five products carry curated
+  // CC0 / public-domain photos (Openverse → rawpixel & StockSnap, Wikimedia
+  // Commons) instead of a dummyjson gallery. Every URL was checked for a
+  // 200 + image/* response before it was added.
+  {
+    handle: "quan-jeans-nam-thang",
+    category: "Quần nam",
+    title: "Quần jeans nam ống đứng",
+    subtitle: "Denim cotton, phom ống đứng",
+    description:
+      "Quần jeans nam ống đứng với chất denim cotton dày dặn nhưng vẫn dễ chịu khi mặc. Phom ống đứng tôn dáng, dễ phối cùng áo thun và giày thể thao.",
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Jeans.tif/lossy-page1-1280px-Jeans.tif.jpg",
+      "https://images.rawpixel.com/editor_1024/cHJpdmF0ZS9zdGF0aWMvaW1hZ2Uvd2Vic2l0ZS8yMDIyLTA0L2xyL3B4NzA3MTg0LWltYWdlLWt3dnY2a2IzLmpwZw.jpg",
+      "https://images.rawpixel.com/editor_1024/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvZnJ6aXBfemlwcGVyX2ZseV9qZWFucy1pbWFnZS1reWJjZGN3Zi5qcGc.jpg",
+    ],
+    option: { title: "Kích cỡ", values: ["30", "31", "32", "33"] },
+    price: { vnd: 790_000, eur: 29 },
+  },
+  {
+    handle: "quan-jeans-nam-wash-vua",
+    category: "Quần nam",
+    title: "Quần jeans nam wash vừa",
+    subtitle: "Wash vừa, cạp thường",
+    description:
+      "Quần jeans nam wash vừa gam xanh trung tính, không kén phối đồ. Chất denim pha co giãn nhẹ và giữ form tốt sau nhiều lần giặt.",
+    images: [
+      "https://cdn.stocksnap.io/img-thumbs/960w/QBSVGRFT2Y.jpg",
+      "https://images.rawpixel.com/editor_1024/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvZnJtYXR0bW9sb25leTAwMDczLWltYWdlLWt3eXNubzY3LmpwZw.jpg",
+      "https://images.rawpixel.com/editor_1024/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvbnMyMTc3OS1pbWFnZS1rd3lydWw3ZS5qcGc.jpg",
+    ],
+    option: { title: "Kích cỡ", values: ["30", "31", "32", "33"] },
+    price: { vnd: 850_000, eur: 31 },
+  },
+  {
+    handle: "quan-chino-nam-con",
+    category: "Quần nam",
+    title: "Quần chino nam ống côn",
+    subtitle: "Cotton pha, dáng côn gọn gàng",
+    description:
+      "Quần chino nam ống côn với chất cotton pha mềm mại và phom ôm vừa vặn. Phù hợp đi làm lẫn đi chơi, phối đẹp với sơ mi và áo polo.",
+    images: [
+      "https://images.rawpixel.com/editor_1024/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDIyLTA2L3Vwd2s2MTc0OTY3NS13aWtpbWVkaWEtaW1hZ2Uta293cXVia2guanBn.jpg",
+      "https://images.rawpixel.com/editor_1024/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvZmw1MDE5MDk4NTAyMS1pbWFnZS1reWJlZnFtcy5qcGc.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Chino_pants_close-up_-_DSC02850.JPG?width=1280",
+    ],
+    option: { title: "Kích cỡ", values: ["30", "31", "32", "33"] },
+    price: { vnd: 720_000, eur: 27 },
+  },
+  {
+    handle: "quan-ong-rong-nu",
+    category: "Quần nữ",
+    title: "Quần ống rộng nữ",
+    subtitle: "Dáng ống rộng, nhẹ và bay bổng",
+    description:
+      "Quần ống rộng nữ với phom dáng thoải mái giúp đôi chân luôn thoáng mát. Chất vải mềm rủ nhẹ, hợp đi làm lẫn dạo phố những ngày nắng.",
+    images: [
+      "https://images.rawpixel.com/editor_1024/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDIyLTA3L21pYTk4MDc2LWltYWdlLmpwZw.jpg",
+      "https://images.rawpixel.com/editor_1024/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDIyLTA3L21pYTExODA0Ni1pbWFnZS5qcGc.jpg",
+      "https://images.rawpixel.com/editor_1024/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDIyLTA3L21pYTI4NDc4LWltYWdlLmpwZw.jpg",
+      "https://images.rawpixel.com/editor_1024/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDIyLTA3L21pYTEyMTk1LWltYWdlLmpwZw.jpg",
+    ],
+    option: { title: "Kích cỡ", values: ["S", "M", "L"] },
+    price: { vnd: 690_000, eur: 25 },
+  },
+  {
+    handle: "quan-au-nu-thanh-lich",
+    category: "Quần nữ",
+    title: "Quần âu nữ thanh lịch",
+    subtitle: "Phom ôm, vải đứng form",
+    description:
+      "Quần âu nữ dáng ôm gọn gàng với chất vải đứng form và ít nhăn. Một lựa chọn thanh lịch cho môi trường công sở lẫn các buổi hẹn.",
+    images: [
+      "https://images.rawpixel.com/editor_1024/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDIyLTAzL21pYTI0NTM4LWltYWdlLmpwZw.jpg",
+      "https://images.rawpixel.com/editor_1024/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDIyLTAzL21pYTEwNjA0NS1pbWFnZS5qcGc.jpg",
+      "https://images.rawpixel.com/editor_1024/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDIyLTAzL21pYTU5NDc2LWltYWdlLmpwZw.jpg",
+    ],
+    option: { title: "Kích cỡ", values: ["S", "M", "L"] },
+    price: { vnd: 890_000, eur: 33 },
+  },
 ];
+
+/**
+ * Detail attributes rendered on the product page as Chất liệu / Xuất xứ /
+ * Loại / Khối lượng / Kích thước. Every catalogue handle needs an entry.
+ *
+ * origin — ISO 3166-1 alpha-2 code (the storefront expands it with
+ *          Intl.DisplayNames, so "vn" reads "Việt Nam" / "Vietnam");
+ * weight — grams; dims — [length, width, height] in centimetres;
+ * type   — Medusa product type, created on demand and shared across products.
+ */
+const SPECS = {
+  // ------------------------------------------------------------- áo sơ mi
+  "ao-so-mi-caro-xanh-den": {
+    material: "Cotton pha polyester",
+    origin: "vn",
+    type: "Áo sơ mi",
+    weight: 180,
+    dims: [30, 24, 3],
+  },
+  "ao-so-mi-caro-co-dien": {
+    material: "Cotton 65% – Polyester 35%",
+    origin: "vn",
+    type: "Áo sơ mi",
+    weight: 190,
+    dims: [30, 24, 3],
+  },
+  "ao-so-mi-tay-ngan-thanh-lich": {
+    material: "Cotton pha spandex",
+    origin: "vn",
+    type: "Áo sơ mi",
+    weight: 165,
+    dims: [30, 24, 3],
+  },
+  "ao-so-mi-ke-song-nam-tinh": {
+    material: "Cotton pha viscose",
+    origin: "cn",
+    type: "Áo sơ mi",
+    weight: 175,
+    dims: [30, 24, 3],
+  },
+
+  // ---------------------------------------------------------- đầm & váy
+  "dam-caro-tartan": {
+    material: "Polyester pha cotton",
+    origin: "vn",
+    type: "Đầm nữ dáng xòe",
+    weight: 520,
+    dims: [32, 26, 6],
+  },
+  "dam-xam-dang-suon": {
+    material: "Polyester pha viscose",
+    origin: "vn",
+    type: "Đầm nữ dáng suôn",
+    weight: 480,
+    dims: [32, 26, 6],
+  },
+  "dam-he-thoang-mat": {
+    material: "Cotton pha voan",
+    origin: "vn",
+    type: "Đầm nữ dáng suôn",
+    weight: 380,
+    dims: [32, 26, 6],
+  },
+  "dam-pea-xep-ly": {
+    material: "Polyester tái chế",
+    origin: "cn",
+    type: "Đầm nữ dáng xòe",
+    weight: 540,
+    dims: [32, 26, 6],
+  },
+  "dam-da-hoi-den": {
+    material: "Lụa pha polyester",
+    origin: "vn",
+    type: "Đầm dạ hội",
+    weight: 780,
+    dims: [38, 28, 8],
+  },
+
+  // ------------------------------------------------------------ giày dép
+  "giay-cao-got-quai-ngang": {
+    material: "Da tổng hợp",
+    origin: "vn",
+    type: "Giày cao gót",
+    weight: 620,
+    dims: [32, 22, 12],
+  },
+  "giay-nu-tone-anh-kim": {
+    material: "Da tổng hợp ánh kim",
+    origin: "cn",
+    type: "Giày cao gót",
+    weight: 540,
+    dims: [30, 20, 11],
+  },
+  "giay-the-thao-do-den-cao-co": {
+    material: "Da tổng hợp & cao su",
+    origin: "vn",
+    type: "Giày thể thao",
+    weight: 880,
+    dims: [34, 24, 13],
+  },
+  "giay-lu-the-thao-retro": {
+    material: "Vải mesh & cao su",
+    origin: "vn",
+    type: "Giày thể thao",
+    weight: 760,
+    dims: [33, 23, 12],
+  },
+
+  // -------------------------------------------------------------- túi xách
+  "tui-xach-da-nu-dang-tote": {
+    material: "Da bò thật",
+    origin: "vn",
+    type: "Túi tote",
+    weight: 850,
+    dims: [42, 32, 14],
+  },
+  "tui-xach-nu-dang-hop": {
+    material: "Da tổng hợp",
+    origin: "cn",
+    type: "Túi xách tay",
+    weight: 620,
+    dims: [28, 20, 12],
+  },
+  "ba-lo-da-nhan-tao-trang": {
+    material: "Da nhân tạo",
+    origin: "vn",
+    type: "Ba lô",
+    weight: 780,
+    dims: [45, 33, 16],
+  },
+  "tui-xach-nu-mau-den": {
+    material: "Polyester chống nước",
+    origin: "vn",
+    type: "Túi xách tay",
+    weight: 450,
+    dims: [34, 26, 10],
+  },
+
+  // ------------------------------------------------------------ phụ kiện
+  "kinh-mat-dang-vuong": {
+    material: "Acetate",
+    origin: "vn",
+    type: "Kính mát",
+    weight: 45,
+    dims: [16, 7, 6],
+  },
+  "dong-ho-day-kim-loai-co-dien": {
+    material: "Thép không gỉ",
+    origin: "ch",
+    type: "Đồng hồ",
+    weight: 135,
+    dims: [12, 12, 8],
+  },
+  "bong-tai-pha-le-xanh": {
+    material: "Hợp kim mạ & pha lê",
+    origin: "th",
+    type: "Trang sức",
+    weight: 18,
+    dims: [10, 8, 4],
+  },
+
+  // ------------------------------------------------------------------ quần
+  "quan-jeans-nam-thang": {
+    material: "Denim cotton 100%",
+    origin: "tr",
+    type: "Quần jeans",
+    weight: 640,
+    dims: [36, 28, 6],
+  },
+  "quan-jeans-nam-wash-vua": {
+    material: "Denim cotton pha co giãn",
+    origin: "vn",
+    type: "Quần jeans",
+    weight: 660,
+    dims: [36, 28, 6],
+  },
+  "quan-chino-nam-con": {
+    material: "Cotton pha elastane",
+    origin: "vn",
+    type: "Quần chino",
+    weight: 520,
+    dims: [36, 28, 5],
+  },
+  "quan-ong-rong-nu": {
+    material: "Linen pha cotton",
+    origin: "vn",
+    type: "Quần ống rộng",
+    weight: 480,
+    dims: [38, 30, 6],
+  },
+  "quan-au-nu-thanh-lich": {
+    material: "Polyester pha viscose",
+    origin: "vn",
+    type: "Quần âu",
+    weight: 500,
+    dims: [36, 28, 5],
+  },
+};
+
+const specFor = (handle) => {
+  const spec = SPECS[handle];
+  if (!spec) throw new Error(`no specs defined for product: ${handle}`);
+  return spec;
+};
+
+/**
+ * The attributes the product page renders. Returns only the keys that are
+ * missing or differ, so the sync step can PATCH a single product cheaply and
+ * re-runs settle into "nothing to do".
+ */
+const specPatch = (product, spec, typeId) => {
+  const wanted = {
+    material: spec.material,
+    origin_country: spec.origin,
+    weight: spec.weight,
+    length: spec.dims[0],
+    width: spec.dims[1],
+    height: spec.dims[2],
+    type_id: typeId,
+  };
+  const patch = {};
+  for (const [key, value] of Object.entries(wanted)) {
+    if (value != null && product[key] !== value) patch[key] = value;
+  }
+  return patch;
+};
 
 /** Stock Medusa demo items that are replaced by the catalogue above. */
 const SEED_HANDLES = ["t-shirt", "shorts", "sweatshirt", "sweatpants"];
@@ -363,7 +682,12 @@ const post = (path, body, what) =>
 // ---------------------------------------------------------------------- plan
 
 const fetchDummyjson = async () => {
-  const wanted = [...new Set(CATALOG.map((item) => item.dj.category))];
+  // Products with a curated `images` list (the trousers) never touch dummyjson.
+  const wanted = [
+    ...new Set(
+      CATALOG.filter((item) => item.dj).map((item) => item.dj.category),
+    ),
+  ];
   const byCategory = new Map();
 
   for (const category of wanted) {
@@ -382,6 +706,17 @@ const fetchDummyjson = async () => {
 };
 
 const resolveGallery = (item, byCategory) => {
+  // Curated galleries (Openverse / Wikimedia photos) skip dummyjson entirely.
+  if (item.images?.length) {
+    const images = [...new Set(item.images)];
+    if (images.length < 2) {
+      throw new Error(
+        `gallery too small for ${item.handle} (${images.length})`,
+      );
+    }
+    return { images, thumbnail: images[0] };
+  }
+
   const source = byCategory.get(item.dj.category)?.get(item.dj.title);
   if (!source) {
     throw new Error(
@@ -449,21 +784,29 @@ const main = async () => {
   log(`authenticated against ${BACKEND}`);
 
   // --- context ------------------------------------------------------------
-  const [categoryList, productList, salesChannels, profiles, regions] =
-    await Promise.all([
-      apiJson(
-        "/admin/product-categories?limit=100",
-        {},
-        "listing product categories",
-      ),
-      apiJson("/admin/products?limit=100", {}, "listing products"),
-      apiJson("/admin/sales-channels", {}, "listing sales channels"),
-      apiJson("/admin/shipping-profiles", {}, "listing shipping profiles"),
-      apiJson("/admin/regions", {}, "listing regions"),
-    ]);
+  const [
+    categoryList,
+    productList,
+    salesChannels,
+    profiles,
+    regions,
+    productTypes,
+  ] = await Promise.all([
+    apiJson(
+      "/admin/product-categories?limit=100",
+      {},
+      "listing product categories",
+    ),
+    apiJson("/admin/products?limit=100", {}, "listing products"),
+    apiJson("/admin/sales-channels", {}, "listing sales channels"),
+    apiJson("/admin/shipping-profiles", {}, "listing shipping profiles"),
+    apiJson("/admin/regions", {}, "listing regions"),
+    apiJson("/admin/product-types?limit=100", {}, "listing product types"),
+  ]);
 
   const existingCategories = categoryList.product_categories ?? [];
   const existingProducts = productList.products ?? [];
+  const existingTypes = productTypes.product_types ?? [];
   const salesChannel =
     (salesChannels.sales_channels ?? []).find(
       (channel) => !channel.is_disabled,
@@ -531,6 +874,29 @@ const main = async () => {
   const toCreate = wanted.filter((item) => !alreadySeeded.includes(item));
   const toDelete = KEEP_SEED_PRODUCTS ? [] : seedProducts;
 
+  // --- detail attributes --------------------------------------------------
+  // Work out which products still need Chất liệu / Xuất xứ / Loại / Khối
+  // lượng / Kích thước, and which product types must exist before they can.
+  const typeByValue = new Map(
+    existingTypes.map((type) => [type.value, type.id]),
+  );
+  const pendingSpecs = [];
+  for (const item of wanted) {
+    const spec = specFor(item.handle);
+    const product = existingProducts.find((p) => p.handle === item.handle);
+    if (!product) continue; // to be created, attributes patched afterwards
+    const typeId = typeByValue.get(spec.type) ?? null;
+    if (
+      typeId === null ||
+      Object.keys(specPatch(product, spec, typeId)).length
+    ) {
+      pendingSpecs.push(item.handle);
+    }
+  }
+  const missingTypes = [
+    ...new Set(wanted.map((item) => specFor(item.handle).type)),
+  ].filter((value) => !typeByValue.has(value));
+
   // --- report -------------------------------------------------------------
   const state = {
     backend: BACKEND,
@@ -550,12 +916,18 @@ const main = async () => {
       alreadySeeded: alreadySeeded.map((item) => item.handle),
       seedProductsToDelete: toDelete.map((product) => product.handle),
     },
+    attributes: {
+      pending: pendingSpecs,
+      typesToCreate: missingTypes,
+      catalogue: Object.keys(SPECS).length,
+    },
     catalogueSize: CATALOG.length,
   };
 
-  if (JSON_OUT) {
+  if (JSON_OUT && (CHECK || DRY_RUN)) {
+    // Dry runs emit only the plan; real runs emit the full summary below.
     console.log(JSON.stringify(state, null, 2));
-  } else {
+  } else if (!JSON_OUT) {
     log(
       `catalogue: ${CATALOG.length} products across ${CATEGORY_PLAN.length} categories`,
     );
@@ -574,6 +946,10 @@ const main = async () => {
       `  products  ${toCreate.length} to create, ${alreadySeeded.length} already present, ` +
         `${toDelete.length} seed product(s) to remove`,
     );
+    log(
+      `  specs     ${pendingSpecs.length} product(s) need attributes, ` +
+        `${missingTypes.length} product type(s) to create`,
+    );
   }
 
   if (CHECK || DRY_RUN) {
@@ -590,6 +966,8 @@ const main = async () => {
   if (
     !toCreate.length &&
     !toDelete.length &&
+    !pendingSpecs.length &&
+    !missingTypes.length &&
     !categoryActions.some((action) => action.kind !== "exists")
   ) {
     log("nothing to do");
@@ -654,6 +1032,23 @@ const main = async () => {
     (refreshedCategories.product_categories ?? []).map((c) => [c.name, c]),
   );
 
+  // --- product types -------------------------------------------------------
+  // Product types feed the "Loại" attribute — create whatever the catalogue
+  // needs so a fresh backend ends up with the same set as a re-run.
+  for (const value of missingTypes) {
+    const createdType = await post(
+      "/admin/product-types",
+      { value },
+      `creating product type ${value}`,
+    );
+    const typeId = createdType.product_type?.id;
+    if (!typeId) {
+      throw new Error(`unexpected product type response for "${value}"`);
+    }
+    typeByValue.set(value, typeId);
+    log(`  type     created ${value}`);
+  }
+
   // --- galleries ----------------------------------------------------------
   const dummyjson = await fetchDummyjson();
 
@@ -716,6 +1111,42 @@ const main = async () => {
     );
   }
 
+  // --- detail attributes ---------------------------------------------------
+  // Chất liệu / Xuất xứ / Loại / Khối lượng / Kích thước for every catalogue
+  // product: re-list first (the twenty older ones already exist), then PATCH
+  // only the values that differ. Also covers freshly created products, which
+  // are written without attributes so both paths share this one code path.
+  const refreshedProducts = await apiJson(
+    "/admin/products?limit=100",
+    {},
+    "relisting products for attribute sync",
+  );
+  let specsSynced = 0;
+  for (const item of wanted) {
+    const spec = specFor(item.handle);
+    const product = (refreshedProducts.products ?? []).find(
+      (p) => p.handle === item.handle,
+    );
+    if (!product) {
+      log(`  warning  ${item.handle} missing after create — specs skipped`);
+      continue;
+    }
+    const patch = specPatch(product, spec, typeByValue.get(spec.type) ?? null);
+    if (!Object.keys(patch).length) continue;
+
+    await post(
+      `/admin/products/${product.id}`,
+      patch,
+      `updating attributes for ${item.handle}`,
+    );
+    specsSynced += 1;
+    log(
+      `  specs    ${item.title} — ${spec.material}, ` +
+        `${spec.origin.toUpperCase()}, ${spec.type}, ${spec.weight} g, ` +
+        `${spec.dims.join(" × ")} cm`,
+    );
+  }
+
   // --- verify -------------------------------------------------------------
   const verify = await apiJson(
     "/admin/products?limit=100&status[]=published",
@@ -755,6 +1186,7 @@ const main = async () => {
     renamed,
     deleted,
     hidden,
+    specsSynced,
     publishedCount: published.length,
     storeCheck,
     durationMs: Date.now() - startedAt,
@@ -764,9 +1196,10 @@ const main = async () => {
     console.log(JSON.stringify(summary, null, 2));
   } else {
     log(
-      `done: ${created} created, ${renamed} categories synced, ` +
-        `${deleted} deleted + ${hidden} set to draft — ${published.length} published ` +
-        `products in ${summary.durationMs}ms`,
+      `done: ${created} created, ${specsSynced} attribute set(s) synced, ` +
+        `${renamed} categories synced, ${deleted} deleted + ${hidden} set to ` +
+        `draft — ${published.length} published products in ` +
+        `${summary.durationMs}ms`,
     );
     if (storeCheck.count !== null) {
       log(

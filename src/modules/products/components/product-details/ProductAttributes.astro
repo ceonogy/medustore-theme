@@ -24,6 +24,23 @@ const {
 } = Astro.props;
 
 const t = useTranslations(locale);
+
+// Medusa stores the origin as an ISO 3166-1 alpha-2 code; show the country
+// name in the active language ("VN" → "Việt Nam" / "Vietnam").
+const countryName = (() => {
+  if (!origin_country) return null;
+  const code = origin_country.trim().toUpperCase();
+  try {
+    return new Intl.DisplayNames([locale], { type: "region" }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+})();
+
+// Dimension string, e.g. "32 × 26 × 6 cm"; weight is stored in grams.
+const dimensions =
+  length && width && height ? `${length} × ${width} × ${height} cm` : null;
+const weightLabel = weight ? `${weight} g` : null;
 ---
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -37,7 +54,7 @@ const t = useTranslations(locale);
         <span class="font-semibold"
           >{t("products.attributes.countryOfOrigin")}</span
         >
-        <p>{origin_country || "-"}</p>
+        <p>{countryName || "-"}</p>
       </div>
       <div>
         <span class="font-semibold">{t("products.attributes.type")}</span>
@@ -48,17 +65,11 @@ const t = useTranslations(locale);
     <div class="flex flex-col gap-y-4">
       <div>
         <span class="font-semibold">{t("products.attributes.weight")}</span>
-        <p>{weight ? `${weight}g` : "-"}</p>
+        <p>{weightLabel || "-"}</p>
       </div>
       <div>
         <span class="font-semibold">{t("products.attributes.dimensions")}</span>
-        <p>
-          {
-            length && width && height
-              ? `${length}L x ${width}W x ${height}H`
-              : "-"
-          }
-        </p>
+        <p>{dimensions || "-"}</p>
       </div>
     </div>
   </div>
