@@ -1,4 +1,5 @@
 import {
+  I18N_ENABLED,
   LOCALES,
   localizePath,
   stripLocalePrefix,
@@ -48,26 +49,30 @@ export const Nav = ({ locale, regionId, currentPath = "/" }: NavProps) => {
           {t("nav.products")}
         </a>
 
-        <nav
-          aria-label={t("nav.language")}
-          className="flex items-center gap-2 text-sm"
-        >
-          {LOCALES.map((code) => (
-            <a
-              key={code}
-              href={localizePath(code, basePath)}
-              hrefLang={code}
-              aria-current={code === locale ? "true" : undefined}
-              className={
-                code === locale
-                  ? "font-semibold underline underline-offset-4"
-                  : "text-black/55 hover:text-black hover:underline"
-              }
-            >
-              {code.toUpperCase()}
-            </a>
-          ))}
-        </nav>
+        {/* Language switcher — only rendered when PUBLIC_I18N_ENABLED turns
+            locale URLs back on; a single-language store shows no language UI. */}
+        {I18N_ENABLED && (
+          <nav
+            aria-label={t("nav.language")}
+            className="flex items-center gap-2 text-sm"
+          >
+            {LOCALES.map((code) => (
+              <a
+                key={code}
+                href={localizePath(code, basePath)}
+                hrefLang={code}
+                aria-current={code === locale ? "true" : undefined}
+                className={
+                  code === locale
+                    ? "font-semibold underline underline-offset-4"
+                    : "text-black/55 hover:text-black hover:underline"
+                }
+              >
+                {code.toUpperCase()}
+              </a>
+            ))}
+          </nav>
+        )}
       </div>
 
       <a

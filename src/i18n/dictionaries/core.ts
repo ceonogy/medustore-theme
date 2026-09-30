@@ -5,10 +5,10 @@
  * `vi` is the source of truth for keys (Vietnamese-first); `en` mirrors it.
  */
 export const vi = {
-  "site.name": "Astro Medusa Starter",
+  "site.name": "Demo Store",
   "site.description":
-    "Cửa hàng mẫu dựng bằng Astro và Medusa cho hiệu năng tối ưu.",
-  "site.brand": "Astro Medusa Store",
+    "Cửa hàng demo dựng bằng Astro và Medusa cho hiệu năng tối ưu.",
+  "site.brand": "Demo Store",
 
   "common.unknownError": "Đã xảy ra lỗi không xác định",
   "common.loading": "Đang tải...",
@@ -20,7 +20,7 @@ export const vi = {
   "nav.openCart": "Mở giỏ hàng",
   "nav.language": "Ngôn ngữ",
 
-  "footer.eyebrow": "Astro Medusa Starter",
+  "footer.eyebrow": "Demo Store",
   "footer.headline": "Một cửa hàng sẵn sàng để ra mắt.",
   "footer.description":
     "Được xây dựng cho việc duyệt web nhanh, thanh toán gọn gàng và trải nghiệm mua sắm trọn vẹn từ cú nhấp đầu tiên đến khi đơn hàng được xác nhận.",
@@ -28,7 +28,7 @@ export const vi = {
   "footer.company": "Công ty",
   "footer.customerCare": "Chăm sóc khách hàng",
   "footer.customerCareText":
-    "Cần hỗ trợ về bản mẫu? Hãy duyệt danh mục, thử giỏ hàng và trải nghiệm toàn bộ quy trình mua hàng.",
+    "Cần hỗ trợ? Hãy duyệt danh mục, thử giỏ hàng và trải nghiệm toàn bộ quy trình mua hàng.",
   "footer.navShop": "Điều hướng cửa hàng trong chân trang",
   "footer.navCompany": "Điều hướng công ty trong chân trang",
   "footer.home": "Trang chủ",
@@ -38,14 +38,12 @@ export const vi = {
   "footer.privacy": "Chính sách bảo mật",
   "footer.terms": "Điều khoản",
   "footer.startShopping": "Bắt đầu mua sắm",
-  "footer.copyright":
-    "© {{year}} Astro Medusa Starter. Thiết kế bởi Michał Bystryk.",
+  "footer.copyright": "© {{year}} Demo Store. Mọi quyền được bảo lưu.",
 
   "home.eyebrow": "Astro + Medusa",
-  "home.title": "Bộ khởi dựng thương mại điện tử",
+  "home.title": "Cửa hàng thương mại điện tử mẫu",
   "home.subtitle":
-    "Bản mẫu này là cách nhanh nhất để dựng cửa hàng của bạn với hiệu năng là ưu tiên hàng đầu.",
-  "home.openGithub": "Mở GitHub",
+    "Demo Store là cách nhanh nhất để dựng cửa hàng của bạn, với hiệu năng là ưu tiên hàng đầu.",
   "home.browseProducts": "Xem sản phẩm",
   "home.imageAlt": "Sản phẩm nổi bật",
 
@@ -59,23 +57,22 @@ export const vi = {
 
   "privacy.title": "Chính sách bảo mật",
   "privacy.description":
-    "Tìm hiểu cách bản mẫu Astro và Medusa này xử lý dữ liệu khách hàng và thanh toán.",
+    "Tìm hiểu cách Demo Store xử lý dữ liệu khách hàng và thanh toán.",
   "privacy.eyebrow": "Chính sách bảo mật",
   "privacy.heading": "Nền tảng cửa hàng ưu tiên quyền riêng tư",
   "privacy.p1":
-    "Bản mẫu này được thiết kế để việc xử lý dữ liệu khách hàng luôn rõ ràng. Thông tin thanh toán và giỏ hàng chỉ được thu thập khi cần để hoàn tất một đơn hàng.",
+    "Cửa hàng này được thiết kế để việc xử lý dữ liệu khách hàng luôn rõ ràng. Thông tin thanh toán và giỏ hàng chỉ được thu thập khi cần để hoàn tất một đơn hàng.",
   "privacy.p2":
     "Chi tiết thanh toán được xử lý qua các nhà cung cấp thanh toán đã kết nối chứ không được lưu trực tiếp trong mã nguồn cửa hàng. Khu vực và trạng thái giỏ hàng được dùng để giữ giá và quy trình thanh toán luôn chính xác với người mua.",
   "privacy.p3":
-    "Nếu bạn đưa bản mẫu này vào sản xuất, hãy thay trang này bằng chính sách doanh nghiệp, thời hạn lưu giữ và thông tin liên hệ của riêng bạn trước khi vận hành thật.",
+    "Nếu bạn đưa cửa hàng này vào sản xuất, hãy thay trang này bằng chính sách doanh nghiệp, thời hạn lưu giữ và thông tin liên hệ của riêng bạn trước khi vận hành thật.",
 
   "terms.title": "Điều khoản",
-  "terms.description":
-    "Điều khoản cơ bản cho trải nghiệm cửa hàng mẫu Astro và Medusa.",
+  "terms.description": "Điều khoản cơ bản cho trải nghiệm Demo Store.",
   "terms.eyebrow": "Điều khoản",
   "terms.heading": "Điều khoản đơn giản cho cửa hàng sẵn sàng demo",
   "terms.p1":
-    "Cửa hàng này là một dự án khởi đầu dùng để khám phá, thử nghiệm và tùy biến. Sản phẩm, giá cả và quy trình thanh toán phụ thuộc vào cấu hình backend Medusa đã kết nối.",
+    "Cửa hàng này là một dự án demo dùng để khám phá, thử nghiệm và tùy biến. Sản phẩm, giá cả và quy trình thanh toán phụ thuộc vào cấu hình backend Medusa đã kết nối.",
   "terms.p2":
     "Các đơn hàng đặt trong môi trường demo nên được coi là đơn hàng thử, trừ khi bạn đã kết nối các dịch vụ thanh toán, vận chuyển và hoàn thiện đơn hàng thật.",
   "terms.p3":
@@ -92,10 +89,10 @@ export const vi = {
 };
 
 export const en: typeof vi = {
-  "site.name": "Astro Medusa Starter",
+  "site.name": "Demo Store",
   "site.description":
-    "E-commerce starter template built with Astro and Medusa for maximum performance.",
-  "site.brand": "Astro Medusa Store",
+    "Demo store built with Astro and Medusa for maximum performance.",
+  "site.brand": "Demo Store",
 
   "common.unknownError": "Unknown error",
   "common.loading": "Loading...",
@@ -107,7 +104,7 @@ export const en: typeof vi = {
   "nav.openCart": "Open cart",
   "nav.language": "Language",
 
-  "footer.eyebrow": "Astro Medusa Starter",
+  "footer.eyebrow": "Demo Store",
   "footer.headline": "A storefront that feels ready to ship.",
   "footer.description":
     "Built for fast browsing, clean checkout, and a polished shopping flow from first click to confirmed order.",
@@ -115,7 +112,7 @@ export const en: typeof vi = {
   "footer.company": "Company",
   "footer.customerCare": "Customer Care",
   "footer.customerCareText":
-    "Need help with the starter? Browse the catalog, test the cart, and explore the full purchase flow end to end.",
+    "Need help? Browse the catalog, test the cart, and explore the full purchase flow end to end.",
   "footer.navShop": "Footer shop navigation",
   "footer.navCompany": "Footer company navigation",
   "footer.home": "Home",
@@ -125,14 +122,12 @@ export const en: typeof vi = {
   "footer.privacy": "Privacy",
   "footer.terms": "Terms",
   "footer.startShopping": "Start shopping",
-  "footer.copyright":
-    "© {{year}} Astro Medusa Starter. Built by Michał Bystryk.",
+  "footer.copyright": "© {{year}} Demo Store. All rights reserved.",
 
   "home.eyebrow": "Astro + Medusa",
-  "home.title": "e-commerce starter template",
+  "home.title": "e-commerce demo store",
   "home.subtitle":
-    "This template is a good way to start building your e-commerce store with maximum performance in mind.",
-  "home.openGithub": "Open Github",
+    "Demo Store is a good way to start building your e-commerce store, with maximum performance in mind.",
   "home.browseProducts": "Browse products",
   "home.imageAlt": "Featured product",
 
@@ -146,23 +141,22 @@ export const en: typeof vi = {
 
   "privacy.title": "Privacy",
   "privacy.description":
-    "Learn how this Astro and Medusa starter handles customer and checkout data.",
+    "Learn how Demo Store handles customer and checkout data.",
   "privacy.eyebrow": "Privacy",
   "privacy.heading": "Privacy-first storefront foundations",
   "privacy.p1":
-    "This starter is designed to keep customer data handling straightforward. Checkout and cart information is only collected when needed to complete an order flow.",
+    "This store is designed to keep customer data handling straightforward. Checkout and cart information is only collected when needed to complete an order flow.",
   "privacy.p2":
     "Payment details are processed through connected payment providers rather than stored directly in the storefront codebase. Region and cart state are used to keep pricing and checkout behavior accurate for the shopper.",
   "privacy.p3":
-    "If you adapt this starter for production, update this page with your own business policies, retention periods, and contact details before going live.",
+    "If you adapt this store for production, update this page with your own business policies, retention periods, and contact details before going live.",
 
   "terms.title": "Terms",
-  "terms.description":
-    "Basic storefront terms for the Astro and Medusa starter experience.",
+  "terms.description": "Basic storefront terms for the Demo Store experience.",
   "terms.eyebrow": "Terms",
   "terms.heading": "Simple terms for a demo-ready storefront",
   "terms.p1":
-    "This storefront is a starter project meant for exploration, testing, and customization. Product, pricing, and checkout behavior depend on the connected Medusa backend configuration.",
+    "This storefront is a demo project meant for exploration, testing, and customization. Product, pricing, and checkout behavior depend on the connected Medusa backend configuration.",
   "terms.p2":
     "Orders placed in a demo environment should be treated as test orders unless you have connected live payment, shipping, and fulfillment services.",
   "terms.p3":

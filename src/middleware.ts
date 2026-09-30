@@ -1,6 +1,11 @@
 import type { HttpTypes } from "@medusajs/types";
 import { defineMiddleware } from "astro:middleware";
-import { DEFAULT_LOCALE, isLocale, type Locale } from "./i18n/config";
+import {
+  DEFAULT_LOCALE,
+  I18N_ENABLED,
+  isLocale,
+  type Locale,
+} from "./i18n/config";
 import { sdk } from "./lib/sdk";
 
 const MEDUSA_BACKEND_URL = import.meta.env.PUBLIC_MEDUSA_BACKEND_URL;
@@ -158,10 +163,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
   let locale: Locale = DEFAULT_LOCALE;
 
   if (firstSegment && isLocale(firstSegment)) {
-    if (firstSegment === DEFAULT_LOCALE) {
-      // Default locale must be prefix-less (routing.prefixDefaultLocale: false)
-      const rest = segments.slice(1);
-      return redirectTo(rest.length ? `/${rest.join("/")}` : "/");
+    const rest = segments.slice(1);
+    const target = rest.length ? `/${rest.join("/")}` : "/";
+
+    // With i18n off (PUBLIC_I18N_ENABLED unset) no locale prefix is served at
+    // all — `/vi/…` and legacy `/en/…` both 301 to the plain URL. When it is
+    // on, only the default locale is prefix-less
+    // (routing.prefixDefaultLocale: false) and `/en/…` stays.
+    if (!I18N_ENABLED || firstSegment === DEFAULT_LOCALE) {
+      return redirectTo(target);
     }
     locale = firstSegment;
   } else if (firstSegment && regionMap.has(firstSegment)) {

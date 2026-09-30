@@ -23,7 +23,10 @@ export default defineConfig({
   }),
   // https://docs.astro.build/en/guides/internationalization/
   // Vietnamese-first: the default locale is served from the domain root with
-  // no `/vi/` prefix, every other locale is prefixed (e.g. `/en/store`).
+  // no `/vi/` prefix. `en` is listed so switching locales back on is a single
+  // env change — while PUBLIC_I18N_ENABLED is off (the default) the middleware
+  // 301s every `/en/…` URL to its prefix-less twin and the nav shows no
+  // language switcher, so the site behaves as a single-language store.
   i18n: {
     locales: ["vi", "en"],
     defaultLocale: "vi",

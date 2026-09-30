@@ -16,14 +16,11 @@ const shopLinks = [
   { href: localizePath(locale, "/checkout"), label: t("footer.checkout") },
 ];
 
-const companyLinks = [
+type FooterLink = { href: string; label: string; external?: boolean };
+
+const companyLinks: FooterLink[] = [
   { href: localizePath(locale, "/privacy"), label: t("footer.privacy") },
   { href: localizePath(locale, "/terms"), label: t("footer.terms") },
-  {
-    href: "https://github.com/Bystrol/astro-medusa-starter",
-    label: "GitHub",
-    external: true,
-  },
 ];
 ---
 

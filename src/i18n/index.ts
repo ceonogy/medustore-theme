@@ -1,5 +1,6 @@
 import {
   DEFAULT_LOCALE,
+  I18N_ENABLED,
   LOCALES,
   isLocale,
   normalizeLocale,
@@ -69,5 +70,5 @@ export const stripLocalePrefix = (path: string) => {
   return path;
 };
 
-export { DEFAULT_LOCALE, LOCALES, isLocale, normalizeLocale };
+export { DEFAULT_LOCALE, I18N_ENABLED, LOCALES, isLocale, normalizeLocale };
 export type { Locale };
