@@ -49,7 +49,7 @@ export const ConfirmedFallbackPage = ({
 
   return (
     <main
-      className="max-w-2xl mx-auto px-8 py-16"
+      className="mx-auto max-w-2xl px-4 py-16 tablet:px-6"
       aria-label={t("order.confirmation")}
     >
       {/* Success header */}

@@ -73,7 +73,7 @@ export const CheckoutPage = ({
 
   if (!cart || !cart.items?.length) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-16 text-center">
+      <div className="wrap py-16 text-center">
         <h1 className="text-3xl font-bold mb-4">
           {t("checkout.page.emptyCartTitle")}
         </h1>
@@ -96,8 +96,8 @@ export const CheckoutPage = ({
     | undefined;
 
   const checkoutContent = (
-    <div className="max-w-7xl mx-auto px-8 py-8">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+    <div className="wrap py-8">
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-0">
           <ShippingAddressStep
             cart={cart}
