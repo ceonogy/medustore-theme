@@ -217,8 +217,9 @@ assert(
   `order=${JSON.stringify(live.order)}`,
 );
 assert(
-  "lookups use the documented lng key",
-  live.lookupCookie === "lng" && live.lookupLocalStorage === "lng",
+  "language stored under a key the old auto-written value cannot occupy",
+  live.lookupCookie === "medusa_admin_lng" &&
+    live.lookupLocalStorage === "medusa_admin_lng",
   `cookie=${live.lookupCookie} localStorage=${live.lookupLocalStorage}`,
 );
 
@@ -365,11 +366,30 @@ assert(
     }
   };
   // the detector's cookie lookup is just document.cookie
-  const setStoredLanguage = (value) => {
+  const setStoredCookie = (name, value) => {
     Object.defineProperty(globalThis, "document", {
-      value: { cookie: value ? `lng=${value}` : "" },
+      value: { cookie: value ? `${name}=${value}` : "" },
       configurable: true,
     });
+  };
+  const setStoredLanguage = (value) =>
+    setStoredCookie(live.lookupCookie, value);
+  const newAdmin = async () => {
+    const i18nFresh = fresh("i18next");
+    const Detector = fresh("i18next-browser-languagedetector");
+    await i18nFresh
+      .use(
+        new Detector(null, {
+          lookupCookie: live.lookupCookie,
+          lookupLocalStorage: live.lookupLocalStorage,
+        }),
+      )
+      .init({
+        ...defaultI18nOptions,
+        resources,
+        supportedLngs: Object.keys(resources),
+      });
+    return i18nFresh;
   };
 
   for (const lang of ["vi-VN", "en-US", "fr-FR", "de"]) {
@@ -395,6 +415,40 @@ assert(
       `detected=${JSON.stringify(detected)} language=${i18nFresh.language}`,
     );
   }
+
+  // the very first screen a visitor meets is the login form
+  console.log("\n── login screen (the first thing anyone sees) ────────────");
+  const loginKeys = Object.keys(ourViFlat).filter((k) => /^login\./.test(k));
+  assert(
+    "every login key is translated (stock Medusa has 3 of 15)",
+    loginKeys.length === 15 && loginKeys.every((k) => k in coreEnFlat),
+    `${loginKeys.length} keys`,
+  );
+  const i18nLogin = await newAdmin();
+  assert(
+    "login screen renders Vietnamese by default",
+    i18nLogin.t("login.title") === "Chào mừng đến với Medusa" &&
+      i18nLogin.t("login.hint") === "Đăng nhập để truy cập khu vực tài khoản",
+    `${i18nLogin.t("login.title")} / ${i18nLogin.language}`,
+  );
+  assert(
+    "MFA step (missing from stock vi.json) renders Vietnamese",
+    i18nLogin.t("login.mfa.verify") === "Xác minh" &&
+      i18nLogin.t("login.mfa.backToLogin") === "Quay lại đăng nhập",
+    i18nLogin.t("login.mfa.verify"),
+  );
+
+  // a browser that opened the Admin before this patch carries the value the
+  // old broken detection auto-wrote; it must not win any more
+  console.log("\n── browsers that visited before this patch ───────────────");
+  setStoredCookie("lng", "en"); // Medusa's old key, value "en"
+  const stale = await newAdmin();
+  assert(
+    "stale auto-written lng=en is ignored -> Vietnamese",
+    stale.language === "vi" && stale.t("actions.save") === "Lưu",
+    `language=${stale.language} actions.save=${stale.t("actions.save")}`,
+  );
+  setStoredLanguage(null);
 
   // an explicit Profile → Language choice is cached and keeps winning
   console.log("\n── explicit choice (Profile → Language) still wins ────────");

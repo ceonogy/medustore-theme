@@ -21,8 +21,10 @@ pass `--no-default-vi` to skip it.
 
 ## Why
 
-Medusa ships a **partial** Vietnamese file (`vi.json`). Everything missing from
-it silently renders in English. This tool rebuilds a complete dictionary:
+Medusa already ships Vietnamese, but only **part of it**: core `vi.json` holds
+**1962 of 2443** keys, so **498 strings silently render in English** — the login
+screen alone has 15 keys and only 3 are translated (every MFA string is
+English). This tool rebuilds the missing part:
 
 | source             | role                                 |
 | ------------------ | ------------------------------------ |
@@ -30,9 +32,9 @@ it silently renders in English. This tool rebuilds a complete dictionary:
 | core `vi.json`     | Medusa's shipped Vietnamese          |
 | `overrides/*.json` | our translations (merged last, wins) |
 
-Result: **2425 / 2443** keys in Vietnamese, `0` missing. The ~18 remaining
-identical values are legitimately language-neutral (`Email`, `JSON`, `S, M, L`,
-`{{count}}` placeholders, `EAN`).
+Result: **2425 / 2443** keys in Vietnamese, `0` missing — 15/15 on the login
+screen. The ~18 remaining identical values are legitimately language-neutral
+(`Email`, `JSON`, `S, M, L`, `{{count}}` placeholders, `EAN`).
 
 ## Usage
 
@@ -79,32 +81,53 @@ cp tools/admin-vi-i18n/config.example.json tools/admin-vi-i18n/config.json
 Medusa ships:
 
 ```js
-detection: { order: ["cookie", "localStorage", "header"] },
+detection: {
+  order: ["cookie", "localStorage", "header"],
+  lookupCookie: "lng",
+  lookupLocalStorage: "lng",
+},
 fallbackLng: "en",
 ```
 
-`i18next-browser-languagedetector` registers no `header` lookup, so a browser
-with no stored language detects nothing and i18next falls back to `fallbackLng`
-— the Admin therefore opened in English for everyone, whatever the browser
-language was.
+Three problems follow:
+
+1. `i18next-browser-languagedetector` registers no `header` lookup, so a browser
+   with nothing stored detects nothing and i18next falls back to
+   `fallbackLng: "en"` — the Admin opened in English for everyone, whatever the
+   browser language was.
+2. `caches` **was** valid, so that wrong `"en"` was written back to the browser
+   on every visit. Any browser that opened the Admin before this tool ran
+   therefore carries `lng=en`, which would keep beating a new default.
+3. The dead `header` entries misdescribe the config.
 
 The tool rewrites that to:
 
 ```js
-detection: { order: ["cookie", "localStorage"] },
+detection: {
+  order: ["cookie", "localStorage"],
+  lookupCookie: "medusa_admin_lng",
+  lookupLocalStorage: "medusa_admin_lng",
+},
 fallbackLng: ["vi", "en"],
 ```
 
 so:
 
-- a fresh session opens in **Vietnamese**;
-- an explicit **Profile → Language** choice is cached in the cookie /
-  `localStorage` lookups and still wins;
+- **every screen opens in Vietnamese** — the login form, the MFA step and the
+  whole authenticated app share a single i18next instance, so there is nothing
+  to patch per screen;
+- a browser that visited before this ran gets Vietnamese too: its stale `lng=en`
+  is never read, because the storage key was renamed;
+- an explicit **Profile → Language** choice is written to and read from the new
+  key, so switching language still works;
 - English remains the fallback, so a key added by a future Medusa release
   renders in English instead of showing its raw dotted name.
 
-It only touches `node_modules/@medusajs/dashboard/dist/*` (the bundle input) and
-`src/i18n/config.ts`, matches at most once per file, and is re-applied by a
+Nothing else in the dashboard reads `lng` — the lookup key belongs to the
+detector alone (verified against the package source).
+
+It touches `node_modules/@medusajs/dashboard/dist/*` (the bundle input) and
+`src/i18n/config.ts`, matches at most once per pattern, and is re-applied by a
 plain re-run — so run this tool again after any `yarn install` or Medusa
 upgrade. `--check` reports the state; `test-runtime.cjs` asserts it.
 
@@ -116,10 +139,14 @@ node tools/admin-vi-i18n/test-runtime.cjs --admin-path /home/medusa
 ```
 
 Reproduces the Admin's real runtime (`i18next` +
-`i18next-browser-languagedetector`, options read live from the installed
-dashboard package) and asserts: dictionary coverage, plurals, interpolation,
-the documented fallback chain, the shipped defaults, and the language a fresh
-visit gets. Exit code `0` means all assertions passed.
+`i18next-browser-languagedetector`, options read **live** from the installed
+dashboard package) and asserts: dictionary coverage, plurals, interpolation, the
+documented fallback chain, the shipped defaults, the language a fresh visit gets,
+the login screen (including the MFA step missing from stock `vi.json`), that a
+browser carrying the old auto-written `lng=en` still lands on Vietnamese, and
+that an explicit Profile → Language choice still wins — 29 assertions in total.
+Exit code `0` means all of them passed; when no Medusa checkout is present (as
+in CI) it skips with exit `0`.
 
 ## Editing translations
 

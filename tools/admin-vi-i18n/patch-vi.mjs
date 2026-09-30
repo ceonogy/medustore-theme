@@ -273,48 +273,62 @@ function loadOverrides() {
 //
 // Medusa ships:
 //
-//     detection: { ..., order: ["cookie","localStorage","header"] },
+//     detection: { caches: [..., "header"], order: [..., "header"],
+//                  lookupCookie: "lng", lookupLocalStorage: "lng" },
 //     fallbackLng: "en"
 //
-// i18next-browser-languagedetector registers no "header" lookup, so a browser
-// with no stored language detects nothing and i18next falls back to
-// `fallbackLng` — which is why a fresh Admin session always opened in English
-// whatever the browser language was.
+// That produces three problems, fixed here in order:
 //
-// This step rewrites that fallback to ["vi", "en"] — Vietnamese first (so the
-// Admin opens in Vietnamese), English second (so a key added by a future
-// Medusa release still renders instead of showing its raw dotted name) — and
-// drops the dead "header" entries. Someone who explicitly chooses another
-// language under Profile → Language is remembered in the cookie/localStorage
-// lookups, so that choice keeps winning over the default.
+//  1. i18next-browser-languagedetector registers no "header" lookup, so a
+//     browser with nothing stored detects nothing and i18next falls back to
+//     `fallbackLng: "en"` — every fresh session opened in English.
+//     -> fallbackLng becomes ["vi", "en"]: Vietnamese first (the Admin's
+//        default), English second, so a key added by a future Medusa release
+//        still renders instead of showing its raw dotted name.
 //
-// Only the shipped @medusajs/dashboard package files are touched — the same
-// package the core translations are read from — and a plain re-run after
-// `yarn install` re-applies the change. Pass --no-default-vi to skip it.
+//  2. `caches` was valid even though detection was not, so that wrong "en" was
+//     written back to the browser on every visit. Browsers that opened the
+//     Admin before this tool ran therefore carry `lng=en` and would keep
+//     showing English — the stored value would beat the new default.
+//     -> the storage key is renamed to `medusa_admin_lng`. The stale value is
+//        simply never read; a language chosen afterwards under Profile →
+//        Language is written to and read from the new key, so switching still
+//        works. Nothing else in the dashboard reads `lng` (verified).
+//
+//  3. The dead "header" entries are dropped, so the config says what it does.
+//
+// This touches only shipped @medusajs/dashboard package files — the same
+// package the core translations are read from — matches at most once per
+// pattern, and a plain re-run after `yarn install` re-applies everything.
+// Pass --no-default-vi to skip this step entirely.
 
-// `detection: { caches: [..., "header"], lookupCookie, lookupLocalStorage, order: [..., "header"] }`
-const RE_STOCK_DETECTION =
-  /detection:\s*\{\s*caches:\s*\[\s*"cookie"\s*,\s*"localStorage"\s*,\s*"header"\s*\]\s*,\s*lookupCookie:\s*"lng"\s*,\s*lookupLocalStorage:\s*"lng"\s*,\s*order:\s*\[\s*"cookie"\s*,\s*"localStorage"\s*,\s*"header"\s*\]\s*\}/g;
+/** Where the Admin stores an explicitly chosen language. Deliberately not
+ *  Medusa's "lng": see problem 2 above. */
+const STORAGE_KEY = "medusa_admin_lng";
 
-const FIXED_DETECTION = [
-  "detection: {",
-  '    caches: ["cookie", "localStorage"],',
-  '    lookupCookie: "lng",',
-  '    lookupLocalStorage: "lng",',
-  '    order: ["cookie", "localStorage"]',
-  "  }",
-].join("\n");
+// 1. `caches: ["cookie", "localStorage", "header"]` — and the same in `order`
+const RE_DEAD_LOOKUP =
+  /(caches|order)(\s*:\s*\[\s*"cookie"\s*,\s*"localStorage")\s*,\s*"header"(\s*\])/g;
 
-// `order: [...] }, fallbackLng: …` — anchored on the block above so that only
-// the i18n config's fallback is rewritten, never some other "en". Accepts any
-// current value so a re-run (or an upgrade from an older form) is idempotent.
+// 2. `lookupCookie: "lng", lookupLocalStorage: "lng"`
+const RE_LEGACY_LOOKUP =
+  /(lookupCookie:\s*)"lng"(\s*,\s*lookupLocalStorage:\s*)"lng"/g;
+const ALREADY_RENAMED = new RegExp(
+  `lookupCookie:\\s*"${STORAGE_KEY}"\\s*,\\s*lookupLocalStorage:\\s*"${STORAGE_KEY}"`,
+);
+
+// 3. `order: [...] }, fallbackLng: …` — anchored so that only the i18n
+//    config's fallback is rewritten, never some other "en". Accepts any
+//    current value and an optional trailing comma (the TypeScript source has
+//    one, the compiled dist does not), so a re-run or an upgrade from an older
+//    form is idempotent.
 const RE_STOCK_FALLBACK =
-  /(order:\s*\[\s*"cookie"\s*,\s*"localStorage"\s*(?:,\s*"header")?\s*\]\s*\}\s*,\s*fallbackLng:\s*)(?:"[a-z]+"|\[[^\]]*\])/g;
+  /(order:\s*\[\s*"cookie"\s*,\s*"localStorage"\s*(?:,\s*"header")?\s*\]\s*,?\s*\}\s*,\s*fallbackLng:\s*)(?:"[a-z]+"|\[[^\]]*\])/g;
 const FIXED_FALLBACK = '$1["vi", "en"]';
 // Vietnamese first (the Admin's default), English second (safety net for any
 // key a future Medusa release adds before this tool is re-run).
 const ALREADY_FIXED =
-  /order:\s*\[\s*"cookie"\s*,\s*"localStorage"\s*(?:,\s*"header")?\s*\]\s*\}\s*,\s*fallbackLng:\s*\[\s*"vi"\s*,\s*"en"\s*\]/;
+  /order:\s*\[\s*"cookie"\s*,\s*"localStorage"\s*(?:,\s*"header")?\s*\]\s*,?\s*\}\s*,\s*fallbackLng:\s*\[\s*"vi"\s*,\s*"en"\s*\]/;
 
 function findDashboardPackage(medusaRoot, backendDir) {
   const candidates = [
@@ -368,11 +382,70 @@ function replaceOnce(text, re, replacement) {
   return { text: text.replace(re, replacement), applied: true };
 }
 
+/** Replace every occurrence — for patterns that may legitimately appear twice
+ *  in one file (`caches` and `order` both list the dead lookup). */
+function replaceAll(text, re, replacement) {
+  const hits = text.match(re);
+  if (hits === null) return { text, applied: false, count: 0 };
+  return {
+    text: text.replace(re, replacement),
+    applied: true,
+    count: hits.length,
+  };
+}
+
+/** The three default-language fixes, applied to one file's text.
+ *  Idempotent: a file already carrying all three reports `changed: false`,
+ *  `complete: true`. */
+function applyLanguageFixes(text) {
+  const actions = [];
+  let next = text;
+  let changed = false;
+
+  // 1. the dead "header" lookup in both `caches` and `order`
+  const dead = replaceAll(next, RE_DEAD_LOOKUP, "$1$2$3");
+  next = dead.text;
+  if (dead.applied) {
+    actions.push('drop dead "header" lookup');
+    changed = true;
+  }
+
+  // 2. storage key, so a stale auto-written `lng=en` is never read back
+  const key = replaceAll(
+    next,
+    RE_LEGACY_LOOKUP,
+    `$1"${STORAGE_KEY}"$2"${STORAGE_KEY}"`,
+  );
+  next = key.text;
+  if (key.applied) {
+    actions.push(`storage key "lng" -> "${STORAGE_KEY}"`);
+    changed = true;
+  }
+
+  // 3. Vietnamese default, English safety net
+  if (!ALREADY_FIXED.test(next)) {
+    const fb = replaceOnce(next, RE_STOCK_FALLBACK, FIXED_FALLBACK);
+    next = fb.text;
+    if (fb.applied) {
+      actions.push("fallbackLng=[vi,en]");
+      changed = true;
+    }
+  }
+
+  const complete =
+    !RE_DEAD_LOOKUP.test(next) &&
+    ALREADY_RENAMED.test(next) &&
+    ALREADY_FIXED.test(next);
+
+  return { text: next, actions, changed, complete };
+}
+
 function applyDefaultLanguage({ medusaRoot, backendDir }, { write, enabled }) {
   const result = {
     status: "disabled",
     files: [],
     unchanged: [],
+    unrecognised: [],
     applied: false,
   };
 
@@ -383,9 +456,9 @@ function applyDefaultLanguage({ medusaRoot, backendDir }, { write, enabled }) {
     return { ...result, status: "package-missing" };
   }
 
-  let changedAny = false;
   const changed = [];
   const unchanged = [];
+  const unrecognised = [];
 
   for (const file of candidateLanguageFiles(pkgDir)) {
     let text;
@@ -394,45 +467,28 @@ function applyDefaultLanguage({ medusaRoot, backendDir }, { write, enabled }) {
     } catch {
       continue;
     }
+    // only files that look like they hold the i18n config are interesting
+    if (!/detection:\s*\{|lookupCookie:|fallbackLng:/.test(text)) continue;
+
     const rel = path.relative(pkgDir, file);
-    const actions = [];
-    let next = text;
-    let fileChanged = false;
+    const fix = applyLanguageFixes(text);
 
-    // 1. drop Medusa's dead "header" lookup — i18next-browser-languagedetector
-    //    registers no such detector, so it silently did nothing.
-    const det = replaceOnce(next, RE_STOCK_DETECTION, FIXED_DETECTION);
-    next = det.text;
-    if (det.applied) {
-      actions.push('drop dead "header" lookup');
-      fileChanged = true;
-    }
-
-    // 2. Vietnamese default with English as the safety net
-    const already = ALREADY_FIXED.test(next);
-    if (!already) {
-      const fb = replaceOnce(next, RE_STOCK_FALLBACK, FIXED_FALLBACK);
-      next = fb.text;
-      if (fb.applied) {
-        actions.push("fallbackLng=[vi,en]");
-        fileChanged = true;
-      }
-    }
-
-    if (fileChanged) {
-      changedAny = true;
-      changed.push({ file: rel, actions });
+    if (fix.changed) {
+      changed.push({ file: rel, actions: fix.actions });
       if (write) {
-        fs.writeFileSync(file, next, "utf8");
+        fs.writeFileSync(file, fix.text, "utf8");
         result.applied = true;
       }
-    } else if (already) {
-      unchanged.push({ file: rel, actions: ["fallbackLng=[vi,en]"] });
+    } else if (fix.complete) {
+      unchanged.push({ file: rel, actions: fix.actions });
+    } else {
+      unrecognised.push(rel);
     }
   }
 
   result.files = changed;
   result.unchanged = unchanged;
+  result.unrecognised = unrecognised;
 
   if (changed.length === 0 && unchanged.length === 0) {
     result.status = "not-found";
@@ -578,6 +634,11 @@ async function main() {
       `  drift          : ${upToDate ? "none (output up to date)" : "output differs — run without --check"}`,
     );
     log(`  default lang   : ${describeDefaultLanguage(defaultLanguage)}`);
+    if ((defaultLanguage.unrecognised ?? []).length) {
+      log(
+        `  warning: i18n config shape not recognised in ${defaultLanguage.unrecognised.join(", ")}`,
+      );
+    }
     if (report.stillEnglish) {
       log("  keys still in English:");
       for (const s of report.stillEnglishSamples) {
@@ -607,6 +668,17 @@ async function main() {
     }
     for (const f of defaultLanguage.unchanged ?? []) {
       log(`    ${f.file}: already applied`);
+    }
+    if ((defaultLanguage.unrecognised ?? []).length) {
+      log(
+        `  warning: i18n config shape not recognised in ${defaultLanguage.unrecognised.join(", ")}`,
+      );
+    }
+    if (defaultLanguage.files.length) {
+      log(
+        `  Language is stored under "${STORAGE_KEY}" — a "lng" value written`,
+      );
+      log("  before this run is ignored, so the Admin now opens Vietnamese.");
     }
     if (defaultLanguage.status === "not-found") {
       log("  warning: Medusa's i18n config changed shape; the Admin will");
