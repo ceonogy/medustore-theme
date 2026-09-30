@@ -3,6 +3,7 @@ import { useStore } from "@nanostores/react";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { useEffect, useState } from "react";
+import { localizePath, useTranslations, type Locale } from "@i18n";
 import { type RegionCountry } from "./AddressFields";
 import { DeliveryStep } from "./DeliveryStep";
 import { OrderSummary } from "./OrderSummary";
@@ -10,6 +11,7 @@ import { PaymentStep } from "./PaymentStep";
 import { ShippingAddressStep } from "./ShippingAddressStep";
 
 interface CheckoutPageProps {
+  locale: Locale;
   countryCode: string;
   countries: RegionCountry[];
 }
@@ -43,7 +45,12 @@ function validateStep(
   return step;
 }
 
-export const CheckoutPage = ({ countryCode, countries }: CheckoutPageProps) => {
+export const CheckoutPage = ({
+  locale,
+  countryCode,
+  countries,
+}: CheckoutPageProps) => {
+  const t = useTranslations(locale);
   const cart = useStore($cart);
   const [, setSearch] = useState(() =>
     typeof window !== "undefined" ? window.location.search : "",
@@ -67,13 +74,15 @@ export const CheckoutPage = ({ countryCode, countries }: CheckoutPageProps) => {
   if (!cart || !cart.items?.length) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-16 text-center">
-        <h1 className="text-3xl font-bold mb-4">Your cart is empty</h1>
-        <p className="text-gray-600 mb-6">Add items before checking out.</p>
+        <h1 className="text-3xl font-bold mb-4">
+          {t("checkout.page.emptyCartTitle")}
+        </h1>
+        <p className="text-gray-600 mb-6">{t("checkout.page.emptyCartText")}</p>
         <a
-          href={`/${countryCode}/store`}
+          href={localizePath(locale, "/store")}
           className="inline-block bg-black text-white py-3 px-8 rounded-md hover:bg-gray-800 transition-colors"
         >
-          Continue Shopping
+          {t("checkout.page.continueShopping")}
         </a>
       </div>
     );
@@ -92,6 +101,7 @@ export const CheckoutPage = ({ countryCode, countries }: CheckoutPageProps) => {
         <div className="lg:col-span-2 space-y-0">
           <ShippingAddressStep
             cart={cart}
+            locale={locale}
             countries={countries}
             countryCode={countryCode}
             mode={step === "address" ? "edit" : "read"}
@@ -101,6 +111,7 @@ export const CheckoutPage = ({ countryCode, countries }: CheckoutPageProps) => {
 
           <DeliveryStep
             cart={cart}
+            locale={locale}
             mode={
               step === "delivery"
                 ? "edit"
@@ -114,13 +125,13 @@ export const CheckoutPage = ({ countryCode, countries }: CheckoutPageProps) => {
 
           <PaymentStep
             cart={cart}
-            countryCode={countryCode}
+            locale={locale}
             mode={step === "payment" ? "edit" : "inactive"}
           />
         </div>
 
         <div className="lg:col-span-1">
-          <OrderSummary cart={cart} />
+          <OrderSummary cart={cart} locale={locale} />
         </div>
       </div>
     </div>

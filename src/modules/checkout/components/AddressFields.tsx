@@ -1,4 +1,5 @@
 import type { FieldErrors, Path, UseFormRegister } from "react-hook-form";
+import { useTranslations, type Locale } from "@i18n";
 
 export interface RegionCountry {
   iso_2: string;
@@ -33,6 +34,7 @@ const ERROR = "text-red-500 text-xs mt-1 min-h-4";
 const SPACER = "min-h-4 mt-1";
 
 interface AddressFieldsProps {
+  locale: Locale;
   prefix: "shipping" | "billing";
   register: UseFormRegister<CheckoutFormValues>;
   errors: FieldErrors<AddressValues>;
@@ -40,11 +42,13 @@ interface AddressFieldsProps {
 }
 
 export const AddressFields = ({
+  locale,
   prefix,
   register,
   errors,
   countries,
 }: AddressFieldsProps) => {
+  const t = useTranslations(locale);
   const f = (name: keyof AddressValues) =>
     `${prefix}.${name}` as Path<CheckoutFormValues>;
 
@@ -55,7 +59,7 @@ export const AddressFields = ({
         <div>
           <input
             type="text"
-            placeholder="First name*"
+            placeholder={t("checkout.address.firstName")}
             {...register(f("firstName"))}
             className={`${INPUT_BASE} ${errors.firstName ? "border-red-400" : "border-gray-300"}`}
           />
@@ -64,7 +68,7 @@ export const AddressFields = ({
         <div>
           <input
             type="text"
-            placeholder="Last name*"
+            placeholder={t("checkout.address.lastName")}
             {...register(f("lastName"))}
             className={`${INPUT_BASE} ${errors.lastName ? "border-red-400" : "border-gray-300"}`}
           />
@@ -77,7 +81,7 @@ export const AddressFields = ({
         <div>
           <input
             type="text"
-            placeholder="Address*"
+            placeholder={t("checkout.address.address")}
             {...register(f("address"))}
             className={`${INPUT_BASE} ${errors.address ? "border-red-400" : "border-gray-300"}`}
           />
@@ -86,7 +90,7 @@ export const AddressFields = ({
         <div>
           <input
             type="text"
-            placeholder="Company"
+            placeholder={t("checkout.address.company")}
             {...register(f("company"))}
             className={`${INPUT_BASE} border-gray-300`}
           />
@@ -99,7 +103,7 @@ export const AddressFields = ({
         <div>
           <input
             type="text"
-            placeholder="Postal code*"
+            placeholder={t("checkout.address.postalCode")}
             {...register(f("postalCode"))}
             className={`${INPUT_BASE} ${errors.postalCode ? "border-red-400" : "border-gray-300"}`}
           />
@@ -108,7 +112,7 @@ export const AddressFields = ({
         <div>
           <input
             type="text"
-            placeholder="City*"
+            placeholder={t("checkout.address.city")}
             {...register(f("city"))}
             className={`${INPUT_BASE} ${errors.city ? "border-red-400" : "border-gray-300"}`}
           />
@@ -124,7 +128,7 @@ export const AddressFields = ({
             className={`${INPUT_BASE} ${errors.country ? "border-red-400" : "border-gray-300"} bg-white`}
           >
             <option disabled value="">
-              Country
+              {t("checkout.address.country")}
             </option>
             {countries.map((c) => (
               <option key={c.iso_2} value={c.iso_2}>
@@ -137,7 +141,7 @@ export const AddressFields = ({
         <div>
           <input
             type="text"
-            placeholder="State / Province"
+            placeholder={t("checkout.address.province")}
             {...register(f("province"))}
             className={`${INPUT_BASE} border-gray-300`}
           />

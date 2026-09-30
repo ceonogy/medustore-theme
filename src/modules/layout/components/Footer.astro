@@ -1,21 +1,24 @@
 ---
+import { localizePath, useTranslations, type Locale } from "@i18n";
+
 interface Props {
-  countryCode: string;
+  locale: Locale;
 }
 
-const { countryCode } = Astro.props;
+const { locale } = Astro.props;
+const t = useTranslations(locale);
 const currentYear = new Date().getFullYear();
 
 const shopLinks = [
-  { href: `/${countryCode}`, label: "Home" },
-  { href: `/${countryCode}/store`, label: "All products" },
-  { href: `/${countryCode}/cart`, label: "Cart" },
-  { href: `/${countryCode}/checkout`, label: "Checkout" },
+  { href: localizePath(locale, "/"), label: t("footer.home") },
+  { href: localizePath(locale, "/store"), label: t("footer.allProducts") },
+  { href: localizePath(locale, "/cart"), label: t("footer.cart") },
+  { href: localizePath(locale, "/checkout"), label: t("footer.checkout") },
 ];
 
 const companyLinks = [
-  { href: `/${countryCode}/privacy`, label: "Privacy" },
-  { href: `/${countryCode}/terms`, label: "Terms" },
+  { href: localizePath(locale, "/privacy"), label: t("footer.privacy") },
+  { href: localizePath(locale, "/terms"), label: t("footer.terms") },
   {
     href: "https://github.com/Bystrol/astro-medusa-starter",
     label: "GitHub",
@@ -33,19 +36,18 @@ const companyLinks = [
         <p
           class="text-xs font-semibold uppercase tracking-[0.28em] text-black/55"
         >
-          Astro Medusa Starter
+          {t("footer.eyebrow")}
         </p>
         <h2 class="mt-4 text-3xl font-semibold tracking-tight text-black">
-          A storefront that feels ready to ship.
+          {t("footer.headline")}
         </h2>
         <p class="mt-4 text-sm leading-6 text-black/65">
-          Built for fast browsing, clean checkout, and a polished shopping flow
-          from first click to confirmed order.
+          {t("footer.description")}
         </p>
       </section>
 
-      <nav aria-label="Footer shop navigation">
-        <p class="text-sm font-semibold text-black">Shop</p>
+      <nav aria-label={t("footer.navShop")}>
+        <p class="text-sm font-semibold text-black">{t("footer.shop")}</p>
         <ul class="mt-4 space-y-3 text-sm text-black/65">
           {
             shopLinks.map((link) => (
@@ -59,8 +61,8 @@ const companyLinks = [
         </ul>
       </nav>
 
-      <nav aria-label="Footer company navigation">
-        <p class="text-sm font-semibold text-black">Company</p>
+      <nav aria-label={t("footer.navCompany")}>
+        <p class="text-sm font-semibold text-black">{t("footer.company")}</p>
         <ul class="mt-4 space-y-3 text-sm text-black/65">
           {
             companyLinks.map((link) => (
@@ -80,24 +82,23 @@ const companyLinks = [
       </nav>
 
       <section>
-        <p class="text-sm font-semibold text-black">Customer Care</p>
+        <p class="text-sm font-semibold text-black">
+          {t("footer.customerCare")}
+        </p>
         <div class="mt-4 space-y-4 text-sm text-black/65">
-          <p>
-            Need help with the starter? Browse the catalog, test the cart, and
-            explore the full purchase flow end to end.
-          </p>
+          <p>{t("footer.customerCareText")}</p>
           <a
             class="inline-flex rounded-full bg-black px-5 py-3 text-sm font-medium text-white transition hover:bg-black/85"
-            href={`/${countryCode}/store`}
+            href={localizePath(locale, "/store")}
           >
-            Start shopping
+            {t("footer.startShopping")}
           </a>
         </div>
       </section>
     </div>
 
     <p class="text-sm text-black/55 pt-6">
-      &copy; {currentYear} Astro Medusa Starter. Built by Michał Bystryk.
+      {t("footer.copyright", { year: currentYear })}
     </p>
   </div>
 </footer>

@@ -17,6 +17,9 @@ pnpm-debug.log*
 .env
 .env.production
 
+# machine-specific tool config (see config.example.json)
+tools/admin-vi-i18n/config.json
+
 # macOS-specific files
 .DS_Store
 

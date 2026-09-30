@@ -1,4 +1,6 @@
 ---
+import { useTranslations, type Locale } from "@i18n";
+
 interface Props {
   material?: string | null;
   origin_country?: string | null;
@@ -7,36 +9,49 @@ interface Props {
   length?: number | null;
   width?: number | null;
   height?: number | null;
+  locale: Locale;
 }
 
-const { material, origin_country, type, weight, length, width, height } =
-  Astro.props;
+const {
+  material,
+  origin_country,
+  type,
+  weight,
+  length,
+  width,
+  height,
+  locale,
+} = Astro.props;
+
+const t = useTranslations(locale);
 ---
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
   <div class="grid grid-cols-2 gap-x-8">
     <div class="flex flex-col gap-y-4">
       <div>
-        <span class="font-semibold">Material</span>
+        <span class="font-semibold">{t("products.attributes.material")}</span>
         <p>{material || "-"}</p>
       </div>
       <div>
-        <span class="font-semibold">Country of origin</span>
+        <span class="font-semibold"
+          >{t("products.attributes.countryOfOrigin")}</span
+        >
         <p>{origin_country || "-"}</p>
       </div>
       <div>
-        <span class="font-semibold">Type</span>
+        <span class="font-semibold">{t("products.attributes.type")}</span>
         <p>{type?.value || "-"}</p>
       </div>
     </div>
 
     <div class="flex flex-col gap-y-4">
       <div>
-        <span class="font-semibold">Weight</span>
+        <span class="font-semibold">{t("products.attributes.weight")}</span>
         <p>{weight ? `${weight}g` : "-"}</p>
       </div>
       <div>
-        <span class="font-semibold">Dimensions</span>
+        <span class="font-semibold">{t("products.attributes.dimensions")}</span>
         <p>
           {
             length && width && height

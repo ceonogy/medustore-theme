@@ -1,13 +1,16 @@
 ---
+import { useTranslations } from "@i18n";
 import Layout from "@layouts/Layout.astro";
-import { getRegionParams } from "@lib/params/region-params";
 import { ConfirmedFallbackPage } from "@modules/order/components/ConfirmedFallbackPage";
 
-export const getStaticPaths = getRegionParams;
-
-const { countryCode } = Astro.params;
+const { locale } = Astro.locals;
+const t = useTranslations(locale);
 ---
 
-<Layout title="Order Confirmed" description="Your order has been confirmed." noindex>
-  <ConfirmedFallbackPage client:load countryCode={countryCode!} />
+<Layout
+  title={t("order.pageTitle")}
+  description={t("order.pageDescription")}
+  noindex
+>
+  <ConfirmedFallbackPage client:load locale={locale} />
 </Layout>

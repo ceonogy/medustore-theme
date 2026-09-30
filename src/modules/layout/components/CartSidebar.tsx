@@ -1,3 +1,4 @@
+import { localizePath, useTranslations, type Locale } from "@i18n";
 import {
   $cart,
   $isCartSidebarOpen,
@@ -9,14 +10,15 @@ import { useStore } from "@nanostores/react";
 import { useEffect, useRef } from "react";
 
 interface CartSidebarProps {
-  countryCode: string;
+  locale: Locale;
 }
 
-export const CartSidebar = ({ countryCode }: CartSidebarProps) => {
+export const CartSidebar = ({ locale }: CartSidebarProps) => {
   const cart = useStore($cart);
   const isOpen = useStore($isCartSidebarOpen);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
+  const t = useTranslations(locale);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -81,7 +83,7 @@ export const CartSidebar = ({ countryCode }: CartSidebarProps) => {
         ref={sidebarRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Shopping cart"
+        aria-label={t("cart.shoppingCartAria")}
         className={`fixed top-0 right-0 h-full w-full max-w-md bg-white z-50 shadow-xl transform transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
@@ -89,11 +91,11 @@ export const CartSidebar = ({ countryCode }: CartSidebarProps) => {
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
-            <h2 className="text-xl font-bold">Cart</h2>
+            <h2 className="text-xl font-bold">{t("cart.title")}</h2>
             <button
               onClick={closeCartSidebar}
               className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
-              aria-label="Close cart"
+              aria-label={t("cart.close")}
             >
               ×
             </button>
@@ -103,13 +105,13 @@ export const CartSidebar = ({ countryCode }: CartSidebarProps) => {
           <div className="flex-1 overflow-y-auto p-6">
             {isEmpty ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
-                <p className="text-gray-500 mb-4">Your cart is empty</p>
+                <p className="text-gray-500 mb-4">{t("cart.empty")}</p>
                 <a
-                  href={`/${countryCode}/store`}
+                  href={localizePath(locale, "/store")}
                   onClick={closeCartSidebar}
                   className="text-sm text-blue-600 hover:underline"
                 >
-                  Continue Shopping
+                  {t("cart.continueShopping")}
                 </a>
               </div>
             ) : (
@@ -119,7 +121,7 @@ export const CartSidebar = ({ countryCode }: CartSidebarProps) => {
                     item.variant?.product?.thumbnail ||
                     item.variant?.product?.images?.[0]?.url;
                   const productTitle =
-                    item.variant?.product?.title || "Product";
+                    item.variant?.product?.title || t("cart.productFallback");
                   const variantTitle = item.variant?.title || "";
                   const unitPrice = item.unit_price || 0;
                   const currencyCode = cart.currency_code || "USD";
@@ -150,11 +152,11 @@ export const CartSidebar = ({ countryCode }: CartSidebarProps) => {
                         </h3>
                         {variantTitle && (
                           <p className="text-xs text-gray-500 mb-1">
-                            Variant: {variantTitle}
+                            {t("cart.variant", { title: variantTitle })}
                           </p>
                         )}
                         <p className="text-xs text-gray-500 mb-2">
-                          Quantity: {item.quantity}
+                          {t("cart.quantityLabel", { count: item.quantity })}
                         </p>
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-medium">
@@ -166,7 +168,9 @@ export const CartSidebar = ({ countryCode }: CartSidebarProps) => {
                           <button
                             onClick={() => handleRemoveItem(item.id)}
                             className="flex items-center gap-1 text-xs text-red-600 hover:text-red-700"
-                            aria-label={`Remove ${productTitle} from cart`}
+                            aria-label={t("cart.removeItemAria", {
+                              title: productTitle,
+                            })}
                           >
                             <svg
                               className="w-4 h-4"
@@ -181,7 +185,7 @@ export const CartSidebar = ({ countryCode }: CartSidebarProps) => {
                                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                               />
                             </svg>
-                            Remove
+                            {t("cart.remove")}
                           </button>
                         </div>
                       </div>
@@ -196,7 +200,9 @@ export const CartSidebar = ({ countryCode }: CartSidebarProps) => {
           {!isEmpty && (
             <div className="border-t border-gray-200 p-6 space-y-4">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Subtotal (excl. taxes)</span>
+                <span className="text-gray-600">
+                  {t("cart.subtotalExclTaxes")}
+                </span>
                 <span className="font-medium">
                   {convertToLocale({
                     amount: cart?.item_subtotal || 0,
@@ -205,11 +211,11 @@ export const CartSidebar = ({ countryCode }: CartSidebarProps) => {
                 </span>
               </div>
               <a
-                href={`/${countryCode}/cart`}
+                href={localizePath(locale, "/cart")}
                 onClick={closeCartSidebar}
                 className="block w-full bg-black text-white py-3 px-6 rounded-md text-center hover:bg-gray-800 transition-colors"
               >
-                Go to cart
+                {t("cart.goToCart")}
               </a>
             </div>
           )}

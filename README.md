@@ -54,14 +54,16 @@ Static-first architecture. Interactive where it matters. Zero compromise on perf
 
 | Route                        | Description                                      |
 | ---------------------------- | ------------------------------------------------ |
-| `/:country/`                 | Landing page                                     |
-| `/:country/store`            | Product catalog                                  |
-| `/:country/store/:productId` | Product detail with image carousel               |
-| `/:country/cart`             | Shopping cart                                    |
-| `/:country/checkout`         | Multi-step checkout (address, shipping, payment) |
-| `/:country/order/confirmed`  | Order confirmation                               |
+| `/`                          | Landing page (Vietnamese, default locale)        |
+| `/store`                     | Product catalog                                  |
+| `/store/:productId`          | Product detail with image carousel               |
+| `/cart`                      | Shopping cart                                    |
+| `/checkout`                  | Multi-step checkout (address, shipping, payment) |
+| `/order/confirmed`           | Order confirmation                               |
 
-All routes are prefixed with an ISO-2 country code for region-based pricing and shipping.
+The default locale (Vietnamese) is served from the domain root with **no** locale
+prefix. Other locales are prefixed, e.g. `/en/store`. See
+[Internationalization](#internationalization-i18n).
 
 ## Getting Started
 
@@ -134,7 +136,7 @@ src/
 │   ├── order/           # Order confirmation
 │   └── products/        # Product cards, detail, carousel
 ├── pages/
-│   └── [countryCode]/   # All routes, region-prefixed
+│   └── [...locale]/    # All routes; default locale is prefix-less
 ├── styles/              # Global styles & Tailwind theme
 └── types/               # TypeScript type definitions
 ```
@@ -145,7 +147,46 @@ src/
 - **Real-time inventory checks** — Product variant stock data is fetched client-side on page load, ensuring accurate availability even though pages are statically generated.
 - **Edge deployment** — Cloudflare Workers adapter means your storefront runs close to your customers, everywhere.
 - **Tailwind v4** — No config file. Theme customization lives in CSS with `@theme`. Powered by the Vite plugin.
-- **Region-aware routing** — Country code in the URL drives pricing, currency, and available shipping options — all resolved via Medusa regions.
+- **Region-aware routing** — The market (country) drives pricing, currency, and available shipping options via Medusa regions. It is resolved from the `country` cookie / `DEFAULT_REGION` instead of the URL, so the locale prefix can stay clean.
+
+## Internationalization (i18n)
+
+Vietnamese-first, following [Astro's i18n routing guide](https://docs.astro.build/en/guides/internationalization/):
+
+```js
+// astro.config.mjs
+i18n: {
+  locales: ["vi", "en"],
+  defaultLocale: "vi",
+  routing: { prefixDefaultLocale: false }, // `/store`, not `/vi/store`
+}
+```
+
+- **Dictionaries** live in `src/i18n/dictionaries/*.ts`, split per area (`core`,
+  `cart`, `checkout`, `order`, `products`) so edits do not collide. `vi` is the
+  source of truth for keys; `en` is typed as `typeof vi`, so a missing key is a
+  compile error.
+- **Usage**
+
+  ```ts
+  import { localizePath, useTranslations } from "@i18n";
+
+  const t = useTranslations(Astro.locals.locale);
+  t("cart.empty");                        // "Giỏ hàng của bạn đang trống"
+  t("nav.cartCount", { count: 3 });       // interpolation
+  localizePath("en", "/store");           // "/en/store"
+  localizePath("vi", "/store");           // "/store"
+  ```
+
+- **`src/middleware.ts`** resolves the locale from the URL, redirects legacy
+  market URLs (`/dk/store` → `/store`), 404s unknown first segments, and injects
+  `Astro.locals.locale` + `Astro.locals.countryCode`.
+- **Language switcher** — `Nav` renders VI/EN links for the current page.
+
+### Admin (backend) Vietnamese
+
+The Medusa Admin is patched separately via `tools/admin-vi-i18n/` — see its
+[README](./tools/admin-vi-i18n/README.md).
 
 ## License
 

@@ -1,3 +1,4 @@
+import { useTranslations, type Locale } from "@i18n";
 import { sdk } from "@lib/sdk";
 import { addToCart } from "@lib/stores/cart";
 import { isProductInStock } from "@lib/utils/is-product-in-stock";
@@ -29,6 +30,7 @@ interface Props {
   variants: Variant[];
   productId: string;
   regionId: string;
+  locale: Locale;
 }
 
 export const ProductActions = ({
@@ -36,7 +38,10 @@ export const ProductActions = ({
   variants: initialVariants,
   productId,
   regionId,
+  locale,
 }: Props) => {
+  const t = useTranslations(locale);
+
   const [selectedOptions, setSelectedOptions] = useState<
     Record<string, string>
   >({});
@@ -51,8 +56,7 @@ export const ProductActions = ({
       try {
         const { product } = await sdk.store.product.retrieve(productId, {
           region_id: regionId,
-          fields:
-            "+variants.inventory_quantity,*variants.options",
+          fields: "+variants.inventory_quantity,*variants.options",
         });
 
         if (!cancelled && product?.variants) {
@@ -152,7 +156,9 @@ export const ProductActions = ({
         disabled={isAddToCardButtonDisabled}
         onClick={handleAddToCart}
       >
-        {isAdding ? "Adding..." : "Add to Cart"}
+        {isAdding
+          ? t("products.actions.adding")
+          : t("products.actions.addToCart")}
       </button>
     </div>
   );

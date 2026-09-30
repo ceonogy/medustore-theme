@@ -1,18 +1,18 @@
 ---
+import { useTranslations } from "@i18n";
 import Layout from "@layouts/Layout.astro";
 import { retrieveProduct } from "@lib/data/products";
 import { getRegion } from "@lib/data/regions";
-import { getProductParams } from "@lib/params/product-params";
 import { getProductPrice } from "@lib/utils/get-product-price";
 import ImageCarouselWrapper from "@modules/products/components/product-details/image-carousel/ImageCarouselWrapper.astro";
 import { ProductActions } from "@modules/products/components/product-details/ProductActions";
 import ProductAttributes from "@modules/products/components/product-details/ProductAttributes.astro";
 
-export const getStaticPaths = getProductParams;
+const { locale, countryCode } = Astro.locals;
+const { productId } = Astro.params;
+const t = useTranslations(locale);
 
-const { countryCode, productId } = Astro.params;
-
-if (!countryCode || !productId) {
+if (!productId) {
   return Astro.redirect("/not-found");
 }
 
@@ -28,7 +28,7 @@ let error: Error | undefined;
 try {
   product = await retrieveProduct(productId, region.id);
 } catch (e) {
-  error = e instanceof Error ? e : new Error("Unknown error");
+  error = e instanceof Error ? e : new Error(t("common.unknownError"));
   console.error(error);
 }
 
@@ -54,7 +54,8 @@ const { cheapestPrice } = getProductPrice({
 
 <Layout
   title={title}
-  description={description ?? `Shop ${title} at the best price.`}
+  description={description ??
+    t("product.metaDescription", { title: title ?? "" })}
   image={images?.[0]?.url}
   type="product"
 >
@@ -64,7 +65,7 @@ const { cheapestPrice } = getProductPrice({
       <div class="grid grid-cols-1 gap-20 px-8 py-6 md:px-12 lg:grid-cols-2 lg:px-16">
         <ImageCarouselWrapper
           images={images ?? []}
-          alt={title ?? "Product image"}
+          alt={title ?? t("product.imageAlt")}
         />
 
         <div class="flex flex-col gap-20">
@@ -79,6 +80,7 @@ const { cheapestPrice } = getProductPrice({
             variants={variants ?? []}
             productId={productId}
             regionId={region.id}
+            locale={locale}
             client:visible
           />
 
@@ -90,6 +92,7 @@ const { cheapestPrice } = getProductPrice({
             length={length}
             width={width}
             height={height}
+            locale={locale}
           />
         </div>
       </div>

@@ -1,17 +1,16 @@
 ---
+import { useTranslations } from "@i18n";
 import Layout from "@layouts/Layout.astro";
-import { getRegionParams } from "@lib/params/region-params";
 import { CartPage } from "@modules/cart/components/CartPage";
 
-export const getStaticPaths = getRegionParams;
-
-const { countryCode } = Astro.params;
-
-if (!countryCode) {
-  return Astro.redirect("/not-found");
-}
+const { locale } = Astro.locals;
+const t = useTranslations(locale);
 ---
 
-<Layout title="Cart" description="Review the items in your shopping cart." noindex>
-  <CartPage client:load countryCode={countryCode} />
+<Layout
+  title={t("cart.pageTitle")}
+  description={t("cart.pageDescription")}
+  noindex
+>
+  <CartPage client:load locale={locale} />
 </Layout>

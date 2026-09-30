@@ -1,7 +1,7 @@
 import { defineConfig } from "astro/config";
 import { loadEnv } from "vite";
 
-import cloudflare from "@astrojs/cloudflare";
+import node from "@astrojs/node";
 import react from "@astrojs/react";
 import tailwindcss from "@tailwindcss/vite";
 
@@ -17,19 +17,36 @@ const medusaBackendDomain = PUBLIC_MEDUSA_BACKEND_URL
 
 // https://astro.build/config
 export default defineConfig({
-  adapter: cloudflare({
-    imageService: "compile",
+  site: "https://demostore.ceonogy.com",
+  adapter: node({
+    mode: "standalone",
   }),
+  // https://docs.astro.build/en/guides/internationalization/
+  // Vietnamese-first: the default locale is served from the domain root with
+  // no `/vi/` prefix, every other locale is prefixed (e.g. `/en/store`).
+  i18n: {
+    locales: ["vi", "en"],
+    defaultLocale: "vi",
+    routing: {
+      prefixDefaultLocale: false,
+    },
+  },
   integrations: [react()],
+  output: "server",
   server: {
-    port: 8000,
-    host: true,
+    port: 3001,
+    host: "127.0.0.1",
   },
   vite: {
     resolve: {
       dedupe: ["react", "react-dom"],
     },
     plugins: [tailwindcss()],
+    ssr: {
+      // @medusajs/js-sdk ships ESM with directory imports that Node cannot
+      // resolve, so bundle it instead of externalizing it.
+      noExternal: ["@medusajs/js-sdk"],
+    },
   },
   image: {
     domains: [

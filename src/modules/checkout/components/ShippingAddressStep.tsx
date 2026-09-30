@@ -4,6 +4,7 @@ import type { StoreCart } from "@medusajs/types";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { useTranslations, type Locale, type Translator } from "@i18n";
 import {
   AddressFields,
   type AddressValues,
@@ -11,61 +12,65 @@ import {
   type RegionCountry,
 } from "./AddressFields";
 
-const addressSchema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  address: z.string().min(1, "Address is required"),
-  company: z.string(),
-  postalCode: z.string().min(1, "Postal code is required"),
-  city: z.string().min(1, "City is required"),
-  country: z.string().min(1, "Country is required"),
-  province: z.string(),
-});
+// Schemas are built per-render so validation messages follow the active locale.
+const buildAddressSchema = (t: Translator) =>
+  z.object({
+    firstName: z.string().min(1, t("checkout.validation.firstNameRequired")),
+    lastName: z.string().min(1, t("checkout.validation.lastNameRequired")),
+    address: z.string().min(1, t("checkout.validation.addressRequired")),
+    company: z.string(),
+    postalCode: z.string().min(1, t("checkout.validation.postalCodeRequired")),
+    city: z.string().min(1, t("checkout.validation.cityRequired")),
+    country: z.string().min(1, t("checkout.validation.countryRequired")),
+    province: z.string(),
+  });
 
 // Billing fields are bare strings — validated conditionally via superRefine
-const billingSchema = z.object({
-  firstName: z.string(),
-  lastName: z.string(),
-  address: z.string(),
-  company: z.string(),
-  postalCode: z.string(),
-  city: z.string(),
-  country: z.string(),
-  province: z.string(),
-});
-
-const formSchema = z
-  .object({
-    email: z
-      .string()
-      .min(1, "Email is required")
-      .refine(
-        (val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val),
-        "Enter a valid email address",
-      ),
-    phone: z.string(),
-    billingSameAsShipping: z.boolean(),
-    shipping: addressSchema,
-    billing: billingSchema,
-  })
-  .superRefine(({ billingSameAsShipping, billing }, ctx) => {
-    if (billingSameAsShipping) return;
-
-    const required: [keyof typeof billing, string][] = [
-      ["firstName", "First name is required"],
-      ["lastName", "Last name is required"],
-      ["address", "Address is required"],
-      ["postalCode", "Postal code is required"],
-      ["city", "City is required"],
-      ["country", "Country is required"],
-    ];
-
-    for (const [field, message] of required) {
-      if (!billing[field].trim()) {
-        ctx.addIssue({ code: "custom", path: ["billing", field], message });
-      }
-    }
+const buildBillingSchema = () =>
+  z.object({
+    firstName: z.string(),
+    lastName: z.string(),
+    address: z.string(),
+    company: z.string(),
+    postalCode: z.string(),
+    city: z.string(),
+    country: z.string(),
+    province: z.string(),
   });
+
+const buildFormSchema = (t: Translator) =>
+  z
+    .object({
+      email: z
+        .string()
+        .min(1, t("checkout.validation.emailRequired"))
+        .refine(
+          (val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val),
+          t("checkout.validation.emailInvalid"),
+        ),
+      phone: z.string(),
+      billingSameAsShipping: z.boolean(),
+      shipping: buildAddressSchema(t),
+      billing: buildBillingSchema(),
+    })
+    .superRefine(({ billingSameAsShipping, billing }, ctx) => {
+      if (billingSameAsShipping) return;
+
+      const required: [keyof typeof billing, string][] = [
+        ["firstName", t("checkout.validation.firstNameRequired")],
+        ["lastName", t("checkout.validation.lastNameRequired")],
+        ["address", t("checkout.validation.addressRequired")],
+        ["postalCode", t("checkout.validation.postalCodeRequired")],
+        ["city", t("checkout.validation.cityRequired")],
+        ["country", t("checkout.validation.countryRequired")],
+      ];
+
+      for (const [field, message] of required) {
+        if (!billing[field].trim()) {
+          ctx.addIssue({ code: "custom", path: ["billing", field], message });
+        }
+      }
+    });
 
 const EMPTY_ADDRESS: AddressValues = {
   firstName: "",
@@ -109,6 +114,7 @@ function areSameAddress(
 
 interface ShippingAddressStepProps {
   cart: StoreCart | null;
+  locale: Locale;
   countries: RegionCountry[];
   countryCode: string;
   mode: "edit" | "read";
@@ -137,11 +143,14 @@ const CheckCircle = () => (
 
 const ReadOnlyView = ({
   cart,
+  locale,
   onEdit,
 }: {
   cart: StoreCart;
+  locale: Locale;
   onEdit?: () => void;
 }) => {
+  const t = useTranslations(locale);
   const shipping = cart.shipping_address;
   const billing = cart.billing_address;
   const isBillingSame = areSameAddress(shipping, billing);
@@ -159,7 +168,7 @@ const ReadOnlyView = ({
 
   const billingLines = isBillingSame
     ? null
-    : [
+    : ([
         billing?.first_name && billing?.last_name
           ? `${billing.first_name} ${billing.last_name}`
           : null,
@@ -168,13 +177,13 @@ const ReadOnlyView = ({
           ? `${billing.postal_code}, ${billing.city}`
           : null,
         billing?.country_code?.toUpperCase() ?? null,
-      ].filter(Boolean) as string[];
+      ].filter(Boolean) as string[]);
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold flex items-center gap-2">
-          Shipping Address
+          {t("checkout.shipping.title")}
           <CheckCircle />
         </h2>
         <button
@@ -182,13 +191,13 @@ const ReadOnlyView = ({
           onClick={onEdit}
           className="text-blue-600 hover:underline text-sm"
         >
-          Edit
+          {t("checkout.shipping.edit")}
         </button>
       </div>
 
       <div className="grid grid-cols-3 gap-8 text-sm">
         <div>
-          <p className="font-medium mb-2">Shipping Address</p>
+          <p className="font-medium mb-2">{t("checkout.shipping.title")}</p>
           {shippingLines.map((line, i) => (
             <p key={i} className="text-gray-700">
               {line}
@@ -197,15 +206,17 @@ const ReadOnlyView = ({
         </div>
 
         <div>
-          <p className="font-medium mb-2">Contact</p>
+          <p className="font-medium mb-2">{t("checkout.shipping.contact")}</p>
           {cart.email && <p className="text-gray-700">{cart.email}</p>}
         </div>
 
         <div>
-          <p className="font-medium mb-2">Billing Address</p>
+          <p className="font-medium mb-2">
+            {t("checkout.shipping.billingTitle")}
+          </p>
           {isBillingSame ? (
             <p className="text-gray-700">
-              Billing and delivery address are the same.
+              {t("checkout.shipping.billingSame")}
             </p>
           ) : (
             billingLines?.map((line, i) => (
@@ -222,12 +233,14 @@ const ReadOnlyView = ({
 
 export const ShippingAddressStep = ({
   cart,
+  locale,
   countries,
   countryCode,
   mode,
   onContinue,
   onEdit,
 }: ShippingAddressStepProps) => {
+  const t = useTranslations(locale);
   const [submitError, setSubmitError] = useState("");
   const cartInitialized = useRef(false);
 
@@ -238,7 +251,7 @@ export const ShippingAddressStep = ({
     reset,
     formState: { errors, isSubmitting },
   } = useForm<CheckoutFormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(buildFormSchema(t)),
     defaultValues: {
       email: "",
       phone: "",
@@ -306,20 +319,23 @@ export const ShippingAddressStep = ({
       onContinue?.();
     } catch (error) {
       console.error("Failed to update shipping address:", error);
-      setSubmitError("Failed to save address. Please try again.");
+      setSubmitError(t("checkout.shipping.saveFailed"));
     }
   };
 
   if (mode === "read" && cart) {
-    return <ReadOnlyView cart={cart} onEdit={onEdit} />;
+    return <ReadOnlyView cart={cart} locale={locale} onEdit={onEdit} />;
   }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
-      <h2 className="text-2xl font-bold mb-6">Shipping Address</h2>
+      <h2 className="text-2xl font-bold mb-6">
+        {t("checkout.shipping.title")}
+      </h2>
 
       <div className="space-y-4">
         <AddressFields
+          locale={locale}
           prefix="shipping"
           register={register}
           errors={errors.shipping ?? {}}
@@ -333,7 +349,9 @@ export const ShippingAddressStep = ({
             {...register("billingSameAsShipping")}
             className="w-4 h-4 accent-black"
           />
-          <span className="text-sm">Billing address same as shipping address</span>
+          <span className="text-sm">
+            {t("checkout.shipping.billingSameCheckbox")}
+          </span>
         </label>
 
         {/* Email / Phone */}
@@ -341,7 +359,7 @@ export const ShippingAddressStep = ({
           <div>
             <input
               type="email"
-              placeholder="Email*"
+              placeholder={t("checkout.shipping.email")}
               {...register("email")}
               className={`w-full border rounded px-4 py-3 text-sm outline-none focus:border-gray-500 transition-colors ${
                 errors.email ? "border-red-400" : "border-gray-300"
@@ -354,7 +372,7 @@ export const ShippingAddressStep = ({
           <div>
             <input
               type="tel"
-              placeholder="Phone"
+              placeholder={t("checkout.shipping.phone")}
               {...register("phone")}
               className="w-full border border-gray-300 rounded px-4 py-3 text-sm outline-none focus:border-gray-500 transition-colors"
             />
@@ -365,8 +383,11 @@ export const ShippingAddressStep = ({
         {/* Billing address section */}
         {!billingSameAsShipping && (
           <div className="pt-4 border-t border-gray-200">
-            <h3 className="text-lg font-semibold mb-4">Billing Address</h3>
+            <h3 className="text-lg font-semibold mb-4">
+              {t("checkout.shipping.billingTitle")}
+            </h3>
             <AddressFields
+              locale={locale}
               prefix="billing"
               register={register}
               errors={errors.billing ?? {}}
@@ -375,16 +396,16 @@ export const ShippingAddressStep = ({
           </div>
         )}
 
-        {submitError && (
-          <p className="text-red-500 text-sm">{submitError}</p>
-        )}
+        {submitError && <p className="text-red-500 text-sm">{submitError}</p>}
 
         <button
           type="submit"
           disabled={isSubmitting}
           className="bg-black text-white py-3 px-8 rounded-md hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isSubmitting ? "Saving..." : "Continue to delivery"}
+          {isSubmitting
+            ? t("checkout.shipping.saving")
+            : t("checkout.shipping.continueToDelivery")}
         </button>
       </div>
     </form>

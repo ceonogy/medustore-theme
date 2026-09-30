@@ -1,3 +1,4 @@
+import { useTranslations, type Locale } from "@i18n";
 import type {
   FilterGroup,
   FilterKey,
@@ -20,16 +21,42 @@ type IndexedProduct = FilterableProduct & { id: string };
 interface ProductFiltersProps {
   products: IndexedProduct[];
   groups: FilterGroup[];
+  /** Optional: the store page does not pass it yet, so it is derived from the URL. */
+  locale?: Locale;
 }
+
+/** Filter group headings come from `buildFilterGroups` (untranslated data). */
+const GROUP_LABEL_KEYS: Record<FilterKey, string> = {
+  category: "products.filters.category",
+  collection: "products.filters.collection",
+};
 
 /**
  * Owns the filter state for the store page. The product grid itself stays in
  * static Astro markup (so build-time image optimisation is preserved); this
  * island only toggles the visibility of the cards it does not own.
  */
-export const ProductFilters = ({ products, groups }: ProductFiltersProps) => {
+export const ProductFilters = ({
+  products,
+  groups,
+  locale,
+}: ProductFiltersProps) => {
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTER_STATE);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  // Server-rendered markup uses the default locale (the island is rendered
+  // without a locale prop), so the URL prefix is applied right after mount —
+  // React hydrates against the server HTML first, then re-renders in place.
+  const [pathLocale, setPathLocale] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (locale) return;
+    const [, firstSegment] = window.location.pathname.split("/");
+    // `useTranslations` normalises anything that is not a locale to the default.
+    setPathLocale(firstSegment ?? null);
+  }, [locale]);
+
+  const t = useTranslations(locale ?? pathLocale);
 
   // Restore filters from the URL so a shared or reloaded link keeps its state.
   useEffect(() => {
@@ -92,7 +119,7 @@ export const ProductFilters = ({ products, groups }: ProductFiltersProps) => {
           aria-controls="product-filter-panel"
           className="flex min-h-11 items-center gap-2 rounded-full border border-black px-5 text-sm font-medium transition-colors hover:bg-gray-100 lg:hidden"
         >
-          Filters
+          {t("products.filters.title")}
           {activeCount > 0 && (
             <span className="rounded-full bg-black px-2 py-0.5 text-xs text-white">
               {activeCount}
@@ -101,7 +128,9 @@ export const ProductFilters = ({ products, groups }: ProductFiltersProps) => {
         </button>
 
         <p className="text-sm text-gray-500" aria-live="polite">
-          {resultCount} {resultCount === 1 ? "product" : "products"}
+          {resultCount === 1
+            ? t("products.filters.resultSingular", { count: resultCount })
+            : t("products.filters.resultPlural", { count: resultCount })}
         </p>
       </div>
 
@@ -112,7 +141,7 @@ export const ProductFilters = ({ products, groups }: ProductFiltersProps) => {
         {groups.map((group) => (
           <fieldset key={group.key} className="flex flex-col gap-3">
             <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-              {group.label}
+              {t(GROUP_LABEL_KEYS[group.key])}
             </legend>
             <div className="flex flex-wrap gap-2">
               {group.options.map((option) => {
@@ -151,7 +180,9 @@ export const ProductFilters = ({ products, groups }: ProductFiltersProps) => {
               key={`${pill.group}-${pill.value}`}
               type="button"
               onClick={() => handleToggle(pill.group, pill.value)}
-              aria-label={`Remove filter ${pill.label}`}
+              aria-label={t("products.filters.removeFilter", {
+                label: pill.label,
+              })}
               className="flex min-h-11 items-center gap-2 rounded-full bg-gray-100 px-4 text-sm transition-colors hover:bg-gray-200"
             >
               {pill.label}
@@ -164,22 +195,22 @@ export const ProductFilters = ({ products, groups }: ProductFiltersProps) => {
             onClick={handleClearAll}
             className="min-h-11 px-2 text-sm underline hover:no-underline"
           >
-            Clear all
+            {t("products.filters.clearAll")}
           </button>
         </div>
       )}
 
       {resultCount === 0 && (
         <p className="mt-8 text-sm text-gray-500">
-          No products match the selected filters.{" "}
+          {t("products.filters.noResults")}{" "}
           <button
             type="button"
             onClick={handleClearAll}
             className="underline hover:no-underline"
           >
-            Clear all filters
+            {t("products.filters.clearAllFilters")}
           </button>{" "}
-          to see the full collection.
+          {t("products.filters.noResultsHint")}
         </p>
       )}
     </div>

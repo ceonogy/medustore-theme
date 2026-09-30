@@ -1,21 +1,24 @@
 import { convertToLocale } from "@lib/utils/money";
 import type { StoreCart } from "@medusajs/types";
+import { useTranslations, type Locale } from "@i18n";
 
 interface OrderSummaryProps {
   cart: StoreCart;
+  locale: Locale;
 }
 
-export const OrderSummary = ({ cart }: OrderSummaryProps) => {
+export const OrderSummary = ({ cart, locale }: OrderSummaryProps) => {
+  const t = useTranslations(locale);
   const currencyCode = cart.currency_code || "USD";
 
   return (
     <div className="sticky top-8">
-      <h2 className="text-2xl font-bold mb-6">In your Cart</h2>
+      <h2 className="text-2xl font-bold mb-6">{t("checkout.summary.title")}</h2>
 
       <div className="space-y-3 mb-6">
         <div className="flex justify-between text-sm">
           <span className="text-gray-600">
-            Subtotal (excl. shipping and taxes)
+            {t("checkout.summary.subtotal")}
           </span>
           <span>
             {convertToLocale({ amount: cart.item_subtotal || 0, currencyCode })}
@@ -23,7 +26,9 @@ export const OrderSummary = ({ cart }: OrderSummaryProps) => {
         </div>
 
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Shipping</span>
+          <span className="text-gray-600">
+            {t("checkout.summary.shipping")}
+          </span>
           <span>
             {convertToLocale({
               amount: cart.shipping_total || 0,
@@ -33,14 +38,14 @@ export const OrderSummary = ({ cart }: OrderSummaryProps) => {
         </div>
 
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Taxes</span>
+          <span className="text-gray-600">{t("checkout.summary.taxes")}</span>
           <span>
             {convertToLocale({ amount: cart.tax_total || 0, currencyCode })}
           </span>
         </div>
 
         <div className="pt-4 border-t border-gray-200 flex justify-between font-bold text-base">
-          <span>Total</span>
+          <span>{t("checkout.summary.total")}</span>
           <span>
             {convertToLocale({ amount: cart.total || 0, currencyCode })}
           </span>
@@ -52,7 +57,9 @@ export const OrderSummary = ({ cart }: OrderSummaryProps) => {
           const thumbnailUrl =
             item.variant?.product?.thumbnail ||
             item.variant?.product?.images?.[0]?.url;
-          const productTitle = item.variant?.product?.title || "Product";
+          const productTitle =
+            item.variant?.product?.title ||
+            t("checkout.summary.productFallback");
           const variantTitle = item.variant?.title || "";
           const unitPrice = item.unit_price || 0;
           const quantity = item.quantity || 1;
@@ -75,7 +82,7 @@ export const OrderSummary = ({ cart }: OrderSummaryProps) => {
                 <p className="font-medium text-sm truncate">{productTitle}</p>
                 {variantTitle && (
                   <p className="text-xs text-gray-500">
-                    Variant: {variantTitle}
+                    {t("checkout.summary.variant", { variant: variantTitle })}
                   </p>
                 )}
                 <div className="flex justify-between mt-1 text-sm">

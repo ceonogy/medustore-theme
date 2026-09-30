@@ -1,18 +1,13 @@
 ---
+import { useTranslations } from "@i18n";
 import Layout from "@layouts/Layout.astro";
 import { listRegions } from "@lib/data/regions";
-import { getRegionParams } from "@lib/params/region-params";
 import type { RegionCountry } from "@modules/checkout/components/AddressFields";
 import { CheckoutPage } from "@modules/checkout/components/CheckoutPage";
 import InPostGeoWidget from "@modules/checkout/components/InPostGeoWidget.astro";
 
-export const getStaticPaths = getRegionParams;
-
-const { countryCode } = Astro.params;
-
-if (!countryCode) {
-  return Astro.redirect("/not-found");
-}
+const { locale, countryCode } = Astro.locals;
+const t = useTranslations(locale);
 
 let countries: RegionCountry[] = [];
 
@@ -20,8 +15,8 @@ try {
   const regions = await listRegions();
   const region = regions.find((r) =>
     r.countries?.some(
-      (c) => c.iso_2?.toLowerCase() === countryCode.toLowerCase()
-    )
+      (c) => c.iso_2?.toLowerCase() === countryCode.toLowerCase(),
+    ),
   );
 
   if (region?.countries) {
@@ -29,8 +24,8 @@ try {
       .filter((c): c is typeof c & { iso_2: string } => !!c.iso_2)
       .sort((a, b) =>
         (a.display_name ?? a.name ?? "").localeCompare(
-          b.display_name ?? b.name ?? ""
-        )
+          b.display_name ?? b.name ?? "",
+        ),
       )
       .map((c) => ({
         iso_2: c.iso_2,
@@ -43,7 +38,16 @@ try {
 }
 ---
 
-<Layout title="Checkout" description="Complete your purchase." noindex>
-  <CheckoutPage client:load countryCode={countryCode} countries={countries} />
+<Layout
+  title={t("checkout.pageTitle")}
+  description={t("checkout.pageDescription")}
+  noindex
+>
+  <CheckoutPage
+    client:load
+    locale={locale}
+    countryCode={countryCode}
+    countries={countries}
+  />
   <InPostGeoWidget />
 </Layout>

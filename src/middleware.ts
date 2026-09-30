@@ -1,5 +1,6 @@
-import { HttpTypes } from "@medusajs/types";
+import type { HttpTypes } from "@medusajs/types";
 import { defineMiddleware } from "astro:middleware";
+import { DEFAULT_LOCALE, isLocale, type Locale } from "./i18n/config";
 import { sdk } from "./lib/sdk";
 
 const MEDUSA_BACKEND_URL = import.meta.env.PUBLIC_MEDUSA_BACKEND_URL;
@@ -67,7 +68,10 @@ async function getRegionMap() {
 
       regions.forEach((region: HttpTypes.StoreRegion) => {
         region.countries?.forEach((country) => {
-          regionMapCache.regionMap.set(country.iso_2 ?? "", region);
+          const iso2 = (country.iso_2 ?? "").toLowerCase();
+          if (iso2) {
+            regionMapCache.regionMap.set(iso2, region);
+          }
         });
       });
 
@@ -82,26 +86,26 @@ async function getRegionMap() {
 }
 
 /**
- * Gets the country code from the URL pathname.
- * @param pathname
- * @returns The country code.
+ * Resolves the market (country) used for region/currency resolution.
+ *
+ * The country no longer lives in the URL — Vietnamese is served from the root
+ * and other locales are prefixed — so the market comes from the `country`
+ * cookie when present, otherwise from `DEFAULT_REGION`, otherwise from the
+ * first country of the first region.
  */
-async function getCountryCode(pathname: string) {
-  let countryCode;
-
-  const urlCountryCode = pathname.split("/")[1]?.toLowerCase();
-
+async function resolveMarketCountry(
+  cookieCountry?: string,
+): Promise<string | undefined> {
   const regionMap = await getRegionMap();
+  const wanted = cookieCountry?.toLowerCase();
 
-  if (urlCountryCode && regionMap.has(urlCountryCode)) {
-    countryCode = urlCountryCode;
-  } else if (regionMap.has(DEFAULT_REGION)) {
-    countryCode = DEFAULT_REGION;
-  } else if (regionMap.keys().next().value) {
-    countryCode = regionMap.keys().next().value;
+  if (wanted && regionMap.has(wanted)) {
+    return wanted;
   }
-
-  return countryCode;
+  if (DEFAULT_REGION && regionMap.has(DEFAULT_REGION.toLowerCase())) {
+    return DEFAULT_REGION.toLowerCase();
+  }
+  return regionMap.keys().next().value;
 }
 
 export const onRequest = defineMiddleware(async (context, next) => {
@@ -116,29 +120,71 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return next();
   }
 
-  let redirectUrl = context.url.href;
-  const origin = context.url.origin;
   const pathname = context.url.pathname;
   const search = context.url.search;
+  const segments = pathname.split("/").filter(Boolean);
+  const firstSegment = segments[0]?.toLowerCase();
 
-  const countryCode = await getCountryCode(pathname);
+  // Top-level page segments defined by `src/pages/[...locale]/`. Anything else
+  // as a first segment (e.g. `/typo`) is not a route and must 404 rather than
+  // fall through to the catch-all landing page.
+  const ROUTE_ROOTS = new Set([
+    "store",
+    "cart",
+    "checkout",
+    "privacy",
+    "terms",
+    "order",
+  ]);
 
-  const urlHasCountryCode =
-    (countryCode && pathname.split("/")[1] === countryCode) ||
-    pathname.split("/")[1].includes(`${countryCode}/`);
+  const regionMap = await getRegionMap();
 
-  if (urlHasCountryCode) {
+  // Behind OpenLiteSpeed the app only sees plain HTTP, so honor the proxy
+  // headers to keep redirects on https:// instead of downgrading them.
+  const forwardedProto = context.request.headers
+    .get("x-forwarded-proto")
+    ?.split(",")[0]
+    .trim()
+    .toLowerCase();
+  const scheme =
+    forwardedProto === "https" || forwardedProto === "http"
+      ? forwardedProto
+      : context.url.protocol.replace(":", "");
+  const origin = `${scheme}://${context.url.host}`;
+
+  const redirectTo = (path: string, status: 301 | 308 | 307 = 301) =>
+    context.redirect(`${origin}${path}${search}`, status);
+
+  let locale: Locale = DEFAULT_LOCALE;
+
+  if (firstSegment && isLocale(firstSegment)) {
+    if (firstSegment === DEFAULT_LOCALE) {
+      // Default locale must be prefix-less (routing.prefixDefaultLocale: false)
+      const rest = segments.slice(1);
+      return redirectTo(rest.length ? `/${rest.join("/")}` : "/");
+    }
+    locale = firstSegment;
+  } else if (firstSegment && regionMap.has(firstSegment)) {
+    // Legacy `/dk/store` market URLs → the market now lives in the cookie,
+    // so drop the segment and keep the visitor on the equivalent page.
+    const rest = segments.slice(1);
+    return redirectTo(rest.length ? `/${rest.join("/")}` : "/");
+  } else if (firstSegment && !ROUTE_ROOTS.has(firstSegment)) {
+    return new Response("Not Found", {
+      status: 404,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+
+  const cookieCountry = context.cookies.get("country")?.value;
+  const countryCode = await resolveMarketCountry(cookieCountry);
+
+  if (!countryCode) {
     return next();
   }
 
-  const redirectPath = pathname === "/" ? "" : pathname;
-
-  const queryString = search || "";
-
-  if (!urlHasCountryCode && countryCode) {
-    redirectUrl = `${origin}/${countryCode}${redirectPath}${queryString}`;
-    return context.redirect(redirectUrl, 307);
-  }
+  context.locals.locale = locale;
+  context.locals.countryCode = countryCode;
 
   return next();
 });

@@ -1,12 +1,17 @@
 import { sdk } from "@lib/sdk";
 import { completeCart, initPaymentSession } from "@lib/stores/cart";
 import type { StoreCart, StorePaymentProvider } from "@medusajs/types";
-import { PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
+import {
+  PaymentElement,
+  useElements,
+  useStripe,
+} from "@stripe/react-stripe-js";
 import { useEffect, useState } from "react";
+import { localizePath, useTranslations, type Locale } from "@i18n";
 
 interface PaymentStepProps {
   cart: StoreCart;
-  countryCode: string;
+  locale: Locale;
   mode: "edit" | "inactive";
   onEdit?: () => void;
 }
@@ -46,12 +51,11 @@ function isTestProvider(providerId: string): boolean {
   return providerId === "pp_system_default";
 }
 
-export const PaymentStep = ({
-  cart,
-  countryCode,
-  mode,
-}: PaymentStepProps) => {
-  const [paymentProviders, setPaymentProviders] = useState<StorePaymentProvider[]>([]);
+export const PaymentStep = ({ cart, locale, mode }: PaymentStepProps) => {
+  const t = useTranslations(locale);
+  const [paymentProviders, setPaymentProviders] = useState<
+    StorePaymentProvider[]
+  >([]);
   const [selectedProviderId, setSelectedProviderId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -67,9 +71,10 @@ export const PaymentStep = ({
       setIsLoading(true);
       setError("");
       try {
-        const { payment_providers } = await sdk.store.payment.listPaymentProviders({
-          region_id: cart.region_id!,
-        });
+        const { payment_providers } =
+          await sdk.store.payment.listPaymentProviders({
+            region_id: cart.region_id!,
+          });
         setPaymentProviders(payment_providers);
 
         const existingProviderId =
@@ -79,7 +84,7 @@ export const PaymentStep = ({
         }
       } catch (err) {
         console.error("Failed to load payment providers:", err);
-        setError("Failed to load payment options. Please try again.");
+        setError(t("checkout.payment.loadFailed"));
       } finally {
         setIsLoading(false);
       }
@@ -97,7 +102,7 @@ export const PaymentStep = ({
       await initPaymentSession(providerId);
     } catch (err) {
       console.error("Failed to initialize payment session:", err);
-      setError("Failed to set payment method. Please try again.");
+      setError(t("checkout.payment.setFailed"));
       const savedProviderId =
         cart.payment_collection?.payment_sessions?.[0]?.provider_id ?? "";
       setSelectedProviderId(savedProviderId);
@@ -116,7 +121,7 @@ export const PaymentStep = ({
           redirect: "if_required",
         });
         if (stripeError) {
-          setError(stripeError.message ?? "Payment failed. Please try again.");
+          setError(stripeError.message ?? t("checkout.payment.paymentFailed"));
           return;
         }
       }
@@ -129,13 +134,15 @@ export const PaymentStep = ({
 
       const result = await completeCart();
       if (result.type === "order" || result.type === "already_completed") {
-        window.location.href = `/${countryCode}/order/confirmed`;
+        window.location.href = localizePath(locale, "/order/confirmed");
       } else {
-        setError(result.error.message || "Failed to place order. Please try again.");
+        setError(
+          result.error.message || t("checkout.payment.placeOrderFailed"),
+        );
       }
     } catch (err) {
       console.error("Failed to place order:", err);
-      setError("Failed to place order. Please try again.");
+      setError(t("checkout.payment.placeOrderFailed"));
     } finally {
       setIsPlacing(false);
     }
@@ -144,23 +151,27 @@ export const PaymentStep = ({
   if (mode === "inactive") {
     return (
       <div className="border-t border-gray-200 pt-6 mt-6">
-        <h2 className="text-2xl font-bold text-gray-400">Payment</h2>
+        <h2 className="text-2xl font-bold text-gray-400">
+          {t("checkout.payment.title")}
+        </h2>
       </div>
     );
   }
 
   return (
     <div className="border-t border-gray-200 pt-6 mt-6">
-      <h2 className="text-2xl font-bold mb-6">Payment</h2>
+      <h2 className="text-2xl font-bold mb-6">{t("checkout.payment.title")}</h2>
 
       <div>
         {isLoading && (
-          <p className="text-sm text-gray-500 mb-4">Loading payment options...</p>
+          <p className="text-sm text-gray-500 mb-4">
+            {t("checkout.payment.loading")}
+          </p>
         )}
 
         {!isLoading && paymentProviders.length === 0 && !error && (
           <p className="text-sm text-gray-500 mb-4">
-            No payment options available.
+            {t("checkout.payment.empty")}
           </p>
         )}
 
@@ -189,7 +200,7 @@ export const PaymentStep = ({
                   </span>
                   {isTestProvider(provider.id) && (
                     <span className="text-xs text-orange-600 bg-orange-50 border border-orange-200 rounded px-2 py-0.5">
-                      Attention: For testing purposes only.
+                      {t("checkout.payment.testOnly")}
                     </span>
                   )}
                 </div>
@@ -216,7 +227,9 @@ export const PaymentStep = ({
           onClick={handlePlaceOrder}
           className="bg-black text-white py-3 px-8 rounded-md hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isPlacing ? "Placing order..." : "Place order"}
+          {isPlacing
+            ? t("checkout.payment.placing")
+            : t("checkout.payment.placeOrder")}
         </button>
       </div>
     </div>

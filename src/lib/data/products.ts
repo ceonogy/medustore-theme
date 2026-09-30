@@ -17,10 +17,7 @@ export const listProducts = async (regionId: string) => {
   }
 };
 
-export const retrieveProduct = async (
-  productId: string,
-  regionId: string,
-) => {
+export const retrieveProduct = async (productId: string, regionId: string) => {
   try {
     const { product } = await sdk.store.product.retrieve(productId, {
       region_id: regionId,

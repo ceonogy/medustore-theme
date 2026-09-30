@@ -1,4 +1,5 @@
 ---
+import { useTranslations } from "@i18n";
 import { getRegion } from "@lib/data/regions";
 import { CartSidebar } from "@modules/layout/components/CartSidebar";
 import Footer from "@modules/layout/components/Footer.astro";
@@ -14,36 +15,31 @@ interface Props {
   noindex?: boolean;
 }
 
-const SITE_NAME = "Astro + Medusa Starter";
-const DEFAULT_DESCRIPTION =
-  "E-commerce starter template built with Astro and Medusa for maximum performance.";
-
 const {
   title,
-  description = DEFAULT_DESCRIPTION,
+  description,
   image,
   type = "website",
   noindex = false,
 } = Astro.props;
 
-const pageTitle = title ? `${title} | ${SITE_NAME}` : SITE_NAME;
+const { locale, countryCode } = Astro.locals;
+const t = useTranslations(locale);
+
+const siteName = t("site.name");
+const pageTitle = title ? `${title} | ${siteName}` : siteName;
+const metaDescription = description ?? t("site.description");
 const canonicalUrl = new URL(
   Astro.url.pathname,
-  Astro.site ?? Astro.url.origin
+  Astro.site ?? Astro.url.origin,
 );
-
-const { countryCode } = Astro.params;
-
-if (!countryCode) {
-  return Astro.redirect("/not-found");
-}
 
 const region = await getRegion(countryCode);
 const regionId = region?.id || null;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang={locale}>
   <head>
     <ClientRouter />
     <meta charset="UTF-8" />
@@ -62,17 +58,17 @@ const regionId = region?.id || null;
     <meta name="generator" content={Astro.generator} />
 
     <title>{pageTitle}</title>
-    <meta name="description" content={description} />
+    <meta name="description" content={metaDescription} />
     <link rel="canonical" href={canonicalUrl.href} />
 
     {noindex && <meta name="robots" content="noindex, nofollow" />}
 
     <!-- Open Graph -->
     <meta property="og:title" content={pageTitle} />
-    <meta property="og:description" content={description} />
+    <meta property="og:description" content={metaDescription} />
     <meta property="og:type" content={type} />
     <meta property="og:url" content={canonicalUrl.href} />
-    <meta property="og:site_name" content={SITE_NAME} />
+    <meta property="og:site_name" content={siteName} />
     {image && <meta property="og:image" content={image} />}
 
     <!-- Twitter Card -->
@@ -81,28 +77,31 @@ const regionId = region?.id || null;
       content={image ? "summary_large_image" : "summary"}
     />
     <meta name="twitter:title" content={pageTitle} />
-    <meta name="twitter:description" content={description} />
+    <meta name="twitter:description" content={metaDescription} />
     {image && <meta name="twitter:image" content={image} />}
   </head>
   <body class="min-h-screen bg-white text-black">
     <div class="mx-auto flex min-h-screen w-full max-w-[1800px] flex-col">
-      <Nav client:load countryCode={countryCode} regionId={regionId} />
+      <Nav
+        client:load
+        locale={locale}
+        regionId={regionId}
+        currentPath={Astro.url.pathname}
+      />
       <main class="flex-1 min-h-[calc(100vh-72px)]">
         <slot />
       </main>
-      <Footer countryCode={countryCode} />
-      <CartSidebar client:load countryCode={countryCode} />
+      <Footer locale={locale} />
+      <CartSidebar client:load locale={locale} />
     </div>
-  </body>
+  </body><style>
+    body {
+      display: flex;
+      flex-direction: column;
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      min-height: 100vh;
+    }
+  </style>
 </html>
-
-<style>
-  body {
-    display: flex;
-    flex-direction: column;
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    min-height: 100vh;
-  }
-</style>

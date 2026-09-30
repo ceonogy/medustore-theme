@@ -6,6 +6,7 @@ import type {
   StoreCartShippingOptionWithServiceZone,
 } from "@medusajs/types";
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations, type Locale } from "@i18n";
 
 interface InPostPoint {
   name: string;
@@ -14,6 +15,7 @@ interface InPostPoint {
 
 interface DeliveryStepProps {
   cart: StoreCart;
+  locale: Locale;
   mode: "edit" | "read" | "inactive";
   onContinue: () => void;
   onEdit?: () => void;
@@ -53,10 +55,12 @@ function isInPostLockerOption(
 
 export const DeliveryStep = ({
   cart,
+  locale,
   mode,
   onContinue,
   onEdit,
 }: DeliveryStepProps) => {
+  const t = useTranslations(locale);
   const [shippingOptions, setShippingOptions] = useState<
     StoreCartShippingOptionWithServiceZone[]
   >([]);
@@ -85,7 +89,7 @@ export const DeliveryStep = ({
         }
       } catch (err) {
         console.error("Failed to load shipping options:", err);
-        setError("Failed to load shipping options. Please try again.");
+        setError(t("checkout.delivery.loadFailed"));
       } finally {
         setIsLoading(false);
       }
@@ -120,7 +124,7 @@ export const DeliveryStep = ({
       await addShippingMethod(optionId);
     } catch (err) {
       console.error("Failed to update shipping method:", err);
-      setError("Failed to update shipping method. Please try again.");
+      setError(t("checkout.delivery.updateFailed"));
       const savedMethodId = cart.shipping_methods?.[0]?.shipping_option_id;
       setSelectedOptionId(savedMethodId ?? "");
     } finally {
@@ -139,7 +143,7 @@ export const DeliveryStep = ({
         });
       } catch (err) {
         console.error("Failed to set locker shipping method:", err);
-        setError("Failed to save locker selection. Please try again.");
+        setError(t("checkout.delivery.lockerSaveFailed"));
         setSelectedLockerPoint(null);
       } finally {
         setIsSaving(false);
@@ -161,7 +165,9 @@ export const DeliveryStep = ({
   if (mode === "inactive") {
     return (
       <div className="border-t border-gray-200 pt-6 mt-6">
-        <h2 className="text-2xl font-bold text-gray-400">Delivery</h2>
+        <h2 className="text-2xl font-bold text-gray-400">
+          {t("checkout.delivery.title")}
+        </h2>
       </div>
     );
   }
@@ -174,7 +180,7 @@ export const DeliveryStep = ({
       <div className="border-t border-gray-200 pt-6 mt-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold flex items-center gap-2">
-            Delivery
+            {t("checkout.delivery.title")}
             <CheckCircle />
           </h2>
           <button
@@ -182,25 +188,29 @@ export const DeliveryStep = ({
             onClick={onEdit}
             className="text-blue-600 hover:underline text-sm"
           >
-            Edit
+            {t("checkout.delivery.edit")}
           </button>
         </div>
 
         {method && (
           <div className="text-sm">
-            <p className="font-medium mb-1">Shipping method</p>
+            <p className="font-medium mb-1">
+              {t("checkout.delivery.shippingMethod")}
+            </p>
             <p className="text-gray-700">
               {method.name}
               {" — "}
               {method.amount === 0
-                ? "Free"
+                ? t("checkout.delivery.free")
                 : convertToLocale({ amount: method.amount, currencyCode })}
             </p>
             {(() => {
               const data = method.data as Record<string, unknown> | undefined;
               const targetPoint = data?.target_point as string | undefined;
               return targetPoint ? (
-                <p className="text-gray-500 mt-1">Locker: {targetPoint}</p>
+                <p className="text-gray-500 mt-1">
+                  {t("checkout.delivery.locker", { point: targetPoint })}
+                </p>
               ) : null;
             })()}
           </div>
@@ -213,23 +223,27 @@ export const DeliveryStep = ({
 
   return (
     <div className="border-t border-gray-200 pt-6 mt-6">
-      <h2 className="text-2xl font-bold mb-6">Delivery</h2>
+      <h2 className="text-2xl font-bold mb-6">
+        {t("checkout.delivery.title")}
+      </h2>
 
       <div>
-        <p className="font-medium mb-1">Shipping method</p>
+        <p className="font-medium mb-1">
+          {t("checkout.delivery.shippingMethod")}
+        </p>
         <p className="text-sm text-gray-500 mb-4">
-          How would you like your order delivered
+          {t("checkout.delivery.subtitle")}
         </p>
 
         {isLoading && (
           <p className="text-sm text-gray-500 mb-4">
-            Loading shipping options...
+            {t("checkout.delivery.loading")}
           </p>
         )}
 
         {!isLoading && shippingOptions.length === 0 && !error && (
           <p className="text-sm text-gray-500 mb-4">
-            No shipping options available for your address.
+            {t("checkout.delivery.empty")}
           </p>
         )}
 
@@ -261,7 +275,7 @@ export const DeliveryStep = ({
                     </div>
                     <span className="text-sm text-gray-700">
                       {option.amount === 0
-                        ? "Free"
+                        ? t("checkout.delivery.free")
                         : convertToLocale({
                             amount: option.amount,
                             currencyCode,
@@ -273,7 +287,9 @@ export const DeliveryStep = ({
                     <div className="mt-3">
                       {selectedLockerPoint ? (
                         <div className="flex items-center gap-2 text-sm text-gray-700 mb-2">
-                          <span className="font-medium">Selected locker:</span>
+                          <span className="font-medium">
+                            {t("checkout.delivery.selectedLocker")}
+                          </span>
                           <span>{selectedLockerPoint.name}</span>
                         </div>
                       ) : null}
@@ -285,8 +301,8 @@ export const DeliveryStep = ({
                         className="text-sm text-blue-600 hover:underline"
                       >
                         {selectedLockerPoint
-                          ? "Change locker"
-                          : "Choose locker"}
+                          ? t("checkout.delivery.changeLocker")
+                          : t("checkout.delivery.chooseLocker")}
                       </button>
                     </div>
                   )}
@@ -308,7 +324,9 @@ export const DeliveryStep = ({
           onClick={onContinue}
           className="bg-black text-white py-3 px-8 rounded-md hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isSaving ? "Saving..." : "Continue to payment"}
+          {isSaving
+            ? t("checkout.delivery.saving")
+            : t("checkout.delivery.continueToPayment")}
         </button>
       </div>
     </div>

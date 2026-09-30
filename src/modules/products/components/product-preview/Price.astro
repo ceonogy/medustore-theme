@@ -1,4 +1,6 @@
 ---
+import { useTranslations } from "@i18n";
+
 interface Props {
   priceType: string;
   originalPrice: string;
@@ -6,11 +8,21 @@ interface Props {
 }
 
 const { priceType, originalPrice, calculatedPrice } = Astro.props;
+
+const t = useTranslations(Astro.locals.locale);
 ---
 
 <>
-  {priceType === "sale" && <p data-testid="original-price">{originalPrice}</p>}
+  {
+    priceType === "sale" && (
+      <p data-testid="original-price">
+        <span class="sr-only">{t("products.price.original")}</span>
+        {originalPrice}
+      </p>
+    )
+  }
   <p data-testid="price">
+    <span class="sr-only">{t("products.price.current")}</span>
     {calculatedPrice}
   </p>
 </>
