@@ -1,8 +1,9 @@
 ---
+import { Image } from "astro:assets";
 import { localizePath, useTranslations } from "@i18n";
 import { getProductPrice } from "../../../../lib/utils/get-product-price";
 import type { ProductVariant } from "../../../../types/global";
-import Thumbnail from "../thumbnail/Thumbnail.astro";
+import PlaceholderImage from "../thumbnail/PlaceholderImage.astro";
 import Price from "./Price.astro";
 
 interface Props {
@@ -24,27 +25,51 @@ const t = useTranslations(locale);
 const { cheapestPrice } = getProductPrice({
   productVariants: variants,
 });
+
+const image = thumbnailUrl || imageUrl;
 ---
 
 <a
   href={localizePath(locale, `/store/${id}`)}
-  class="flex h-full flex-col gap-4 justify-between group"
+  class="product group flex h-full flex-col gap-4"
 >
-  <Thumbnail
-    imageUrl={thumbnailUrl || imageUrl}
-    title={title || t("products.thumbnail.imageAlt")}
-    priority={priority}
-  />
+  {/* square media + hover CTA, matching the reference template's cards */}
+  <div class="product-media">
+    {
+      image ? (
+        <Image
+          src={image}
+          width={512}
+          height={512}
+          alt={title || t("products.thumbnail.imageAlt")}
+          widths={[256, 384, 512]}
+          sizes="(max-width: 809px) 50vw, (max-width: 1439px) 33vw, 25vw"
+          format="webp"
+          quality={45}
+          loading={priority ? "eager" : "lazy"}
+          fetchpriority={priority ? "high" : "auto"}
+          class="h-full w-full object-cover"
+        />
+      ) : (
+        <span class="flex h-full w-full items-center justify-center text-muted">
+          <PlaceholderImage size={24} />
+        </span>
+      )
+    }
+    <span class="product-cta">{t("home.viewProduct")}</span>
+  </div>
 
-  <div class="flex text-sm justify-between">
-    <p>{title}</p>
+  <div class="flex items-start justify-between gap-3 text-sm">
+    <p class="font-medium leading-snug">{title}</p>
     {
       cheapestPrice && (
-        <Price
-          priceType={cheapestPrice.price_type ?? ""}
-          originalPrice={cheapestPrice.original_price}
-          calculatedPrice={cheapestPrice.calculated_price}
-        />
+        <div class="shrink-0 text-right">
+          <Price
+            priceType={cheapestPrice.price_type ?? ""}
+            originalPrice={cheapestPrice.original_price}
+            calculatedPrice={cheapestPrice.calculated_price}
+          />
+        </div>
       )
     }
   </div>

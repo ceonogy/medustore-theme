@@ -844,6 +844,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@fontsource/albert-sans@npm:^5.3.0":
+  version: 5.3.0
+  resolution: "@fontsource/albert-sans@npm:5.3.0"
+  checksum: 10c0/791021f23377515c3a8faca71b488e50547c63ab96f27e2f1723cfc425e922afce2921b7f9b87d5170166ad809a675ae35c4dda021601bf6a5b9586b340b7f1a
+  languageName: node
+  linkType: hard
+
 "@gar/promise-retry@npm:^1.0.0":
   version: 1.0.3
   resolution: "@gar/promise-retry@npm:1.0.3"
@@ -2161,6 +2168,7 @@ __metadata:
   dependencies:
     "@astrojs/node": "npm:^10.1.4"
     "@astrojs/react": "npm:5.0.2"
+    "@fontsource/albert-sans": "npm:^5.3.0"
     "@hookform/resolvers": "npm:^5.2.2"
     "@medusajs/js-sdk": "npm:^2.13.1"
     "@medusajs/types": "npm:^2.13.1"

@@ -2,7 +2,6 @@ import {
   I18N_ENABLED,
   LOCALES,
   localizePath,
-  stripLocalePrefix,
   useTranslations,
   type Locale,
 } from "@i18n";
@@ -13,7 +12,7 @@ import {
   toggleCartSidebar,
 } from "@lib/stores/cart";
 import { useStore } from "@nanostores/react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 interface NavProps {
   locale: Locale;
@@ -25,6 +24,7 @@ interface NavProps {
 export const Nav = ({ locale, regionId, currentPath = "/" }: NavProps) => {
   const cartItemCount = useStore($cartItemCount);
   const t = useTranslations(locale);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (regionId) {
@@ -33,66 +33,141 @@ export const Nav = ({ locale, regionId, currentPath = "/" }: NavProps) => {
     }
   }, [regionId]);
 
-  const handleCartClick = () => {
-    toggleCartSidebar();
-  };
+  // The ClientRouter swaps the document on navigation — close the sheet.
+  useEffect(() => setMenuOpen(false), [currentPath]);
 
-  const basePath = stripLocalePrefix(currentPath);
+  const links = [
+    { href: localizePath(locale, "/store"), label: t("nav.products") },
+    { href: localizePath(locale, "/cart"), label: t("footer.cart") },
+    { href: localizePath(locale, "/privacy"), label: t("footer.privacy") },
+    { href: localizePath(locale, "/terms"), label: t("footer.terms") },
+  ];
+  const desktopLinks = links.slice(0, 2);
 
   return (
-    <header className="flex items-center w-full p-8 h-24">
-      <div className="flex items-center gap-6 flex-1">
+    <header
+      className="reveal reveal-nav sticky top-0 z-40 w-full border-b border-line/70 bg-paper/90 backdrop-blur-md"
+      data-reveal
+    >
+      <div className="wrap flex h-16 items-center justify-between gap-6 wide:h-20">
         <a
-          href={localizePath(locale, "/store")}
-          className="text-sm hover:underline"
+          href={localizePath(locale, "/")}
+          className="text-base font-bold uppercase tracking-tight wide:text-lg"
         >
-          {t("nav.products")}
+          {t("site.brand")}
         </a>
 
-        {/* Language switcher — only rendered when PUBLIC_I18N_ENABLED turns
-            locale URLs back on; a single-language store shows no language UI. */}
-        {I18N_ENABLED && (
-          <nav
-            aria-label={t("nav.language")}
-            className="flex items-center gap-2 text-sm"
+        <nav
+          aria-label={t("nav.main")}
+          className="hidden items-center gap-6 text-[16px] tablet:flex"
+        >
+          {desktopLinks.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              aria-current={
+                currentPath === link.href ||
+                currentPath.startsWith(`${link.href}/`)
+                  ? "page"
+                  : undefined
+              }
+              className="text-ink/70 transition-colors hover:text-ink aria-[current=page]:font-medium aria-[current=page]:text-ink"
+            >
+              {link.label}
+            </a>
+          ))}
+        </nav>
+
+        <div className="flex items-center gap-4">
+          {I18N_ENABLED && (
+            <nav
+              aria-label={t("nav.language")}
+              className="hidden items-center gap-2 text-sm tablet:flex"
+            >
+              {LOCALES.map((code) => (
+                <a
+                  key={code}
+                  href={localizePath(code, currentPath)}
+                  hrefLang={code}
+                  aria-current={code === locale ? "true" : undefined}
+                  className={
+                    code === locale
+                      ? "font-semibold underline underline-offset-4"
+                      : "text-ink/55 hover:text-ink hover:underline"
+                  }
+                >
+                  {code.toUpperCase()}
+                </a>
+              ))}
+            </nav>
+          )}
+
+          <button
+            type="button"
+            onClick={() => toggleCartSidebar()}
+            className="type-body relative font-medium hover:underline"
+            aria-label={t("nav.cartAria", { count: cartItemCount })}
           >
-            {LOCALES.map((code) => (
+            <span aria-live="polite" aria-atomic="true">
+              {t("nav.cartCount", { count: cartItemCount })}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            className="flex h-10 w-10 items-center justify-center tablet:hidden"
+            aria-label={menuOpen ? t("nav.close") : t("nav.menu")}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            <span className="sr-only">
+              {menuOpen ? t("nav.close") : t("nav.menu")}
+            </span>
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 22 22"
+              fill="none"
+              aria-hidden="true"
+            >
+              {menuOpen ? (
+                <path
+                  d="M5 5l12 12M17 5L5 17"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                />
+              ) : (
+                <path
+                  d="M3 6.5h16M3 11h16M3 15.5h16"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                />
+              )}
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {menuOpen && (
+        <div className="border-t border-line bg-paper tablet:hidden">
+          <nav
+            aria-label={t("nav.menu")}
+            className="wrap flex flex-col gap-5 py-6"
+          >
+            {links.map((link) => (
               <a
-                key={code}
-                href={localizePath(code, basePath)}
-                hrefLang={code}
-                aria-current={code === locale ? "true" : undefined}
-                className={
-                  code === locale
-                    ? "font-semibold underline underline-offset-4"
-                    : "text-black/55 hover:text-black hover:underline"
-                }
+                key={link.href}
+                href={link.href}
+                className="type-label font-normal"
               >
-                {code.toUpperCase()}
+                {link.label}
               </a>
             ))}
           </nav>
-        )}
-      </div>
-
-      <a
-        href={localizePath(locale, "/")}
-        className="text-sm font-bold uppercase tracking-wide"
-      >
-        {t("site.brand")}
-      </a>
-
-      <div className="flex items-center gap-6 flex-1 justify-end">
-        <button
-          onClick={handleCartClick}
-          className="text-sm hover:underline relative"
-          aria-label={t("nav.cartAria", { count: cartItemCount })}
-        >
-          <span aria-live="polite" aria-atomic="true">
-            {t("nav.cartCount", { count: cartItemCount })}
-          </span>
-        </button>
-      </div>
+        </div>
+      )}
     </header>
   );
 };

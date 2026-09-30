@@ -4,6 +4,10 @@ import { getRegion } from "@lib/data/regions";
 import { CartSidebar } from "@modules/layout/components/CartSidebar";
 import Footer from "@modules/layout/components/Footer.astro";
 import { Nav } from "@modules/layout/components/Nav";
+import "@fontsource/albert-sans/400.css";
+import "@fontsource/albert-sans/500.css";
+import "@fontsource/albert-sans/700.css";
+import "@fontsource/albert-sans/900.css";
 import "@styles/global.css";
 import { ClientRouter } from "astro:transitions";
 
@@ -44,6 +48,14 @@ const regionId = region?.id || null;
     <ClientRouter />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
+    {
+      /* Marks that JS is alive before first paint: the scroll-reveal hidden
+        state is scoped to `.has-reveal`, so a page without JS renders fully
+        visible instead of stuck at opacity 0.001. */
+    }
+    <script is:inline>
+      document.documentElement.classList.add("has-reveal");
+    </script>
     <link
       rel="dns-prefetch"
       href="//medusa-public-images.s3.eu-west-1.amazonaws.com"
@@ -80,20 +92,21 @@ const regionId = region?.id || null;
     <meta name="twitter:description" content={metaDescription} />
     {image && <meta name="twitter:image" content={image} />}
   </head>
-  <body class="min-h-screen bg-white text-black">
-    <div class="mx-auto flex min-h-screen w-full max-w-[1800px] flex-col">
-      <Nav
-        client:load
-        locale={locale}
-        regionId={regionId}
-        currentPath={Astro.url.pathname}
-      />
-      <main class="flex-1 min-h-[calc(100vh-72px)]">
-        <slot />
-      </main>
-      <Footer locale={locale} />
-      <CartSidebar client:load locale={locale} />
-    </div>
+  <body class="min-h-screen bg-paper text-ink">
+    <Nav
+      client:load
+      locale={locale}
+      regionId={regionId}
+      currentPath={Astro.url.pathname}
+    />
+    <main class="flex-1">
+      <slot />
+    </main>
+    <Footer locale={locale} />
+    <CartSidebar client:load locale={locale} />
+    <script>
+      import "@lib/reveal";
+    </script>
   </body><style>
     body {
       display: flex;

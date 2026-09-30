@@ -15,13 +15,13 @@ const t = useTranslations(Astro.locals.locale);
 <>
   {
     priceType === "sale" && (
-      <p data-testid="original-price">
+      <p data-testid="original-price" class="text-xs text-muted line-through">
         <span class="sr-only">{t("products.price.original")}</span>
         {originalPrice}
       </p>
     )
   }
-  <p data-testid="price">
+  <p data-testid="price" class="text-sm font-medium">
     <span class="sr-only">{t("products.price.current")}</span>
     {calculatedPrice}
   </p>

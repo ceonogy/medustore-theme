@@ -3,47 +3,216 @@ import { Image } from "astro:assets";
 import heroImage from "@assets/hero.png";
 import { localizePath, useTranslations } from "@i18n";
 import Layout from "@layouts/Layout.astro";
+import { listProducts } from "@lib/data/products";
+import { getRegion } from "@lib/data/regions";
+import { Newsletter } from "@modules/layout/components/Newsletter";
+import BenefitIcon from "@modules/layout/components/BenefitIcon.astro";
+import ProductPreview from "@modules/products/components/product-preview/ProductPreview.astro";
 
-const { locale } = Astro.locals;
+const { locale, countryCode } = Astro.locals;
 const t = useTranslations(locale);
+
+const region = await getRegion(countryCode);
+
+let products: Awaited<ReturnType<typeof listProducts>> = [];
+if (region) {
+  try {
+    products = await listProducts(region.id);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+const featured = products.slice(0, 8);
+
+const collections = [
+  { label: t("home.collectionWomen"), image: featured[0]?.thumbnail },
+  { label: t("home.collectionMan"), image: featured[1]?.thumbnail },
+  { label: t("home.collectionBags"), image: featured[2]?.thumbnail },
+];
+
+const featureNames = ["shipping", "refund", "support", "secure"] as const;
+
+const features = [1, 2, 3, 4].map((n, index) => ({
+  title: t(`home.feature${n}Title`),
+  sub: t(`home.feature${n}Sub`),
+  icon: featureNames[index],
+}));
 ---
 
 <Layout description={t("site.description")} image={heroImage.src}>
+  {/* ------------------------------------------------------------ hero */}
   <section
-    class="flex items-center gap-12 overflow-hidden px-8 py-10 md:px-12 lg:min-h-[calc(100vh-96px-2rem)] lg:px-16"
+    class="wrap grid items-center gap-8 pb-16 pt-10 tablet:min-h-[600px] tablet:grid-cols-2 tablet:pb-20 tablet:pt-14 wide:min-h-[800px] wide:gap-16"
   >
-    <div class="flex flex-col gap-6 w-full md:flex-1 md:max-w-2xl">
-      <h1 class="text-5xl font-bold leading-tight tracking-tight">
-        {t("home.eyebrow")}
-        <span class="text-nowrap">{t("home.title")}</span>
-      </h1>
-      <p class="text-gray-500 text-base leading-relaxed">
-        {t("home.subtitle")}
-      </p>
-      <div class="flex items-center gap-4 mt-2">
-        <a
-          href={localizePath(locale, "/store")}
-          class="px-6 py-3 bg-black text-white text-sm font-medium rounded-full hover:bg-gray-800 transition-colors"
-        >
+    <div class="reveal reveal-left flex flex-col items-start" data-reveal>
+      <h1 class="type-display uppercase">{t("home.heroTitle")}</h1>
+      <a class="btn mt-8" href={localizePath(locale, "/store")}>
+        {t("home.heroCta")}
+      </a>
+    </div>
+
+    <div
+      class="reveal overflow-hidden rounded-xl bg-fog"
+      data-reveal
+      style="--reveal-delay: 120ms"
+    >
+      <Image
+        src={heroImage}
+        width={1200}
+        height={1500}
+        alt={t("home.heroImageAlt")}
+        widths={[600, 900, 1200]}
+        sizes="(max-width: 809px) 100vw, 50vw"
+        format="webp"
+        quality={80}
+        class="h-[420px] w-full object-cover tablet:h-[560px] wide:h-[680px]"
+      />
+    </div>
+  </section>
+
+  {/* ------------------------------------------------- new arrivals */}
+  <section class="section">
+    <div class="wrap">
+      <div class="reveal mx-auto max-w-2xl text-center" data-reveal>
+        <p class="type-kicker text-muted">{t("home.newArrivalsEyebrow")}</p>
+        <h2 class="type-title mt-3">{t("home.newArrivalsTitle")}</h2>
+        <p class="type-body mx-auto mt-4 max-w-xl text-muted">
+          {t("home.newArrivalsSub")}
+        </p>
+      </div>
+
+      {
+        featured.length > 0 && (
+          <div class="mt-10 grid grid-cols-2 gap-x-4 gap-y-8 tablet:mt-12 tablet:grid-cols-3 tablet:gap-x-6 wide:grid-cols-4">
+            {featured.map((product, index) => (
+              <div
+                class="reveal"
+                data-reveal
+                style={`--reveal-delay: ${(index % 4) * 80}ms`}
+              >
+                <ProductPreview
+                  id={product.id}
+                  variants={product.variants ?? []}
+                  thumbnailUrl={product.thumbnail ?? undefined}
+                  imageUrl={product.images?.[0]?.url}
+                  title={product.title}
+                  priority={index < 4}
+                />
+              </div>
+            ))}
+          </div>
+        )
+      }
+
+      <div class="reveal mt-10 flex justify-center" data-reveal>
+        <a class="btn btn-ghost" href={localizePath(locale, "/store")}>
           {t("home.browseProducts")}
         </a>
       </div>
     </div>
+  </section>
 
-    <div
-      class="relative hidden h-full min-h-[36rem] md:flex md:flex-1 md:items-center md:justify-end"
-    >
-      <Image
-        src={heroImage}
-        width={800}
-        height={900}
-        alt={t("home.imageAlt")}
-        widths={[400, 600, 800]}
-        sizes="(max-width: 1024px) 50vw, 40vw"
-        format="webp"
-        quality={80}
-        class="pointer-events-none absolute right-[-58%] top-1/2 z-10 h-auto max-h-none w-[66rem] max-w-none -translate-y-1/2 object-contain lg:right-[-64%] lg:w-[82rem] xl:right-[-62%] xl:w-[98rem]"
-      />
+  {/* -------------------------------------------------- testimonial */}
+  <section class="section bg-fog">
+    <div class="wrap reveal max-w-3xl text-center" data-reveal>
+      <p class="text-base tracking-[0.4em]" aria-hidden="true">★★★★★</p>
+      <blockquote class="type-title mt-6">“{t("home.quote")}”</blockquote>
+      <p class="type-body mt-5 text-muted">{t("home.quoteAuthor")}</p>
+    </div>
+  </section>
+
+  {/* -------------------------------------------------- collections */}
+  <section class="section">
+    <div class="wrap">
+      <div class="reveal mx-auto max-w-2xl text-center" data-reveal>
+        <h2 class="type-title">{t("home.collectionsEyebrow")}</h2>
+        <p class="type-body mx-auto mt-4 max-w-xl text-muted">
+          {t("home.collectionsSub")}
+        </p>
+      </div>
+
+      <div
+        class="mt-10 grid gap-6 tablet:mt-12 tablet:grid-cols-3 tablet:gap-8"
+      >
+        {
+          collections.map((collection, index) => (
+            <a
+              href={localizePath(locale, "/store")}
+              class="group reveal"
+              data-reveal
+              style={`--reveal-delay: ${index * 80}ms`}
+            >
+              <span class="relative block aspect-[3/4] overflow-hidden rounded-xl bg-fog">
+                {collection.image ? (
+                  <Image
+                    src={collection.image}
+                    width={720}
+                    height={960}
+                    alt={t("home.collectionImageAlt", {
+                      name: collection.label,
+                    })}
+                    widths={[360, 540, 720]}
+                    sizes="(max-width: 809px) 100vw, 33vw"
+                    format="webp"
+                    quality={55}
+                    class="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
+                  />
+                ) : (
+                  <span class="flex h-full w-full items-center justify-center text-muted">
+                    {collection.label}
+                  </span>
+                )}
+              </span>
+              <span class="type-label mt-4 flex items-center justify-between">
+                {collection.label}
+                <span
+                  aria-hidden="true"
+                  class="transition-transform duration-300 group-hover:translate-x-1"
+                >
+                  →
+                </span>
+              </span>
+            </a>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  {/* ---------------------------------------------------- benefits */}
+  <section class="section bg-sand">
+    <div class="wrap grid gap-8 tablet:grid-cols-2 wide:grid-cols-4">
+      {
+        features.map((feature, index) => (
+          <div
+            class="reveal"
+            data-reveal
+            style={`--reveal-delay: ${index * 80}ms`}
+          >
+            <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-ink text-sand">
+              <BenefitIcon name={feature.icon} />
+            </span>
+            <p class="type-label mt-4">{feature.title}</p>
+            <p class="type-body mt-1 text-muted">{feature.sub}</p>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  {/* ------------------------------------------------- newsletter */}
+  <section class="section">
+    <div class="wrap max-w-3xl text-center">
+      <div class="reveal" data-reveal>
+        <h2 class="type-title">{t("home.newsletterTitle")}</h2>
+        <p class="type-body mx-auto mt-4 max-w-xl text-muted">
+          {t("home.newsletterSub")}
+        </p>
+      </div>
+      <div class="mt-8">
+        <Newsletter client:load locale={locale} />
+      </div>
     </div>
   </section>
 </Layout>

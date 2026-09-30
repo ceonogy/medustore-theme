@@ -12,6 +12,7 @@
   "dependencies": {
     "@astrojs/node": "^10.1.4",
     "@astrojs/react": "5.0.2",
+    "@fontsource/albert-sans": "^5.3.0",
     "@hookform/resolvers": "^5.2.2",
     "@medusajs/js-sdk": "^2.13.1",
     "@nanostores/react": "^1.0.0",

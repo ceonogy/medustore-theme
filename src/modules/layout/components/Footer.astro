@@ -16,40 +16,40 @@ const shopLinks = [
   { href: localizePath(locale, "/checkout"), label: t("footer.checkout") },
 ];
 
-type FooterLink = { href: string; label: string; external?: boolean };
-
-const companyLinks: FooterLink[] = [
+const companyLinks = [
   { href: localizePath(locale, "/privacy"), label: t("footer.privacy") },
   { href: localizePath(locale, "/terms"), label: t("footer.terms") },
 ];
 ---
 
-<footer class="border-t border-black/10 bg-stone-50">
-  <div class="px-8 py-14 md:px-12 lg:px-16">
+<footer class="bg-ink text-sand">
+  <div class="wrap section">
     <div
-      class="grid gap-10 border-b border-black/10 pb-10 md:grid-cols-2 xl:grid-cols-[1.2fr_0.8fr_0.8fr_1fr]"
+      class="grid gap-10 tablet:grid-cols-2 wide:grid-cols-[1.6fr_1fr_1fr_1fr]"
     >
       <section class="max-w-md">
-        <p
-          class="text-xs font-semibold uppercase tracking-[0.28em] text-black/55"
-        >
-          {t("footer.eyebrow")}
-        </p>
-        <h2 class="mt-4 text-3xl font-semibold tracking-tight text-black">
+        <p class="type-kicker text-sand/60">{t("footer.eyebrow")}</p>
+        <h2 class="mt-4 text-2xl font-medium leading-snug">
           {t("footer.headline")}
         </h2>
-        <p class="mt-4 text-sm leading-6 text-black/65">
+        <p class="type-body mt-4 leading-6 text-sand/70">
           {t("footer.description")}
         </p>
+        <a class="btn btn-light mt-6" href={localizePath(locale, "/store")}>
+          {t("footer.startShopping")}
+        </a>
       </section>
 
       <nav aria-label={t("footer.navShop")}>
-        <p class="text-sm font-semibold text-black">{t("footer.shop")}</p>
-        <ul class="mt-4 space-y-3 text-sm text-black/65">
+        <p class="type-label">{t("footer.shop")}</p>
+        <ul class="mt-4 space-y-3">
           {
             shopLinks.map((link) => (
               <li>
-                <a class="transition hover:text-black" href={link.href}>
+                <a
+                  class="type-body text-sand/70 transition-colors hover:text-sand"
+                  href={link.href}
+                >
                   {link.label}
                 </a>
               </li>
@@ -59,16 +59,14 @@ const companyLinks: FooterLink[] = [
       </nav>
 
       <nav aria-label={t("footer.navCompany")}>
-        <p class="text-sm font-semibold text-black">{t("footer.company")}</p>
-        <ul class="mt-4 space-y-3 text-sm text-black/65">
+        <p class="type-label">{t("footer.company")}</p>
+        <ul class="mt-4 space-y-3">
           {
             companyLinks.map((link) => (
               <li>
                 <a
-                  class="transition hover:text-black"
+                  class="type-body text-sand/70 transition-colors hover:text-sand"
                   href={link.href}
-                  target={link.external ? "_blank" : undefined}
-                  rel={link.external ? "noreferrer" : undefined}
                 >
                   {link.label}
                 </a>
@@ -79,22 +77,14 @@ const companyLinks: FooterLink[] = [
       </nav>
 
       <section>
-        <p class="text-sm font-semibold text-black">
-          {t("footer.customerCare")}
+        <p class="type-label">{t("footer.customerCare")}</p>
+        <p class="type-body mt-4 leading-6 text-sand/70">
+          {t("footer.customerCareText")}
         </p>
-        <div class="mt-4 space-y-4 text-sm text-black/65">
-          <p>{t("footer.customerCareText")}</p>
-          <a
-            class="inline-flex rounded-full bg-black px-5 py-3 text-sm font-medium text-white transition hover:bg-black/85"
-            href={localizePath(locale, "/store")}
-          >
-            {t("footer.startShopping")}
-          </a>
-        </div>
       </section>
     </div>
 
-    <p class="text-sm text-black/55 pt-6">
+    <p class="type-body mt-12 border-t border-white/10 pt-6 text-sand/70">
       {t("footer.copyright", { year: currentYear })}
     </p>
   </div>
