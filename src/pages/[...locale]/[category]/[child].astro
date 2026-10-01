@@ -1,0 +1,65 @@
+---
+import { useTranslations } from "@i18n";
+import { buildCategoryPage } from "@lib/data/catalog";
+import { getRegion } from "@lib/data/regions";
+import { getTaxonomy, type Taxonomy } from "@lib/data/taxonomy";
+import CategoryView from "@modules/products/components/category-page/CategoryView.astro";
+
+/**
+ * Two-level `/{parent-handle}/{child-handle}` route. The child may only name
+ * its real parent — anything else resolves to no such path (404), except a
+ * top-level category addressed with a parent in front of it, which redirects
+ * onto its canonical flat URL.
+ */
+const { category, child } = Astro.params;
+const { locale, countryCode } = Astro.locals;
+const t = useTranslations(locale);
+
+const unavailable = () =>
+  new Response(t("common.serviceUnavailable"), {
+    status: 503,
+    headers: {
+      "Retry-After": "30",
+      "Content-Type": "text/plain; charset=utf-8",
+    },
+  });
+
+let taxonomy: Taxonomy;
+try {
+  taxonomy = await getTaxonomy();
+} catch (error) {
+  console.error(error);
+  return unavailable();
+}
+
+const node = child ? taxonomy.categoryByHandle.get(child) : undefined;
+
+if (node && !node.parentHandle) {
+  return Astro.redirect(`/${node.handle}`, 301);
+}
+
+let data: Awaited<ReturnType<typeof buildCategoryPage>> = null;
+
+if (node && category) {
+  try {
+    const region = await getRegion(countryCode);
+    if (!region) throw new Error(`No region resolves market "${countryCode}"`);
+    data = await buildCategoryPage(
+      region.id,
+      Astro.url.search,
+      taxonomy,
+      node.handle,
+      category,
+    );
+  } catch (error) {
+    console.error(error);
+    return unavailable();
+  }
+}
+
+if (!data || data.listing.beyond) {
+  Astro.response.status = 404;
+}
+---
+
+<CategoryView data={data} />

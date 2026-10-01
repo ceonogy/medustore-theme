@@ -36,6 +36,25 @@ export const vi = {
   "products.filters.noResults":
     "Không có sản phẩm nào khớp với bộ lọc đã chọn.",
   "products.filters.noResultsHint": "để xem toàn bộ sản phẩm.",
+
+  // product-listing → SortLinks / Pagination / empty states
+  "products.sort.label": "Sắp xếp",
+  "products.sort.newest": "Mới nhất",
+  "products.sort.priceAsc": "Giá thấp đến cao",
+  "products.sort.priceDesc": "Giá cao đến thấp",
+  "products.pagination.label": "Phân trang",
+  "products.pagination.previous": "Trước",
+  "products.pagination.next": "Sau",
+  "products.pagination.page": "Trang",
+  "products.listing.emptyTitle": "Không tìm thấy sản phẩm nào",
+  "products.listing.emptyHint":
+    "Thử bỏ bớt bộ lọc, hoặc xem toàn bộ sản phẩm của cửa hàng.",
+  "products.listing.suggestions": "Có thể bạn thích",
+  "products.listing.viewAll": "Xem tất cả sản phẩm",
+  "products.listing.intro": "{{count}} sản phẩm",
+  "products.category.intro": "Tất cả sản phẩm trong danh mục {{name}}.",
+  "products.collection.intro": "Tất cả sản phẩm trong bộ sưu tập {{name}}.",
+  "products.breadcrumb.home": "Trang chủ",
 };
 
 export const en: typeof vi = {
@@ -68,4 +87,23 @@ export const en: typeof vi = {
   "products.filters.clearAllFilters": "Clear all filters",
   "products.filters.noResults": "No products match the selected filters.",
   "products.filters.noResultsHint": "to see the full collection.",
+
+  // product-listing → SortLinks / Pagination / empty states
+  "products.sort.label": "Sort by",
+  "products.sort.newest": "Newest",
+  "products.sort.priceAsc": "Price: low to high",
+  "products.sort.priceDesc": "Price: high to low",
+  "products.pagination.label": "Pagination",
+  "products.pagination.previous": "Previous",
+  "products.pagination.next": "Next",
+  "products.pagination.page": "Page",
+  "products.listing.emptyTitle": "No products found",
+  "products.listing.emptyHint":
+    "Try removing a filter, or browse everything in the store.",
+  "products.listing.suggestions": "You may also like",
+  "products.listing.viewAll": "View all products",
+  "products.listing.intro": "{{count}} products",
+  "products.category.intro": "All products in the {{name}} category.",
+  "products.collection.intro": "All products in the {{name}} collection.",
+  "products.breadcrumb.home": "Home",
 };

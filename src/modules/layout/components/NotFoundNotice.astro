@@ -1,0 +1,33 @@
+---
+import { localizePath, useTranslations } from "@i18n";
+
+interface Props {
+  /** Heading text; defaults to the generic page-not-found copy. */
+  message?: string;
+  /** Render as the page's `<h1>` when nothing else titles the page. */
+  asHeading?: boolean;
+}
+
+const { message, asHeading = false } = Astro.props;
+const { locale } = Astro.locals;
+const t = useTranslations(locale);
+const text = message ?? t("common.pageNotFound");
+---
+
+<div class="max-w-2xl">
+  {
+    asHeading ? (
+      <h1 class="type-display mb-6">{text}</h1>
+    ) : (
+      <p class="type-label mb-4">{text}</p>
+    )
+  }
+  <p class="text-sm text-gray-500">
+    <a
+      class="underline hover:no-underline"
+      href={localizePath(locale, "/store")}
+    >
+      {t("common.backToStore")}
+    </a>
+  </p>
+</div>

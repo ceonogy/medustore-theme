@@ -1,70 +1,61 @@
 ---
 import { useTranslations } from "@i18n";
 import Layout from "@layouts/Layout.astro";
-import { listProducts } from "@lib/data/products";
+import { buildListing } from "@lib/data/catalog";
 import { getRegion } from "@lib/data/regions";
-import { buildFilterGroups } from "@lib/utils/product-filters";
-import ProductPreview from "@modules/products/components/product-preview/ProductPreview.astro";
-import { ProductFilters } from "@modules/products/components/product-filters/ProductFilters";
+import NotFoundNotice from "@modules/layout/components/NotFoundNotice.astro";
+import ProductListing from "@modules/products/components/product-listing/ProductListing.astro";
 
 const { locale, countryCode } = Astro.locals;
 const t = useTranslations(locale);
 
-const region = await getRegion(countryCode);
-
-if (!region) {
-  return Astro.redirect("/not-found");
-}
-
-let products: Awaited<ReturnType<typeof listProducts>> = [];
-let error: Error | undefined;
+let listing: Awaited<ReturnType<typeof buildListing>> | undefined;
 
 try {
-  products = await listProducts(region.id);
-} catch (e) {
-  error = e instanceof Error ? e : new Error(t("common.unknownError"));
+  const region = await getRegion(countryCode);
+  if (!region) {
+    throw new Error(`No region resolves market "${countryCode}"`);
+  }
+  // The middleware already canonicalised the query string, so this renders the
+  // filter state it validated (or the unfiltered page when there is none).
+  listing = await buildListing(region.id, Astro.url.search);
+} catch (error) {
+  // Medusa unreachable is a temporary failure, never a 404.
   console.error(error);
+  return new Response(t("common.serviceUnavailable"), {
+    status: 503,
+    headers: {
+      "Retry-After": "30",
+      "Content-Type": "text/plain; charset=utf-8",
+    },
+  });
 }
 
-const filterGroups = buildFilterGroups(products);
-
-// Only the fields the island actually needs — keeps the serialised payload small.
-const filterableProducts = products.map((product) => ({
-  id: product.id,
-  categories: product.categories?.map(({ id, name }) => ({ id, name })) ?? [],
-  collection: product.collection
-    ? { id: product.collection.id, title: product.collection.title }
-    : null,
-}));
+// `?page=N` past the last page is a real 404, not an empty listing.
+if (listing.beyond) {
+  Astro.response.status = 404;
+}
 ---
 
 <Layout title={t("store.title")} description={t("store.description")}>
   <div class="wrap section">
     <h1 class="type-display mb-8">{t("store.title")}</h1>
-    {error && <p class="text-red-700">{error.message}</p>}
-    <ProductFilters
-      client:load
-      products={filterableProducts}
-      groups={filterGroups}
-    />
-    <ul
-      aria-label={t("store.productsLabel")}
-      class="grid lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 w-full gap-x-6 gap-y-8"
-    >
-      {
-        products?.map((product, index) => (
-          <li data-product-id={product.id}>
-            <ProductPreview
-              handle={product.handle}
-              variants={product.variants ?? []}
-              thumbnailUrl={product.thumbnail ?? undefined}
-              imageUrl={product.images?.[0]?.url}
-              title={product.title}
-              priority={index < 4}
-            />
-          </li>
-        ))
-      }
-    </ul>
+    {
+      listing.beyond ? (
+        <NotFoundNotice />
+      ) : (
+        <ProductListing
+          products={listing.products}
+          suggestions={listing.suggestions}
+          groups={listing.groups}
+          state={listing.state}
+          pageType="store"
+          basePath="/store"
+          totalCount={listing.totalCount}
+          page={listing.page}
+          pageCount={listing.pageCount}
+        />
+      )
+    }
   </div>
 </Layout>

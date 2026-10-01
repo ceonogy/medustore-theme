@@ -1,0 +1,110 @@
+---
+import { localizePath, useTranslations } from "@i18n";
+import Layout from "@layouts/Layout.astro";
+import { buildListing, type CatalogListing } from "@lib/data/catalog";
+import { getRegion } from "@lib/data/regions";
+import { getTaxonomy, type Taxonomy } from "@lib/data/taxonomy";
+import NotFoundNotice from "@modules/layout/components/NotFoundNotice.astro";
+import ProductListing from "@modules/products/components/product-listing/ProductListing.astro";
+
+/**
+ * `/bo-suu-tap/{collection-handle}` — one dynamic route, the handle straight
+ * from the admin. Unknown handles 404, renamed ones 301 to their new URL.
+ */
+const { handle } = Astro.params;
+const { locale, countryCode } = Astro.locals;
+const t = useTranslations(locale);
+
+const unavailable = () =>
+  new Response(t("common.serviceUnavailable"), {
+    status: 503,
+    headers: {
+      "Retry-After": "30",
+      "Content-Type": "text/plain; charset=utf-8",
+    },
+  });
+
+let taxonomy: Taxonomy;
+try {
+  taxonomy = await getTaxonomy();
+} catch (error) {
+  console.error(error);
+  return unavailable();
+}
+
+const node = handle ? taxonomy.collectionByHandle.get(handle) : undefined;
+
+let listing: CatalogListing | null = null;
+let description: string | undefined;
+
+if (!node) {
+  const legacy = handle ? taxonomy.legacy.collection.get(handle) : undefined;
+  if (legacy) return Astro.redirect(`/bo-suu-tap/${legacy}`, 301);
+  Astro.response.status = 404;
+} else {
+  try {
+    const region = await getRegion(countryCode);
+    if (!region) throw new Error(`No region resolves market "${countryCode}"`);
+
+    listing = await buildListing(region.id, Astro.url.search, {
+      pathCollection: node.handle,
+    });
+    if (listing.beyond) Astro.response.status = 404;
+
+    description =
+      node.description || t("products.collection.intro", { name: node.title });
+  } catch (error) {
+    console.error(error);
+    return unavailable();
+  }
+}
+
+const showListing = Boolean(node && listing && !listing.beyond);
+const basePath = node ? `/bo-suu-tap/${node.handle}` : "/store";
+---
+
+<Layout
+  title={node?.title ?? t("common.pageNotFound")}
+  description={description}
+>
+  <div class="wrap section">
+    {
+      showListing && listing ? (
+        <>
+          <nav
+            aria-label={t("products.breadcrumb.home")}
+            class="mb-5 flex flex-wrap items-center gap-1 text-sm text-gray-500"
+          >
+            <a
+              href={localizePath(locale, "/")}
+              class="hover:text-black hover:underline"
+            >
+              {t("products.breadcrumb.home")}
+            </a>
+            <span aria-hidden="true">/</span>
+            <span aria-current="page" class="text-black">
+              {node?.title}
+            </span>
+          </nav>
+
+          <h1 class="type-display mb-4">{node?.title}</h1>
+          <p class="mb-8 max-w-3xl text-gray-600">{description}</p>
+
+          <ProductListing
+            products={listing.products}
+            suggestions={listing.suggestions}
+            groups={listing.groups}
+            state={listing.state}
+            pageType="collection"
+            basePath={basePath}
+            totalCount={listing.totalCount}
+            page={listing.page}
+            pageCount={listing.pageCount}
+          />
+        </>
+      ) : (
+        <NotFoundNotice asHeading />
+      )
+    }
+  </div>
+</Layout>

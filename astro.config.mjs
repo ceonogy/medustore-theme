@@ -18,6 +18,9 @@ const medusaBackendDomain = PUBLIC_MEDUSA_BACKEND_URL
 // https://astro.build/config
 export default defineConfig({
   site: "https://demostore.ceonogy.com",
+  // Canonical URLs never carry a trailing slash — the middleware 301s any
+  // `/page/` request onto `/page`, so the two never compete for one content.
+  trailingSlash: "never",
   adapter: node({
     mode: "standalone",
   }),

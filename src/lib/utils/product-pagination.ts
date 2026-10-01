@@ -1,7 +1,7 @@
 export const PRODUCTS_PAGE_SIZE = 100;
 
 export const PRODUCT_CARD_FIELDS =
-  "id,title,handle,thumbnail,*images,*variants.calculated_price,*categories,*collection";
+  "id,title,handle,created_at,thumbnail,*images,*variants.calculated_price,*categories,*collection";
 
 export type ProductListQuery = {
   region_id: string;

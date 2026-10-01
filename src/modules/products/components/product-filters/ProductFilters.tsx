@@ -1,111 +1,102 @@
 import { useTranslations, type Locale } from "@i18n";
-import type {
-  FilterGroup,
-  FilterKey,
-  FilterState,
-  FilterableProduct,
-} from "../../../../types/global";
+import type { FilterGroup, FilterKey } from "../../../../types/global";
 import {
-  EMPTY_FILTER_STATE,
-  countActiveFilters,
-  filterProducts,
-  parseFiltersFromSearch,
-  reconcileFilters,
-  serializeFiltersToSearch,
-  toggleFilterValue,
-} from "../../../../lib/utils/product-filters";
-import { useCallback, useEffect, useMemo, useState } from "react";
-
-type IndexedProduct = FilterableProduct & { id: string };
+  normalizeSearch,
+  resolveCanonical,
+  type CatalogState,
+  type PageType,
+} from "../../../../lib/utils/canonical-query";
+import { useMemo, useState } from "react";
 
 interface ProductFiltersProps {
-  products: IndexedProduct[];
   groups: FilterGroup[];
-  /** Optional: the store page does not pass it yet, so it is derived from the URL. */
+  /** Path the request is rendered on (already canonical). */
+  basePath: string;
+  pageType: PageType;
+  /** Query string of the request — normalised by the middleware, never raw. */
+  initialSearch: string;
+  /** Server-computed result count of the current filter state. */
+  totalCount: number;
   locale?: Locale;
 }
 
-/** Filter group headings come from `buildFilterGroups` (untranslated data). */
+/** Group headings come from the facet builders (untranslated data). */
 const GROUP_LABEL_KEYS: Record<FilterKey, string> = {
   category: "products.filters.category",
   collection: "products.filters.collection",
 };
 
 /**
- * Owns the filter state for the store page. The product grid itself stays in
- * static Astro markup (so build-time image optimisation is preserved); this
- * island only toggles the visibility of the cards it does not own.
+ * The query string was canonicalised before the page rendered, so these
+ * values are already live slugs and need no taxonomy lookup here.
+ */
+const PASSTHROUGH_RESOLVERS = {
+  resolveCategory: (value: string) => value,
+  resolveCollection: (value: string) => value,
+};
+
+const activeFacetCount = (state: CatalogState): number =>
+  state.category.length +
+  state.collection.length +
+  state.size.length +
+  state.origin.length +
+  state.color.length +
+  state.brand.length +
+  (state.price_min !== null || state.price_max !== null ? 1 : 0) +
+  (state.sale ? 1 : 0) +
+  (state.in_stock ? 1 : 0);
+
+/**
+ * The filter rail for every listing page.
+ *
+ * Every option and every active chip is a plain `<a href>` pointing at the
+ * canonical URL for the resulting state — crawlable, and usable before this
+ * island hydrates. Hydration only powers the mobile drawer; the grid itself
+ * stays static Astro markup owned by the server-rendered page.
  */
 export const ProductFilters = ({
-  products,
   groups,
+  basePath,
+  pageType,
+  initialSearch,
+  totalCount,
   locale,
 }: ProductFiltersProps) => {
-  const [filters, setFilters] = useState<FilterState>(EMPTY_FILTER_STATE);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const t = useTranslations(locale);
 
-  // Server-rendered markup uses the default locale (the island is rendered
-  // without a locale prop), so the URL prefix is applied right after mount —
-  // React hydrates against the server HTML first, then re-renders in place.
-  const [pathLocale, setPathLocale] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (locale) return;
-    const [, firstSegment] = window.location.pathname.split("/");
-    // `useTranslations` normalises anything that is not a locale to the default.
-    setPathLocale(firstSegment ?? null);
-  }, [locale]);
-
-  const t = useTranslations(locale ?? pathLocale);
-
-  // Restore filters from the URL so a shared or reloaded link keeps its state.
-  useEffect(() => {
-    setFilters(
-      reconcileFilters(parseFiltersFromSearch(window.location.search), groups),
-    );
-  }, [groups]);
-
-  const visibleIds = useMemo(
-    () =>
-      new Set(filterProducts(products, filters).map((product) => product.id)),
-    [products, filters],
+  const state = useMemo(
+    () => normalizeSearch(initialSearch, PASSTHROUGH_RESOLVERS).state,
+    [initialSearch],
   );
 
-  // The grid lives outside React, so visibility is applied to the DOM directly.
-  useEffect(() => {
-    const cards = document.querySelectorAll<HTMLElement>("[data-product-id]");
-
-    cards.forEach((card) => {
-      const productId = card.dataset.productId;
-      card.hidden = !!productId && !visibleIds.has(productId);
-    });
-  }, [visibleIds]);
-
-  const applyFilters = useCallback((next: FilterState) => {
-    setFilters(next);
-
-    const search = serializeFiltersToSearch(next);
-    window.history.replaceState({}, "", `${window.location.pathname}${search}`);
-  }, []);
-
-  const handleToggle = (key: FilterKey, value: string) => {
-    applyFilters(toggleFilterValue(filters, key, value));
+  /** Canonical URL (path + query) for a filter state. */
+  const hrefFor = (next: CatalogState): string => {
+    const target = resolveCanonical({ pageType, path: basePath, state: next });
+    return `${target.path}${target.search}`;
   };
 
-  const handleClearAll = () => {
-    applyFilters(EMPTY_FILTER_STATE);
+  const toggle = (key: FilterKey, value: string): CatalogState => {
+    const current = state[key];
+    const nextValues = current.includes(value)
+      ? current.filter((item) => item !== value)
+      : [...current, value].sort((a, b) => a.localeCompare(b));
+
+    return { ...state, [key]: nextValues, page: null };
   };
 
-  const activeCount = countActiveFilters(filters);
-  const resultCount = visibleIds.size;
+  const activeCount = activeFacetCount(state);
 
   const activePills = groups.flatMap((group) =>
-    group.options
-      .filter((option) => filters[group.key].includes(option.value))
-      .map((option) => ({ group: group.key, ...option })),
+    state[group.key].map((value) => ({
+      key: group.key,
+      value,
+      label:
+        group.options.find((option) => option.value === value)?.label ?? value,
+    })),
   );
 
-  if (groups.length === 0) {
+  if (groups.length === 0 && activeCount === 0) {
     return null;
   }
 
@@ -128,9 +119,9 @@ export const ProductFilters = ({
         </button>
 
         <p className="text-sm text-gray-500" aria-live="polite">
-          {resultCount === 1
-            ? t("products.filters.resultSingular", { count: resultCount })
-            : t("products.filters.resultPlural", { count: resultCount })}
+          {totalCount === 1
+            ? t("products.filters.resultSingular", { count: totalCount })
+            : t("products.filters.resultPlural", { count: totalCount })}
         </p>
       </div>
 
@@ -145,15 +136,14 @@ export const ProductFilters = ({
             </legend>
             <div className="flex flex-wrap gap-2">
               {group.options.map((option) => {
-                const isActive = filters[group.key].includes(option.value);
+                const isActive = state[group.key].includes(option.value);
 
                 return (
-                  <button
+                  <a
                     key={option.value}
-                    type="button"
-                    onClick={() => handleToggle(group.key, option.value)}
-                    aria-pressed={isActive}
-                    className={`min-h-11 rounded-full border px-4 text-sm transition-colors ${
+                    href={hrefFor(toggle(group.key, option.value))}
+                    aria-current={isActive ? "true" : undefined}
+                    className={`flex min-h-11 items-center rounded-full border px-4 text-sm transition-colors ${
                       isActive
                         ? "border-black bg-black text-white"
                         : "border-gray-300 text-black hover:bg-gray-100"
@@ -165,7 +155,7 @@ export const ProductFilters = ({
                     >
                       {option.count}
                     </span>
-                  </button>
+                  </a>
                 );
               })}
             </div>
@@ -173,13 +163,12 @@ export const ProductFilters = ({
         ))}
       </div>
 
-      {activeCount > 0 && (
+      {activePills.length > 0 && (
         <div className="mt-6 flex flex-wrap items-center gap-2">
           {activePills.map((pill) => (
-            <button
-              key={`${pill.group}-${pill.value}`}
-              type="button"
-              onClick={() => handleToggle(pill.group, pill.value)}
+            <a
+              key={`${pill.key}-${pill.value}`}
+              href={hrefFor(toggle(pill.key, pill.value))}
               aria-label={t("products.filters.removeFilter", {
                 label: pill.label,
               })}
@@ -187,29 +176,24 @@ export const ProductFilters = ({
             >
               {pill.label}
               <span aria-hidden="true">&times;</span>
-            </button>
+            </a>
           ))}
 
-          <button
-            type="button"
-            onClick={handleClearAll}
-            className="min-h-11 px-2 text-sm underline hover:no-underline"
+          <a
+            href={basePath}
+            className="flex min-h-11 items-center px-2 text-sm underline hover:no-underline"
           >
             {t("products.filters.clearAll")}
-          </button>
+          </a>
         </div>
       )}
 
-      {resultCount === 0 && (
+      {totalCount === 0 && (
         <p className="mt-8 text-sm text-gray-500">
           {t("products.filters.noResults")}{" "}
-          <button
-            type="button"
-            onClick={handleClearAll}
-            className="underline hover:no-underline"
-          >
+          <a href={basePath} className="underline hover:no-underline">
             {t("products.filters.clearAllFilters")}
-          </button>{" "}
+          </a>{" "}
           {t("products.filters.noResultsHint")}
         </p>
       )}

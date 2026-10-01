@@ -1,0 +1,65 @@
+---
+import { useTranslations } from "@i18n";
+import { buildCategoryPage } from "@lib/data/catalog";
+import { getRegion } from "@lib/data/regions";
+import { getTaxonomy, type Taxonomy } from "@lib/data/taxonomy";
+import CategoryView from "@modules/products/components/category-page/CategoryView.astro";
+
+/**
+ * Flat `/{category-handle}` route. Validation, canonical redirects and status
+ * codes happen here (see src/middleware.ts for the path resolver); the shared
+ * `CategoryView` renders the page.
+ */
+const { category } = Astro.params;
+const { locale, countryCode } = Astro.locals;
+const t = useTranslations(locale);
+
+const unavailable = () =>
+  new Response(t("common.serviceUnavailable"), {
+    status: 503,
+    headers: {
+      "Retry-After": "30",
+      "Content-Type": "text/plain; charset=utf-8",
+    },
+  });
+
+let taxonomy: Taxonomy;
+try {
+  taxonomy = await getTaxonomy();
+} catch (error) {
+  // Taxonomy unavailable means Medusa is down — a temporary failure, not a 404.
+  console.error(error);
+  return unavailable();
+}
+
+const node = category ? taxonomy.categoryByHandle.get(category) : undefined;
+
+// A child category has exactly one canonical address: under its parent.
+if (node?.parentHandle) {
+  return Astro.redirect(`/${node.parentHandle}/${node.handle}`, 301);
+}
+
+let data: Awaited<ReturnType<typeof buildCategoryPage>> = null;
+
+if (node) {
+  try {
+    const region = await getRegion(countryCode);
+    if (!region) throw new Error(`No region resolves market "${countryCode}"`);
+    data = await buildCategoryPage(
+      region.id,
+      Astro.url.search,
+      taxonomy,
+      node.handle,
+    );
+  } catch (error) {
+    console.error(error);
+    return unavailable();
+  }
+}
+
+if (!data || data.listing.beyond) {
+  Astro.response.status = 404;
+}
+---
+
+<CategoryView data={data} />

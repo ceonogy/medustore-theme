@@ -5,6 +5,7 @@ import { localizePath, useTranslations } from "@i18n";
 import Layout from "@layouts/Layout.astro";
 import { listProducts } from "@lib/data/products";
 import { getRegion } from "@lib/data/regions";
+import { getTaxonomy } from "@lib/data/taxonomy";
 import { Newsletter } from "@modules/layout/components/Newsletter";
 import BenefitIcon from "@modules/layout/components/BenefitIcon.astro";
 import ProductPreview from "@modules/products/components/product-preview/ProductPreview.astro";
@@ -25,11 +26,45 @@ if (region) {
 
 const featured = products.slice(0, 8);
 
-const collections = [
-  { label: t("home.collectionWomen"), image: featured[0]?.thumbnail },
-  { label: t("home.collectionMan"), image: featured[1]?.thumbnail },
-  { label: t("home.collectionBags"), image: featured[2]?.thumbnail },
-];
+// "Our Collections" mirrors Medusa: add a collection in the admin and it shows
+// up here, collections without products stay hidden. Nothing is hardcoded.
+let collections: {
+  label: string;
+  href: string;
+  image?: string;
+  description?: string;
+}[] = [];
+
+try {
+  const taxonomy = await getTaxonomy();
+
+  // `metadata.image` wins when present, otherwise the collection's own first
+  // product picture keeps the card visual.
+  const thumbnailByCollection = new Map<string, string>();
+  products.forEach((product) => {
+    const collectionId = product.collection?.id;
+    if (
+      collectionId &&
+      product.thumbnail &&
+      !thumbnailByCollection.has(collectionId)
+    ) {
+      thumbnailByCollection.set(collectionId, product.thumbnail);
+    }
+  });
+
+  collections = [...taxonomy.collectionByHandle.values()]
+    .filter((collection) =>
+      taxonomy.collectionIdsWithProducts.has(collection.id),
+    )
+    .map((collection) => ({
+      label: collection.title,
+      href: localizePath(locale, `/bo-suu-tap/${collection.handle}`),
+      image: collection.image ?? thumbnailByCollection.get(collection.id),
+      description: collection.description ?? undefined,
+    }));
+} catch (error) {
+  console.error(error);
+}
 
 const featureNames = ["shipping", "refund", "support", "secure"] as const;
 
@@ -123,62 +158,67 @@ const features = [1, 2, 3, 4].map((n, index) => ({
   </section>
 
   {/* -------------------------------------------------- collections */}
-  <section class="section">
-    <div class="wrap">
-      <div class="reveal mx-auto max-w-2xl text-center" data-reveal>
-        <h2 class="type-title">{t("home.collectionsEyebrow")}</h2>
-        <p class="type-body mx-auto mt-4 max-w-xl text-muted">
-          {t("home.collectionsSub")}
-        </p>
-      </div>
+  {
+    collections.length > 0 && (
+      <section class="section">
+        <div class="wrap">
+          <div class="reveal mx-auto max-w-2xl text-center" data-reveal>
+            <h2 class="type-title">{t("home.collectionsEyebrow")}</h2>
+            <p class="type-body mx-auto mt-4 max-w-xl text-muted">
+              {t("home.collectionsSub")}
+            </p>
+          </div>
 
-      <div
-        class="mt-10 grid gap-6 tablet:mt-12 tablet:grid-cols-3 tablet:gap-8"
-      >
-        {
-          collections.map((collection, index) => (
-            <a
-              href={localizePath(locale, "/store")}
-              class="group reveal"
-              data-reveal
-              style={`--reveal-delay: ${index * 80}ms`}
-            >
-              <span class="relative block aspect-[3/4] overflow-hidden rounded-xl bg-fog">
-                {collection.image ? (
-                  <Image
-                    src={collection.image}
-                    width={720}
-                    height={960}
-                    alt={t("home.collectionImageAlt", {
-                      name: collection.label,
-                    })}
-                    widths={[360, 540, 720]}
-                    sizes="(max-width: 809px) 100vw, 33vw"
-                    format="webp"
-                    quality={55}
-                    class="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-                  />
-                ) : (
-                  <span class="flex h-full w-full items-center justify-center text-muted">
-                    {collection.label}
+          <div class="mt-10 grid gap-6 tablet:mt-12 tablet:grid-cols-3 tablet:gap-8">
+            {collections.map((collection, index) => (
+              <a
+                href={collection.href}
+                class="group reveal"
+                data-reveal
+                style={`--reveal-delay: ${index * 80}ms`}
+              >
+                <span class="relative block aspect-[3/4] overflow-hidden rounded-xl bg-fog">
+                  {collection.image ? (
+                    <Image
+                      src={collection.image}
+                      width={720}
+                      height={960}
+                      alt={t("home.collectionImageAlt", {
+                        name: collection.label,
+                      })}
+                      widths={[360, 540, 720]}
+                      sizes="(max-width: 809px) 100vw, 33vw"
+                      format="webp"
+                      quality={55}
+                      class="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
+                    />
+                  ) : (
+                    <span class="flex h-full w-full items-center justify-center text-muted">
+                      {collection.label}
+                    </span>
+                  )}
+                </span>
+                <span class="type-label mt-4 flex items-center justify-between">
+                  {collection.label}
+                  <span
+                    aria-hidden="true"
+                    class="transition-transform duration-300 group-hover:translate-x-1"
+                  >
+                    →
+                  </span>
+                </span>
+                {collection.description && (
+                  <span class="type-body mt-1 block text-muted">
+                    {collection.description}
                   </span>
                 )}
-              </span>
-              <span class="type-label mt-4 flex items-center justify-between">
-                {collection.label}
-                <span
-                  aria-hidden="true"
-                  class="transition-transform duration-300 group-hover:translate-x-1"
-                >
-                  →
-                </span>
-              </span>
-            </a>
-          ))
-        }
-      </div>
-    </div>
-  </section>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
 
   {/* ---------------------------------------------------- benefits */}
   <section class="section bg-sand">

@@ -1,0 +1,106 @@
+---
+import type { HttpTypes } from "@medusajs/types";
+import { useTranslations } from "@i18n";
+import type { CatalogState, PageType } from "@lib/utils/canonical-query";
+import type { FilterGroup } from "../../../../types/global";
+import { ProductFilters } from "@modules/products/components/product-filters/ProductFilters";
+import ProductPreview from "@modules/products/components/product-preview/ProductPreview.astro";
+import Pagination from "./Pagination.astro";
+import SortLinks from "./SortLinks.astro";
+
+interface Props {
+  products: HttpTypes.StoreProduct[];
+  /** Offered when the current filters match nothing. */
+  suggestions: HttpTypes.StoreProduct[];
+  groups: FilterGroup[];
+  state: CatalogState;
+  pageType: PageType;
+  basePath: string;
+  totalCount: number;
+  page: number;
+  pageCount: number;
+}
+
+const {
+  products,
+  suggestions,
+  groups,
+  state,
+  pageType,
+  basePath,
+  totalCount,
+  page,
+  pageCount,
+} = Astro.props;
+
+const { locale } = Astro.locals;
+const t = useTranslations(locale);
+
+const gridClass =
+  "grid lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 w-full gap-x-6 gap-y-8";
+---
+
+<div>
+  <ProductFilters
+    client:load
+    groups={groups}
+    basePath={basePath}
+    pageType={pageType}
+    initialSearch={Astro.url.search}
+    totalCount={totalCount}
+    locale={locale}
+  />
+
+  <div class="mb-6 flex justify-end">
+    <SortLinks basePath={basePath} pageType={pageType} state={state} />
+  </div>
+
+  {
+    products.length > 0 ? (
+      <ul aria-label={t("store.productsLabel")} class={gridClass}>
+        {products.map((product, index) => (
+          <li data-product-id={product.id}>
+            <ProductPreview
+              handle={product.handle}
+              variants={product.variants ?? []}
+              thumbnailUrl={product.thumbnail ?? undefined}
+              imageUrl={product.images?.[0]?.url}
+              title={product.title}
+              priority={index < 4}
+            />
+          </li>
+        ))}
+      </ul>
+    ) : (
+      suggestions.length > 0 && (
+        <section aria-labelledby="suggestions-heading" class="pt-4">
+          <h2 id="suggestions-heading" class="type-title mb-6">
+            {t("products.listing.suggestions")}
+          </h2>
+          <ul aria-label={t("products.listing.suggestions")} class={gridClass}>
+            {suggestions.map((product, index) => (
+              <li>
+                <ProductPreview
+                  handle={product.handle}
+                  variants={product.variants ?? []}
+                  thumbnailUrl={product.thumbnail ?? undefined}
+                  imageUrl={product.images?.[0]?.url}
+                  title={product.title}
+                  priority={index < 4}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    )
+  }
+
+  <Pagination
+    basePath={basePath}
+    pageType={pageType}
+    state={state}
+    page={page}
+    pageCount={pageCount}
+  />
+</div>

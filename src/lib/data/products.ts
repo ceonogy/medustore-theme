@@ -17,6 +17,23 @@ export const listProducts = async (regionId: string) => {
   }
 };
 
+/**
+ * Medusa answered "no such product" — kept separate from the API being
+ * unreachable, so a backend outage can never masquerade as a 404.
+ */
+export class ResourceNotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ResourceNotFoundError";
+  }
+}
+
+const isNotFoundResponse = (error: unknown): boolean =>
+  typeof error === "object" &&
+  error !== null &&
+  "statusCode" in error &&
+  (error as { statusCode?: unknown }).statusCode === 404;
+
 const PRODUCT_DETAIL_FIELDS =
   "*variants.calculated_price,+variants.inventory_quantity,*variants.images,+metadata,+tags," +
   "+material,+origin_country,+weight,+length,+width,+height,+type,+handle";
@@ -45,10 +62,16 @@ export const retrieveProduct = async (productRef: string, regionId: string) => {
     });
 
     if (!products?.[0]) {
-      throw new Error(`No product matches handle "${productRef}"`);
+      throw new ResourceNotFoundError(
+        `No product matches handle "${productRef}"`,
+      );
     }
     return products[0];
   } catch (error) {
+    if (error instanceof ResourceNotFoundError) throw error;
+    if (isNotFoundResponse(error)) {
+      throw new ResourceNotFoundError(`No product matches id "${productRef}"`);
+    }
     console.error(error);
     throw new Error("Failed to fetch product");
   }

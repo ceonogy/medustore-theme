@@ -17,6 +17,9 @@ pnpm-debug.log*
 .env
 .env.production
 
+# server-side caches (taxonomy snapshots, handle history)
+.cache/
+
 # machine-specific tool config (see config.example.json)
 tools/admin-vi-i18n/config.json
 

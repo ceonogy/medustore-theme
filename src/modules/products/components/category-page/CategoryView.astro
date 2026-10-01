@@ -1,0 +1,80 @@
+---
+import { localizePath, useTranslations } from "@i18n";
+import Layout from "@layouts/Layout.astro";
+import type { CategoryPageData } from "@lib/data/catalog";
+import NotFoundNotice from "@modules/layout/components/NotFoundNotice.astro";
+import ProductListing from "@modules/products/components/product-listing/ProductListing.astro";
+
+interface Props {
+  /** Resolved category + listing, or null when the handle does not exist. */
+  data: CategoryPageData | null;
+}
+
+const { data } = Astro.props;
+const { locale } = Astro.locals;
+const t = useTranslations(locale);
+
+const description = data
+  ? data.node.description ||
+    t("products.category.intro", { name: data.node.name })
+  : undefined;
+
+const showListing = Boolean(data && !data.listing.beyond);
+---
+
+<Layout
+  title={data?.node.name ?? t("common.pageNotFound")}
+  description={description}
+>
+  <div class="wrap section">
+    {
+      showListing && data ? (
+        <>
+          <nav
+            aria-label={t("products.breadcrumb.home")}
+            class="mb-5 flex flex-wrap items-center gap-1 text-sm text-gray-500"
+          >
+            <a
+              href={localizePath(locale, "/")}
+              class="hover:text-black hover:underline"
+            >
+              {t("products.breadcrumb.home")}
+            </a>
+            {data.parent && (
+              <>
+                <span aria-hidden="true">/</span>
+                <a
+                  href={`/${data.parent.handle}`}
+                  class="hover:text-black hover:underline"
+                >
+                  {data.parent.name}
+                </a>
+              </>
+            )}
+            <span aria-hidden="true">/</span>
+            <span aria-current="page" class="text-black">
+              {data.node.name}
+            </span>
+          </nav>
+
+          <h1 class="type-display mb-4">{data.node.name}</h1>
+          <p class="mb-8 max-w-3xl text-gray-600">{description}</p>
+
+          <ProductListing
+            products={data.listing.products}
+            suggestions={data.listing.suggestions}
+            groups={data.listing.groups}
+            state={data.listing.state}
+            pageType="category"
+            basePath={data.basePath}
+            totalCount={data.listing.totalCount}
+            page={data.listing.page}
+            pageCount={data.listing.pageCount}
+          />
+        </>
+      ) : (
+        <NotFoundNotice asHeading />
+      )
+    }
+  </div>
+</Layout>

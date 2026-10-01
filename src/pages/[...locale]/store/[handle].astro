@@ -1,9 +1,11 @@
 ---
 import { useTranslations } from "@i18n";
 import Layout from "@layouts/Layout.astro";
-import { retrieveProduct } from "@lib/data/products";
+import { ResourceNotFoundError, retrieveProduct } from "@lib/data/products";
 import { getRegion } from "@lib/data/regions";
+import { getTaxonomy } from "@lib/data/taxonomy";
 import { getProductPrice } from "@lib/utils/get-product-price";
+import NotFoundNotice from "@modules/layout/components/NotFoundNotice.astro";
 import ImageCarouselWrapper from "@modules/products/components/product-details/image-carousel/ImageCarouselWrapper.astro";
 import { ProductActions } from "@modules/products/components/product-details/ProductActions";
 import ProductAttributes from "@modules/products/components/product-details/ProductAttributes.astro";
@@ -13,14 +15,30 @@ const { locale, countryCode } = Astro.locals;
 const { handle: productRef } = Astro.params;
 const t = useTranslations(locale);
 
+const unavailable = () =>
+  new Response(t("common.serviceUnavailable"), {
+    status: 503,
+    headers: {
+      "Retry-After": "30",
+      "Content-Type": "text/plain; charset=utf-8",
+    },
+  });
+
 if (!productRef) {
-  return Astro.redirect("/not-found");
+  return new Response("Not Found", {
+    status: 404,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
 }
 
-const region = await getRegion(countryCode);
+const region = await getRegion(countryCode).catch((regionError) => {
+  console.error(regionError);
+  return null;
+});
 
 if (!region) {
-  return Astro.redirect("/not-found");
+  // No region means the backend is not answering with data — not a dead URL.
+  return unavailable();
 }
 
 let product: Awaited<ReturnType<typeof retrieveProduct>> | undefined;
@@ -29,9 +47,22 @@ let error: Error | undefined;
 try {
   product = await retrieveProduct(productRef, region.id);
 } catch (e) {
-  error = e instanceof Error ? e : new Error(t("common.unknownError"));
+  if (!(e instanceof ResourceNotFoundError)) {
+    console.error(e);
+    return unavailable();
+  }
+
+  // A renamed handle keeps its old URL alive: 301 onto the current one.
+  try {
+    const taxonomy = await getTaxonomy();
+    const legacy = taxonomy.legacy.product.get(productRef);
+    if (legacy) return Astro.redirect(`/store/${legacy}`, 301);
+  } catch (taxonomyError) {
+    console.error(taxonomyError);
+  }
+
+  error = e;
   Astro.response.status = 404;
-  console.error(error);
 }
 
 // Links published with the raw id keep working — permanently moved onto the
@@ -61,13 +92,19 @@ const { cheapestPrice } = getProductPrice({
 ---
 
 <Layout
-  title={title}
+  title={title ?? (error ? t("common.pageNotFound") : undefined)}
   description={description ??
     t("product.metaDescription", { title: title ?? "" })}
   image={images?.[0]?.url}
   type="product"
 >
-  {error && <p class="text-red-700">{error.message}</p>}
+  {
+    error && (
+      <div class="wrap section">
+        <NotFoundNotice asHeading />
+      </div>
+    )
+  }
   {
     product && (
       <div class="wrap grid grid-cols-1 gap-10 pb-16 pt-10 tablet:gap-20 tablet:pt-14 lg:grid-cols-2">

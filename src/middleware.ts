@@ -7,6 +7,17 @@ import {
   type Locale,
 } from "./i18n/config";
 import { sdk } from "./lib/sdk";
+import {
+  getTaxonomy,
+  resolveCategoryHandle,
+  resolveCollectionHandle,
+  type Taxonomy,
+} from "./lib/data/taxonomy";
+import {
+  normalizeSearch,
+  resolveCanonical,
+  type PageType,
+} from "./lib/utils/canonical-query";
 
 const MEDUSA_BACKEND_URL = import.meta.env.PUBLIC_MEDUSA_BACKEND_URL;
 const DEFAULT_REGION = import.meta.env.DEFAULT_REGION;
@@ -113,6 +124,151 @@ async function resolveMarketCountry(
   return regionMap.keys().next().value;
 }
 
+/** Flat `/{handle}` paths may only ever resolve to a category. */
+type FlatResolution =
+  | { kind: "continue" }
+  | { kind: "redirect"; path: string; search?: string }
+  | { kind: "not-found" };
+
+const notFound = () =>
+  new Response("Not Found", {
+    status: 404,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
+
+const serviceUnavailable = () =>
+  new Response("Service Unavailable", {
+    status: 503,
+    headers: {
+      "Retry-After": "30",
+      "Content-Type": "text/plain; charset=utf-8",
+    },
+  });
+
+/**
+ * Validates a flat path against the category tree: a live handle continues,
+ * a renamed handle redirects to its current URL, anything else 404s. Category
+ * depth stops at two levels.
+ */
+const resolveFlatPath = (
+  segments: string[],
+  taxonomy: Taxonomy,
+): FlatResolution => {
+  if (segments.length === 0 || segments.length > 2) {
+    return { kind: "not-found" };
+  }
+
+  const [first, second] = segments;
+  const parentHandle = resolveCategoryHandle(taxonomy, first);
+
+  if (!parentHandle) {
+    const legacy = taxonomy.legacy.category.get(first);
+    if (legacy) return { kind: "redirect", path: `/${legacy}` };
+    return { kind: "not-found" };
+  }
+
+  if (segments.length === 1) return { kind: "continue" };
+
+  const parent = taxonomy.categoryByHandle.get(parentHandle);
+  if (parent?.childHandles.includes(second)) return { kind: "continue" };
+
+  const legacyParent = taxonomy.legacy.category.get(first);
+  if (legacyParent) {
+    return { kind: "redirect", path: `/${legacyParent}/${second}` };
+  }
+  return { kind: "not-found" };
+};
+
+/** Which kind of filterable page a path is, if any. */
+const detectPageType = (segments: string[]): PageType | null => {
+  if (segments.length === 1 && segments[0] === "store") return "store";
+  if (segments.length === 2 && segments[0] === "bo-suu-tap") {
+    return "collection";
+  }
+  if (segments[0] === "khuyen-mai") return "promotion";
+  return null;
+};
+
+/**
+ * Rewrites a request's query into its canonical form, or returns null when
+ * the URL is already canonical. Never 404s: an unknown filter value simply
+ * disappears from the URL, the page itself stays valid.
+ */
+const normalizeCatalogQuery = (
+  path: string,
+  search: string,
+  pageType: PageType,
+  taxonomy: Taxonomy,
+): { path: string; search: string } | null => {
+  const { state, tracking, passthrough } = normalizeSearch(search, {
+    resolveCategory: (value) => resolveCategoryHandle(taxonomy, value),
+    resolveCollection: (value) => resolveCollectionHandle(taxonomy, value),
+  });
+
+  let effectivePageType: PageType = pageType;
+  // The path can move twice: a drill-down (parent -> child page) or a move to
+  // /store when the request combines the path selection with other filters.
+  let targetPath = path;
+
+  if (pageType === "category") {
+    // The path already selects a category (a parent page also covers its
+    // children), so an equal `category` param is redundant. A single child
+    // handle means the visitor drilled down a level and canonicalises to
+    // `/{parent}/{child}`; anything else moves to the multi-category form.
+    const categorySegments = path.split("/").filter(Boolean);
+    const primary = categorySegments[categorySegments.length - 1];
+    const node = taxonomy.categoryByHandle.get(primary);
+    const childHandles = new Set(node?.childHandles ?? []);
+
+    const wanted = state.category.filter((handle) => handle !== primary);
+    state.category = [];
+
+    if (
+      wanted.length === 1 &&
+      categorySegments.length === 1 &&
+      childHandles.has(wanted[0])
+    ) {
+      targetPath = `/${primary}/${wanted[0]}`;
+    } else if (wanted.length) {
+      state.category = [...new Set([primary, ...wanted])].sort((a, b) =>
+        a.localeCompare(b),
+      );
+      effectivePageType = "store";
+      targetPath = "/store";
+    }
+  } else if (pageType === "collection") {
+    const pathHandle = path.split("/").filter(Boolean)[1];
+    const remaining = state.collection.filter(
+      (handle) => handle !== pathHandle,
+    );
+    state.collection = [];
+    if (remaining.length) {
+      state.collection = [...new Set([pathHandle, ...remaining])].sort((a, b) =>
+        a.localeCompare(b),
+      );
+      effectivePageType = "store";
+      targetPath = "/store";
+    }
+  }
+
+  const target = resolveCanonical({
+    pageType: effectivePageType,
+    path: targetPath,
+    state,
+    tracking,
+    passthrough,
+  });
+
+  // Compared as raw strings: the target is the canonical form of exactly these
+  // values, so ids/slugs, ordering, `page=1` and encoding all normalise in one
+  // hop — while re-parsing with URLSearchParams here would percent-encode the
+  // comma the target just emitted and send canonical URLs in circles.
+  const currentSearch = search.startsWith("?") ? search.slice(1) : search;
+  const targetSearch = target.search.replace(/^\?/, "");
+  if (target.path !== path || targetSearch !== currentSearch) return target;
+  return null;
+};
+
 export const onRequest = defineMiddleware(async (context, next) => {
   // Never redirect non-page requests (assets, dev internals, etc.)
   if (isStaticOrInternalPath(context.url.pathname)) {
@@ -132,7 +288,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   // Top-level page segments defined by `src/pages/[...locale]/`. Anything else
   // as a first segment (e.g. `/typo`) is not a route and must 404 rather than
-  // fall through to the catch-all landing page.
+  // fall through to the catch-all landing page — unless it is a category
+  // handle, which resolves to its own flat URL (see the branch below).
   const ROUTE_ROOTS = new Set([
     "store",
     "cart",
@@ -140,7 +297,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
     "privacy",
     "terms",
     "order",
+    // Reserved for their own routes: they must never resolve as categories.
+    "bo-suu-tap",
+    "khuyen-mai",
+    "tim-kiem",
+    "tai-khoan",
   ]);
+
+  // Segments after any locale prefix — the path the router actually matches.
+  let appSegments = segments;
 
   const regionMap = await getRegionMap();
 
@@ -157,8 +322,26 @@ export const onRequest = defineMiddleware(async (context, next) => {
       : context.url.protocol.replace(":", "");
   const origin = `${scheme}://${context.url.host}`;
 
-  const redirectTo = (path: string, status: 301 | 308 | 307 = 301) =>
-    context.redirect(`${origin}${path}${search}`, status);
+  const redirectTo = (
+    path: string,
+    status: 301 | 308 | 307 = 301,
+    searchOverride?: string,
+  ) => context.redirect(`${origin}${path}${searchOverride ?? search}`, status);
+
+  // No trailing slashes outside the homepage, and slugs stay lowercase:
+  // both are plain 301s, so `/store/` and `/Giay-Dep` never compete with the
+  // canonical form of the page. Medusa ids are the exception — lowercasing a
+  // `prod_…` reference turns it into an id the API cannot find, so those paths
+  // are left exactly as published.
+  if (pathname.length > 1 && /\/$/.test(pathname)) {
+    return redirectTo(pathname.replace(/\/+$/, ""));
+  }
+  if (
+    pathname !== pathname.toLowerCase() &&
+    !/\/prod_[A-Za-z0-9]/i.test(pathname)
+  ) {
+    return redirectTo(pathname.toLowerCase());
+  }
 
   let locale: Locale = DEFAULT_LOCALE;
 
@@ -174,16 +357,61 @@ export const onRequest = defineMiddleware(async (context, next) => {
       return redirectTo(target);
     }
     locale = firstSegment;
+    appSegments = rest;
   } else if (firstSegment && regionMap.has(firstSegment)) {
     // Legacy `/dk/store` market URLs → the market now lives in the cookie,
     // so drop the segment and keep the visitor on the equivalent page.
     const rest = segments.slice(1);
     return redirectTo(rest.length ? `/${rest.join("/")}` : "/");
   } else if (firstSegment && !ROUTE_ROOTS.has(firstSegment)) {
-    return new Response("Not Found", {
-      status: 404,
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
-    });
+    // Static routes already won above — what is left may only be a category
+    // handle (flat `/{handle}` or `/{parent}/{child}`), 301'd when it was
+    // renamed, and 404 for anything else.
+    let taxonomy: Taxonomy;
+    try {
+      taxonomy = await getTaxonomy();
+    } catch (error) {
+      console.error("taxonomy lookup failed", error);
+      return serviceUnavailable();
+    }
+
+    const resolution = resolveFlatPath(appSegments, taxonomy);
+    if (resolution.kind === "not-found") return notFound();
+    if (resolution.kind === "redirect") {
+      return redirectTo(resolution.path, 301, resolution.search);
+    }
+
+    const target = normalizeCatalogQuery(
+      `/${appSegments.join("/")}`,
+      search,
+      "category",
+      taxonomy,
+    );
+    if (target) return redirectTo(target.path, 301, target.search);
+  }
+
+  // Deeper-than-supported paths must 404 rather than fall through to the
+  // catch-all landing route (a soft 404 would be worse than no page).
+  if (appSegments.length > 2 && ROUTE_ROOTS.has(appSegments[0] ?? "")) {
+    return notFound();
+  }
+
+  // Catalogue query normalisation: ids become slugs, repeated keys and comma
+  // lists collapse into one sorted value, params are re-ordered into the
+  // canonical sequence, invalid values are dropped, and a single remaining
+  // filter 301s to its clean `/handle` or `/bo-suu-tap/handle` URL.
+  const appPath = `/${appSegments.join("/")}`;
+  const pageType = detectPageType(appSegments);
+  if (pageType && search) {
+    let taxonomy: Taxonomy;
+    try {
+      taxonomy = await getTaxonomy();
+    } catch (error) {
+      console.error("taxonomy lookup failed", error);
+      return serviceUnavailable();
+    }
+    const target = normalizeCatalogQuery(appPath, search, pageType, taxonomy);
+    if (target) return redirectTo(target.path, 301, target.search);
   }
 
   const cookieCountry = context.cookies.get("country")?.value;

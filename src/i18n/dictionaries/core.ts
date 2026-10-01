@@ -12,6 +12,10 @@ export const vi = {
 
   "common.unknownError": "Đã xảy ra lỗi không xác định",
   "common.loading": "Đang tải...",
+  "common.pageNotFound": "Không tìm thấy trang này",
+  "common.backToStore": "Quay lại cửa hàng",
+  "common.serviceUnavailable":
+    "Một lỗi tạm thời đã xảy ra. Vui lòng thử lại sau.",
 
   "nav.products": "Sản phẩm",
   "nav.cart": "Giỏ hàng",
@@ -131,6 +135,10 @@ export const en: typeof vi = {
 
   "common.unknownError": "Unknown error",
   "common.loading": "Loading...",
+  "common.pageNotFound": "Page not found",
+  "common.backToStore": "Back to the store",
+  "common.serviceUnavailable":
+    "Something went wrong temporarily. Please try again shortly.",
 
   "nav.products": "Products",
   "nav.cart": "Cart",

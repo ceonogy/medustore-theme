@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@medusajs/types": "^2.13.1",
+    "@types/node": "^26.6.3",
     "@types/react": "^19.2.13",
     "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^8.56.0",
