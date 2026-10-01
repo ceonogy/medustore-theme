@@ -7,7 +7,7 @@ import PlaceholderImage from "../thumbnail/PlaceholderImage.astro";
 import Price from "./Price.astro";
 
 interface Props {
-  id: string;
+  handle: string;
   variants: ProductVariant[];
   thumbnailUrl?: string;
   imageUrl?: string;
@@ -15,7 +15,8 @@ interface Props {
   priority?: boolean;
 }
 
-const { id, variants, thumbnailUrl, imageUrl, title, priority } = Astro.props;
+const { handle, variants, thumbnailUrl, imageUrl, title, priority } =
+  Astro.props;
 
 // The store page renders this card without a locale prop, so read it from the
 // request context Astro exposes to every component.
@@ -30,7 +31,7 @@ const image = thumbnailUrl || imageUrl;
 ---
 
 <a
-  href={localizePath(locale, `/store/${id}`)}
+  href={localizePath(locale, `/store/${handle}`)}
   class="product group flex h-full flex-col gap-4"
 >
   {/* square media + hover CTA, matching the reference template's cards */}

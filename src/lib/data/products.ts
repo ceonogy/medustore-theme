@@ -17,15 +17,37 @@ export const listProducts = async (regionId: string) => {
   }
 };
 
-export const retrieveProduct = async (productId: string, regionId: string) => {
+const PRODUCT_DETAIL_FIELDS =
+  "*variants.calculated_price,+variants.inventory_quantity,*variants.images,+metadata,+tags," +
+  "+material,+origin_country,+weight,+length,+width,+height,+type,+handle";
+
+/**
+ * Resolves a product from the route segment, which is either the SEO handle
+ * (`ao-so-mi-caro-co-dien`) or, for links published before the rename, the raw
+ * id (`prod_…`).
+ */
+export const retrieveProduct = async (productRef: string, regionId: string) => {
+  const query = {
+    region_id: regionId,
+    fields: PRODUCT_DETAIL_FIELDS,
+  };
+
   try {
-    const { product } = await sdk.store.product.retrieve(productId, {
-      region_id: regionId,
-      fields:
-        "*variants.calculated_price,+variants.inventory_quantity,*variants.images,+metadata,+tags," +
-        "+material,+origin_country,+weight,+length,+width,+height,+type",
+    if (productRef.startsWith("prod_")) {
+      const { product } = await sdk.store.product.retrieve(productRef, query);
+      return product;
+    }
+
+    const { products } = await sdk.store.product.list({
+      ...query,
+      handle: productRef,
+      limit: 1,
     });
-    return product;
+
+    if (!products?.[0]) {
+      throw new Error(`No product matches handle "${productRef}"`);
+    }
+    return products[0];
   } catch (error) {
     console.error(error);
     throw new Error("Failed to fetch product");

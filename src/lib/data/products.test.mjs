@@ -13,7 +13,7 @@ describe("product pagination", () => {
     assert.deepEqual(buildProductListQuery("reg_test", 0), {
       region_id: "reg_test",
       fields:
-        "id,title,thumbnail,*images,*variants.calculated_price,*categories,*collection",
+        "id,title,handle,thumbnail,*images,*variants.calculated_price,*categories,*collection",
       limit: 100,
       offset: 0,
     });

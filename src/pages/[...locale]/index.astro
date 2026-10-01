@@ -92,7 +92,7 @@ const features = [1, 2, 3, 4].map((n, index) => ({
                 style={`--reveal-delay: ${(index % 4) * 80}ms`}
               >
                 <ProductPreview
-                  id={product.id}
+                  handle={product.handle}
                   variants={product.variants ?? []}
                   thumbnailUrl={product.thumbnail ?? undefined}
                   imageUrl={product.images?.[0]?.url}

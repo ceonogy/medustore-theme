@@ -9,10 +9,11 @@ import { ProductActions } from "@modules/products/components/product-details/Pro
 import ProductAttributes from "@modules/products/components/product-details/ProductAttributes.astro";
 
 const { locale, countryCode } = Astro.locals;
-const { productId } = Astro.params;
+// The route segment is the product's SEO handle, e.g. `/store/ao-so-mi-caro-co-dien`.
+const { handle: productRef } = Astro.params;
 const t = useTranslations(locale);
 
-if (!productId) {
+if (!productRef) {
   return Astro.redirect("/not-found");
 }
 
@@ -26,10 +27,17 @@ let product: Awaited<ReturnType<typeof retrieveProduct>> | undefined;
 let error: Error | undefined;
 
 try {
-  product = await retrieveProduct(productId, region.id);
+  product = await retrieveProduct(productRef, region.id);
 } catch (e) {
   error = e instanceof Error ? e : new Error(t("common.unknownError"));
+  Astro.response.status = 404;
   console.error(error);
+}
+
+// Links published with the raw id keep working — permanently moved onto the
+// SEO-friendly URL so crawlers only ever see one canonical address.
+if (product?.handle && productRef !== product.handle) {
+  return Astro.redirect(`/store/${product.handle}`, 301);
 }
 
 const {
@@ -78,7 +86,7 @@ const { cheapestPrice } = getProductPrice({
           <ProductActions
             options={options ?? []}
             variants={variants ?? []}
-            productId={productId}
+            productId={product.id}
             regionId={region.id}
             locale={locale}
             client:visible

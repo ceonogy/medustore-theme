@@ -55,7 +55,7 @@ const filterableProducts = products.map((product) => ({
         products?.map((product, index) => (
           <li data-product-id={product.id}>
             <ProductPreview
-              id={product.id}
+              handle={product.handle}
               variants={product.variants ?? []}
               thumbnailUrl={product.thumbnail ?? undefined}
               imageUrl={product.images?.[0]?.url}
