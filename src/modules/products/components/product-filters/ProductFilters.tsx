@@ -6,7 +6,10 @@ import {
   type CatalogState,
   type PageType,
 } from "../../../../lib/utils/canonical-query";
+import type { PriceBounds } from "../../../../lib/utils/catalog";
+import { convertToLocale } from "../../../../lib/utils/money";
 import { useMemo, useState } from "react";
+import { PriceRange } from "./PriceRange";
 
 interface ProductFiltersProps {
   groups: FilterGroup[];
@@ -17,6 +20,8 @@ interface ProductFiltersProps {
   initialSearch: string;
   /** Server-computed result count of the current filter state. */
   totalCount: number;
+  /** Catalogue-wide price span anchoring the slider (null when unpriced). */
+  priceBounds: PriceBounds;
   locale?: Locale;
 }
 
@@ -60,6 +65,7 @@ export const ProductFilters = ({
   pageType,
   initialSearch,
   totalCount,
+  priceBounds,
   locale,
 }: ProductFiltersProps) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -87,16 +93,39 @@ export const ProductFilters = ({
 
   const activeCount = activeFacetCount(state);
 
-  const activePills = groups.flatMap((group) =>
+  const formatPrice = (value: number): string =>
+    convertToLocale({ amount: value, currencyCode: "VND" });
+
+  /** "450.000 ₫ – 1.200.000 ₫", or one-sided when only one bound is set. */
+  const priceLabel = (): string => {
+    const { price_min: min, price_max: max } = state;
+    if (min !== null && max !== null)
+      return `${formatPrice(min)} – ${formatPrice(max)}`;
+    if (min !== null)
+      return `${t("products.filters.priceFrom")} ${formatPrice(min)}`;
+    if (max !== null)
+      return `${t("products.filters.priceTo")} ${formatPrice(max)}`;
+    return t("products.filters.price");
+  };
+
+  const pills = groups.flatMap((group) =>
     state[group.key].map((value) => ({
-      key: group.key,
-      value,
+      key: `${group.key}:${value}`,
       label:
         group.options.find((option) => option.value === value)?.label ?? value,
+      href: hrefFor(toggle(group.key, value)),
     })),
   );
 
-  if (groups.length === 0 && activeCount === 0) {
+  if (state.price_min !== null || state.price_max !== null) {
+    pills.push({
+      key: "price",
+      label: priceLabel(),
+      href: hrefFor({ ...state, price_min: null, price_max: null, page: null }),
+    });
+  }
+
+  if (groups.length === 0 && activeCount === 0 && !priceBounds) {
     return null;
   }
 
@@ -161,14 +190,21 @@ export const ProductFilters = ({
             </div>
           </fieldset>
         ))}
+
+        <PriceRange
+          bounds={priceBounds}
+          state={state}
+          hrefFor={hrefFor}
+          locale={locale}
+        />
       </div>
 
-      {activePills.length > 0 && (
+      {pills.length > 0 && (
         <div className="mt-6 flex flex-wrap items-center gap-2">
-          {activePills.map((pill) => (
+          {pills.map((pill) => (
             <a
-              key={`${pill.key}-${pill.value}`}
-              href={hrefFor(toggle(pill.key, pill.value))}
+              key={pill.key}
+              href={pill.href}
               aria-label={t("products.filters.removeFilter", {
                 label: pill.label,
               })}

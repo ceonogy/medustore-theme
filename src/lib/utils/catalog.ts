@@ -48,6 +48,50 @@ export const maxAmount = (product: CatalogProduct): number | null => {
   return amounts.length ? Math.max(...amounts) : null;
 };
 
+export type PriceBounds = { min: number; max: number } | null;
+
+/**
+ * Catalogue-wide price span, used to anchor the slider on every listing page.
+ *
+ * Deliberately computed from the whole product set, not the current result:
+ * the handles must not jump around as other filters change (that would move
+ * the very prices the shopper is trying to set).
+ */
+export const priceBoundsOf = (products: CatalogProduct[]): PriceBounds => {
+  let min = Number.POSITIVE_INFINITY;
+  let max = Number.NEGATIVE_INFINITY;
+
+  for (const product of products) {
+    const amounts = amountsFor(product);
+    if (!amounts.length) continue;
+    min = Math.min(min, ...amounts);
+    max = Math.max(max, ...amounts);
+  }
+
+  return min === Number.POSITIVE_INFINITY ? null : { min, max };
+};
+
+/**
+ * A product matches a price range when at least one of its variant prices
+ * falls inside it — the rule shop sliders follow for multi-variant items (a
+ * shoe offered at 400k and 900k still belongs to a "from 500k" filter).
+ * Unpriced products drop out as soon as either bound is set: the range cannot
+ * place them.
+ */
+const priceInRange = (
+  product: CatalogProduct,
+  priceMin: number | null,
+  priceMax: number | null,
+): boolean => {
+  if (priceMin === null && priceMax === null) return true;
+
+  return amountsFor(product).some(
+    (amount) =>
+      (priceMin === null || amount >= priceMin) &&
+      (priceMax === null || amount <= priceMax),
+  );
+};
+
 const categoryHandles = (product: CatalogProduct): string[] =>
   (product.categories ?? []).map((category) => category.handle ?? category.id);
 
@@ -71,8 +115,14 @@ export const filterCatalog = <T extends CatalogProduct>(
   const collectionSelection = options.pathCollection
     ? [options.pathCollection, ...state.collection]
     : state.collection;
+  const { price_min: priceMin, price_max: priceMax } = state;
 
-  if (!categorySelection.length && !collectionSelection.length) {
+  if (
+    !categorySelection.length &&
+    !collectionSelection.length &&
+    priceMin === null &&
+    priceMax === null
+  ) {
     return products;
   }
 
@@ -89,7 +139,7 @@ export const filterCatalog = <T extends CatalogProduct>(
       if (!handle || !collectionSelection.includes(handle)) return false;
     }
 
-    return true;
+    return priceInRange(product, priceMin, priceMax);
   });
 };
 

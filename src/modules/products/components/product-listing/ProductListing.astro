@@ -2,6 +2,7 @@
 import type { HttpTypes } from "@medusajs/types";
 import { useTranslations } from "@i18n";
 import type { CatalogState, PageType } from "@lib/utils/canonical-query";
+import type { PriceBounds } from "@lib/utils/catalog";
 import type { FilterGroup } from "../../../../types/global";
 import { ProductFilters } from "@modules/products/components/product-filters/ProductFilters";
 import ProductPreview from "@modules/products/components/product-preview/ProductPreview.astro";
@@ -19,6 +20,7 @@ interface Props {
   totalCount: number;
   page: number;
   pageCount: number;
+  priceBounds: PriceBounds;
 }
 
 const {
@@ -31,6 +33,7 @@ const {
   totalCount,
   page,
   pageCount,
+  priceBounds,
 } = Astro.props;
 
 const { locale } = Astro.locals;
@@ -48,6 +51,7 @@ const gridClass =
     pageType={pageType}
     initialSearch={Astro.url.search}
     totalCount={totalCount}
+    priceBounds={priceBounds}
     locale={locale}
   />
 

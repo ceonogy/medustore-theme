@@ -5,6 +5,7 @@ import {
   buildFacetGroups,
   filterCatalog,
   paginateCatalog,
+  priceBoundsOf,
   sortCatalog,
 } from "./catalog.ts";
 
@@ -91,6 +92,63 @@ describe("filterCatalog", () => {
       }).map((item) => item.id),
       ["p1", "p3"],
     );
+  });
+});
+
+describe("price filtering", () => {
+  it("keeps products with a variant inside the range", () => {
+    assert.deepEqual(
+      filterCatalog(CATALOG, state({ price_min: 400000 })).map((p) => p.id),
+      ["p1", "p2"],
+    );
+    assert.deepEqual(
+      filterCatalog(CATALOG, state({ price_max: 250000 })).map((p) => p.id),
+      ["p2", "p3"],
+    );
+    // p2 spans 200k–900k but has no single variant between 400k and 800k.
+    assert.deepEqual(
+      filterCatalog(
+        CATALOG,
+        state({ price_min: 400000, price_max: 800000 }),
+      ).map((p) => p.id),
+      ["p1"],
+    );
+  });
+
+  it("ands the range with the facet selections", () => {
+    assert.deepEqual(
+      filterCatalog(
+        CATALOG,
+        state({ category: ["giay-dep"], price_min: 800000 }),
+      ).map((p) => p.id),
+      ["p2"],
+    );
+  });
+
+  it("drops unpriced products only while a bound is set", () => {
+    const withUnpriced = [...CATALOG, product("p5", { prices: [] })];
+
+    assert.ok(
+      filterCatalog(withUnpriced, emptyCatalogState()).some(
+        (p) => p.id === "p5",
+      ),
+    );
+    assert.ok(
+      !filterCatalog(withUnpriced, state({ price_min: 1 })).some(
+        (p) => p.id === "p5",
+      ),
+    );
+  });
+});
+
+describe("priceBoundsOf", () => {
+  it("spans every variant price in the catalogue", () => {
+    assert.deepEqual(priceBoundsOf(CATALOG), { min: 100000, max: 900000 });
+  });
+
+  it("is null when nothing is priced", () => {
+    assert.equal(priceBoundsOf([]), null);
+    assert.equal(priceBoundsOf([product("x", { prices: [] })]), null);
   });
 });
 

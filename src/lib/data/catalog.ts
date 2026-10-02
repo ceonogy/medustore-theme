@@ -9,8 +9,10 @@ import {
   buildFacetGroups,
   filterCatalog,
   paginateCatalog,
+  priceBoundsOf,
   sortCatalog,
   type CatalogOptions,
+  type PriceBounds,
 } from "../utils/catalog";
 import { listProducts } from "./products";
 import {
@@ -41,6 +43,8 @@ export type CatalogListing = {
   totalCount: number;
   page: number;
   pageCount: number;
+  /** Catalogue-wide price span anchoring the slider (null when unpriced). */
+  priceBounds: PriceBounds;
   /** The requested page lies past the last one → the route answers 404. */
   beyond: boolean;
 };
@@ -85,6 +89,7 @@ export const buildListing = async (
     totalCount: count,
     page,
     pageCount,
+    priceBounds: priceBoundsOf(all),
     beyond,
   };
 };
