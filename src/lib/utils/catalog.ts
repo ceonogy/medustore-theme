@@ -41,6 +41,8 @@ export type CatalogOptions = {
   primaryCategory?: string;
   /** Handle the URL path already selects (collection pages). */
   pathCollection?: string | null;
+  /** Product ids the URL path already selects (promotion pages). */
+  pathProducts?: Set<string> | null;
   /** Locale for data-shaped labels (country names), defaulting to Vietnamese. */
   locale?: string;
 };
@@ -190,8 +192,12 @@ export const filterCatalog = <T extends CatalogProduct>(
     ? [options.pathCollection, ...state.collection]
     : state.collection;
   const { price_min: priceMin, price_max: priceMax, size, origin } = state;
+  // An empty set is still a scope: a promotion with no live products must
+  // show none, not fall back to the whole catalogue.
+  const scope = options.pathProducts ?? null;
 
   if (
+    !scope &&
     !categorySelection.length &&
     !collectionSelection.length &&
     priceMin === null &&
@@ -203,6 +209,8 @@ export const filterCatalog = <T extends CatalogProduct>(
   }
 
   return products.filter((product) => {
+    if (scope && !scope.has(product.id ?? "")) return false;
+
     if (categorySelection.length) {
       const handles = categoryHandles(product);
       if (!categorySelection.some((handle) => handles.includes(handle))) {

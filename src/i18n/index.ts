@@ -11,6 +11,7 @@ import * as cart from "./dictionaries/cart";
 import * as checkout from "./dictionaries/checkout";
 import * as order from "./dictionaries/order";
 import * as products from "./dictionaries/products";
+import * as promotions from "./dictionaries/promotions";
 
 type Dict = Record<string, string>;
 
@@ -21,8 +22,22 @@ type Dict = Record<string, string>;
 const merge = (...dicts: Dict[]): Dict => Object.assign({}, ...dicts);
 
 const UI: Record<Locale, Dict> = {
-  vi: merge(core.vi, cart.vi, checkout.vi, order.vi, products.vi),
-  en: merge(core.en, cart.en, checkout.en, order.en, products.en),
+  vi: merge(
+    core.vi,
+    cart.vi,
+    checkout.vi,
+    order.vi,
+    products.vi,
+    promotions.vi,
+  ),
+  en: merge(
+    core.en,
+    cart.en,
+    checkout.en,
+    order.en,
+    products.en,
+    promotions.en,
+  ),
 };
 
 export const SUPPORTED_LOCALES = LOCALES;

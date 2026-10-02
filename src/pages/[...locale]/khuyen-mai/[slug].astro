@@ -1,0 +1,146 @@
+---
+import { localizePath, useTranslations } from "@i18n";
+import Layout from "@layouts/Layout.astro";
+import { buildListing, type CatalogListing } from "@lib/data/catalog";
+import { getRegion } from "@lib/data/regions";
+import { findPromotion, type Promotion } from "@lib/data/promotions";
+import NotFoundNotice from "@modules/layout/components/NotFoundNotice.astro";
+import ProductListing from "@modules/products/components/product-listing/ProductListing.astro";
+
+/**
+ * `/khuyen-mai/{slug-from-title}` — the slug is derived on the backend from
+ * the price list title, so a rename simply moves the page to its new URL.
+ * Unknown slugs are a real 404; a promotion whose window has closed stops
+ * existing in the same breath (its prices stop applying too).
+ */
+const { slug } = Astro.params;
+const { locale, countryCode } = Astro.locals;
+const t = useTranslations(locale);
+
+const unavailable = () =>
+  new Response(t("common.serviceUnavailable"), {
+    status: 503,
+    headers: {
+      "Retry-After": "30",
+      "Content-Type": "text/plain; charset=utf-8",
+    },
+  });
+
+let promotion: Promotion | null = null;
+try {
+  promotion = slug ? await findPromotion(slug) : null;
+} catch (error) {
+  console.error(error);
+  return unavailable();
+}
+
+let listing: CatalogListing | null = null;
+let description: string | undefined;
+
+if (!promotion) {
+  Astro.response.status = 404;
+} else {
+  try {
+    const region = await getRegion(countryCode);
+    if (!region) throw new Error(`No region resolves market "${countryCode}"`);
+
+    listing = await buildListing(region.id, Astro.url.search, {
+      pathProducts: new Set(promotion.product_ids),
+      locale,
+    });
+    if (listing.beyond) Astro.response.status = 404;
+
+    description =
+      promotion.description ||
+      t("promotions.listingIntro", { name: promotion.title });
+  } catch (error) {
+    console.error(error);
+    return unavailable();
+  }
+}
+
+const formatDate = (value: string | null): string | undefined => {
+  if (!value) return undefined;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return new Intl.DateTimeFormat(locale, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+};
+
+const startsAt = promotion ? formatDate(promotion.starts_at) : undefined;
+const endsAt = promotion ? formatDate(promotion.ends_at) : undefined;
+const dateLine =
+  startsAt || endsAt
+    ? [
+        startsAt && `${t("promotions.startsAt")}: ${startsAt}`,
+        endsAt && `${t("promotions.endsAt")}: ${endsAt}`,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : undefined;
+
+const showListing = Boolean(promotion && listing && !listing.beyond);
+const basePath = promotion ? `/khuyen-mai/${promotion.slug}` : "/khuyen-mai";
+---
+
+<Layout
+  title={promotion?.title ?? t("common.pageNotFound")}
+  description={description}
+>
+  <div class="wrap section">
+    {
+      showListing && listing && promotion ? (
+        <>
+          <nav
+            aria-label={t("products.breadcrumb.home")}
+            class="mb-5 flex flex-wrap items-center gap-1 text-sm text-gray-500"
+          >
+            <a
+              href={localizePath(locale, "/")}
+              class="hover:text-black hover:underline"
+            >
+              {t("products.breadcrumb.home")}
+            </a>
+            <span aria-hidden="true">/</span>
+            <a
+              href={localizePath(locale, "/khuyen-mai")}
+              class="hover:text-black hover:underline"
+            >
+              {t("promotions.title")}
+            </a>
+            <span aria-hidden="true">/</span>
+            <span aria-current="page" class="text-black">
+              {promotion.title}
+            </span>
+          </nav>
+
+          <h1 class="type-display mb-4">{promotion.title}</h1>
+          <p class="mb-8 max-w-3xl text-gray-600">
+            {description}
+            {dateLine && (
+              <span class="mt-2 block text-sm text-gray-500">{dateLine}</span>
+            )}
+          </p>
+
+          <ProductListing
+            products={listing.products}
+            suggestions={listing.suggestions}
+            groups={listing.groups}
+            state={listing.state}
+            pageType="promotion"
+            basePath={basePath}
+            totalCount={listing.totalCount}
+            page={listing.page}
+            pageCount={listing.pageCount}
+            priceBounds={listing.priceBounds}
+          />
+        </>
+      ) : (
+        <NotFoundNotice asHeading />
+      )
+    }
+  </div>
+</Layout>

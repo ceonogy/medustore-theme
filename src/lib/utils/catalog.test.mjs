@@ -444,3 +444,64 @@ describe("facetOptionLabel", () => {
     assert.equal(facetOptionLabel("category", "giay-dep"), "giay-dep");
   });
 });
+
+describe("promotion scope (pathProducts)", () => {
+  const scope = (...ids) => new Set(ids);
+
+  it("scopes to the promotion's products even with no other filter", () => {
+    assert.deepEqual(
+      filterCatalog(CATALOG, emptyCatalogState(), {
+        pathProducts: scope("p2", "p4"),
+      }).map((item) => item.id),
+      ["p2", "p4"],
+    );
+  });
+
+  it("ANDs the scope with the other selections", () => {
+    assert.deepEqual(
+      filterCatalog(CATALOG, state({ category: ["phu-kien"] }), {
+        pathProducts: scope("p2", "p3", "p4"),
+      }).map((item) => item.id),
+      ["p2", "p3"],
+    );
+    assert.deepEqual(
+      filterCatalog(CATALOG, state({ category: ["giay-dep"] }), {
+        pathProducts: scope("p3", "p4"),
+      }).map((item) => item.id),
+      [],
+    );
+  });
+
+  it("an empty promotion shows nothing instead of everything", () => {
+    assert.deepEqual(
+      filterCatalog(CATALOG, emptyCatalogState(), { pathProducts: new Set() }),
+      [],
+    );
+  });
+
+  it("no scope keeps behaving like before", () => {
+    assert.deepEqual(
+      filterCatalog(CATALOG, emptyCatalogState(), {
+        pathProducts: null,
+      }).map((item) => item.id),
+      ["p1", "p2", "p3", "p4"],
+    );
+  });
+
+  it("counts facets inside the promotion only", () => {
+    const groups = buildFacetGroups(CATALOG, emptyCatalogState(), {
+      pathProducts: scope("p1", "p2"),
+    });
+    const categories = groups.find((group) => group.key === "category");
+
+    // quan-nam belongs to p4, which is not in the promotion, so it is
+    // never offered; giay-dep keeps counting both in-scope matches.
+    assert.deepEqual(
+      categories.options.map((option) => [option.value, option.count]),
+      [
+        ["giay-dep", 2],
+        ["phu-kien", 1],
+      ],
+    );
+  });
+});

@@ -1,0 +1,175 @@
+---
+import { Image } from "astro:assets";
+import { localizePath, useTranslations } from "@i18n";
+import Layout from "@layouts/Layout.astro";
+import { listProducts } from "@lib/data/products";
+import { getRegion } from "@lib/data/regions";
+import { listPromotions } from "@lib/data/promotions";
+
+/**
+ * `/khuyen-mai` — the index of every promotion that is live right now
+ * (active price list inside its time window, data from the custom
+ * `GET /store/promotions` route). The list itself always answers 200; an
+ * empty catalogue of promotions is a quiet page, not a missing one.
+ */
+const { locale, countryCode } = Astro.locals;
+const t = useTranslations(locale);
+
+const unavailable = () =>
+  new Response(t("common.serviceUnavailable"), {
+    status: 503,
+    headers: {
+      "Retry-After": "30",
+      "Content-Type": "text/plain; charset=utf-8",
+    },
+  });
+
+let promotions: Awaited<ReturnType<typeof listPromotions>>;
+try {
+  promotions = await listPromotions();
+} catch (error) {
+  console.error(error);
+  return unavailable();
+}
+
+const formatDate = (value: string | null): string | undefined => {
+  if (!value) return undefined;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return new Intl.DateTimeFormat(locale, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+};
+
+// A price list carries no picture of its own, so each card borrows the
+// first image of its own products — the way the homepage collection cards
+// do. Decoration only: a failure here just leaves the text fallback.
+let thumbnailById = new Map<string, string>();
+if (promotions.length) {
+  try {
+    const region = await getRegion(countryCode);
+    const products = region ? await listProducts(region.id) : [];
+    const imageById = new Map(
+      products.map((product) => [product.id, product.thumbnail ?? ""]),
+    );
+    thumbnailById = new Map(
+      promotions.map((promotion) => [
+        promotion.id,
+        promotion.product_ids.map((id) => imageById.get(id)).find(Boolean) ??
+          "",
+      ]),
+    );
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+const cards = promotions.map((promotion) => {
+  const startsAt = formatDate(promotion.starts_at);
+  const endsAt = formatDate(promotion.ends_at);
+  const dateLine = [startsAt, endsAt].filter(Boolean).length
+    ? [
+        startsAt && `${t("promotions.startsAt")}: ${startsAt}`,
+        endsAt && `${t("promotions.endsAt")}: ${endsAt}`,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : undefined;
+
+  return {
+    href: localizePath(locale, `/khuyen-mai/${promotion.slug}`),
+    title: promotion.title,
+    description: promotion.description || undefined,
+    image: thumbnailById.get(promotion.id) || undefined,
+    count: promotion.product_ids.length,
+    dateLine,
+  };
+});
+---
+
+<Layout
+  title={t("promotions.title")}
+  description={t("promotions.metaDescription")}
+>
+  <div class="wrap section">
+    <nav
+      aria-label={t("products.breadcrumb.home")}
+      class="mb-5 flex flex-wrap items-center gap-1 text-sm text-gray-500"
+    >
+      <a
+        href={localizePath(locale, "/")}
+        class="hover:text-black hover:underline"
+      >
+        {t("products.breadcrumb.home")}
+      </a>
+      <span aria-hidden="true">/</span>
+      <span aria-current="page" class="text-black">
+        {t("promotions.title")}
+      </span>
+    </nav>
+
+    <h1 class="type-display mb-4">{t("promotions.title")}</h1>
+    <p class="mb-8 max-w-3xl text-gray-600">{t("promotions.intro")}</p>
+
+    {
+      cards.length === 0 ? (
+        <p class="text-gray-600">{t("promotions.empty")}</p>
+      ) : (
+        <div class="grid gap-6 tablet:grid-cols-3 tablet:gap-8">
+          {cards.map((card, index) => (
+            <a
+              href={card.href}
+              class="group reveal"
+              data-reveal
+              style={`--reveal-delay: ${index * 80}ms`}
+            >
+              <span class="relative block aspect-[3/4] overflow-hidden rounded-xl bg-fog">
+                {card.image ? (
+                  <Image
+                    src={card.image}
+                    width={720}
+                    height={960}
+                    alt={t("promotions.imageAlt", { name: card.title })}
+                    widths={[360, 540, 720]}
+                    sizes="(max-width: 809px) 100vw, 33vw"
+                    format="webp"
+                    quality={55}
+                    class="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
+                  />
+                ) : (
+                  <span class="flex h-full w-full items-center justify-center text-muted">
+                    {card.title}
+                  </span>
+                )}
+              </span>
+              <span class="type-label mt-4 flex items-center justify-between">
+                {card.title}
+                <span
+                  aria-hidden="true"
+                  class="transition-transform duration-300 group-hover:translate-x-1"
+                >
+                  →
+                </span>
+              </span>
+              {card.description && (
+                <span class="type-body mt-1 block text-muted">
+                  {card.description}
+                </span>
+              )}
+              <span class="mt-2 block text-sm text-muted">
+                {card.dateLine && <span class="block">{card.dateLine}</span>}
+                <span class="block">
+                  {card.count === 1
+                    ? t("promotions.itemsSingular", { count: card.count })
+                    : t("promotions.itemsPlural", { count: card.count })}
+                </span>
+              </span>
+            </a>
+          ))}
+        </div>
+      )
+    }
+  </div>
+</Layout>
