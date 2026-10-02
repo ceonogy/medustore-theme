@@ -48,6 +48,7 @@ if (!node) {
 
     listing = await buildListing(region.id, Astro.url.search, {
       pathCollection: node.handle,
+      locale,
     });
     if (listing.beyond) Astro.response.status = 404;
 

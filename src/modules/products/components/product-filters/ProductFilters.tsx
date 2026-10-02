@@ -1,12 +1,14 @@
 import { useTranslations, type Locale } from "@i18n";
 import type { FilterGroup, FilterKey } from "../../../../types/global";
 import {
+  compareSizes,
   normalizeSearch,
   resolveCanonical,
   type CatalogState,
   type PageType,
 } from "../../../../lib/utils/canonical-query";
 import type { PriceBounds } from "../../../../lib/utils/catalog";
+import { facetOptionLabel } from "../../../../lib/utils/catalog";
 import { convertToLocale } from "../../../../lib/utils/money";
 import { useMemo, useState } from "react";
 import { PriceRange } from "./PriceRange";
@@ -29,6 +31,8 @@ interface ProductFiltersProps {
 const GROUP_LABEL_KEYS: Record<FilterKey, string> = {
   category: "products.filters.category",
   collection: "products.filters.collection",
+  size: "products.filters.size",
+  origin: "products.filters.origin",
 };
 
 /**
@@ -84,9 +88,13 @@ export const ProductFilters = ({
 
   const toggle = (key: FilterKey, value: string): CatalogState => {
     const current = state[key];
+    // Sizes keep their canonical magnitude order (40 before s before m) so
+    // the state mirrors what the URL round-trip would produce.
     const nextValues = current.includes(value)
       ? current.filter((item) => item !== value)
-      : [...current, value].sort((a, b) => a.localeCompare(b));
+      : [...current, value].sort((a, b) =>
+          key === "size" ? compareSizes(a, b) : a.localeCompare(b, "vi"),
+        );
 
     return { ...state, [key]: nextValues, page: null };
   };
@@ -111,8 +119,11 @@ export const ProductFilters = ({
   const pills = groups.flatMap((group) =>
     state[group.key].map((value) => ({
       key: `${group.key}:${value}`,
+      // A selection can outlive its option (the path scope may not carry it),
+      // so the label falls back to the value's own rendering.
       label:
-        group.options.find((option) => option.value === value)?.label ?? value,
+        group.options.find((option) => option.value === value)?.label ??
+        facetOptionLabel(group.key, value, locale),
       href: hrefFor(toggle(group.key, value)),
     })),
   );

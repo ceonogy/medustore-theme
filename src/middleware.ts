@@ -11,9 +11,12 @@ import {
   getTaxonomy,
   resolveCategoryHandle,
   resolveCollectionHandle,
+  resolveOriginValue,
+  resolveSizeValue,
   type Taxonomy,
 } from "./lib/data/taxonomy";
 import {
+  ACTIVE_FILTER_PARAMS,
   normalizeSearch,
   resolveCanonical,
   type PageType,
@@ -203,6 +206,12 @@ const normalizeCatalogQuery = (
   const { state, tracking, passthrough } = normalizeSearch(search, {
     resolveCategory: (value) => resolveCategoryHandle(taxonomy, value),
     resolveCollection: (value) => resolveCollectionHandle(taxonomy, value),
+    // Sizes and origins validate against the catalogue vocabulary (also
+    // harvested by the taxonomy call above), so an unknown value leaves the
+    // URL in one 301 rather than rendering a page that never filtered.
+    resolveSize: (value) => resolveSizeValue(taxonomy, value),
+    resolveOrigin: (value) => resolveOriginValue(taxonomy, value),
+    supported: ACTIVE_FILTER_PARAMS,
   });
 
   let effectivePageType: PageType = pageType;

@@ -113,6 +113,7 @@ export const buildCategoryPage = async (
   taxonomy: Taxonomy,
   categoryHandle: string,
   parentHandle?: string,
+  locale?: string,
 ): Promise<CategoryPageData | null> => {
   const node = taxonomy.categoryByHandle.get(categoryHandle);
   if (!node) return null;
@@ -127,6 +128,7 @@ export const buildCategoryPage = async (
   const listing = await buildListing(regionId, search, {
     pathCategories: categoryPathHandles(taxonomy, node.handle),
     primaryCategory: node.handle,
+    locale,
   });
 
   return {

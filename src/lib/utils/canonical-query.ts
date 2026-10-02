@@ -30,6 +30,23 @@ export type FilterParamKey = (typeof FILTER_PARAM_ORDER)[number];
 export const SORT_VALUES = ["newest", "price_asc", "price_desc"] as const;
 export type SortValue = (typeof SORT_VALUES)[number];
 
+/**
+ * Filter params the storefront can actually honour today. The rest of
+ * FILTER_PARAM_ORDER has no facet behind it yet, so the middleware drops
+ * those values rather than rendering an unfiltered page under a filtered URL
+ * (the "never 200 with an invalid value" rule of the contract).
+ */
+export const ACTIVE_FILTER_PARAMS = [
+  "category",
+  "collection",
+  "price_min",
+  "price_max",
+  "size",
+  "origin",
+  "sort",
+  "page",
+] as const;
+
 /** Path kinds that accept catalogue filter parameters. */
 export type PageType = "store" | "category" | "collection" | "promotion";
 
@@ -142,6 +159,25 @@ export type NormalizedSearch = {
   hasFilterParams: boolean;
 };
 
+export type SearchResolvers = {
+  resolveCategory: (value: string) => string | null;
+  resolveCollection: (value: string) => string | null;
+  /**
+   * Validating lookups for the multiselect attributes; without one a value is
+   * simply accepted in lower case (the island only ever sees values the
+   * server already accepted, so it needs no catalogue).
+   */
+  resolveSize?: (value: string) => string | null;
+  resolveOrigin?: (value: string) => string | null;
+  /**
+   * The params this caller can honour. A managed param left out of the list
+   * normalises its state slot to empty, so its value drops out of the
+   * canonical URL (301) instead of rendering results it never filtered.
+   * Omitted = every param is honoured.
+   */
+  supported?: readonly FilterParamKey[];
+};
+
 /**
  * Reads a query string into a validated state:
  * repeated keys *and* comma lists, ids resolved through the taxonomy,
@@ -149,47 +185,79 @@ export type NormalizedSearch = {
  */
 export const normalizeSearch = (
   search: string,
-  resolvers: {
-    resolveCategory: (value: string) => string | null;
-    resolveCollection: (value: string) => string | null;
-  },
+  resolvers: SearchResolvers,
 ): NormalizedSearch => {
   const params = new URLSearchParams(search);
   const state = emptyCatalogState();
 
   const hasFilterParams = FILTER_PARAM_ORDER.some((key) => params.has(key));
-
-  state.category = dedupeSorted(
-    readRawList(params, "category")
-      .map(throughTaxonomy(resolvers.resolveCategory))
-      .filter((value): value is string => Boolean(value)),
+  const supported = new Set<FilterParamKey>(
+    resolvers.supported ?? FILTER_PARAM_ORDER,
   );
-  state.collection = dedupeSorted(
-    readRawList(params, "collection")
-      .map(throughTaxonomy(resolvers.resolveCollection))
-      .filter((value): value is string => Boolean(value)),
-  );
+  const resolveSize =
+    resolvers.resolveSize ?? ((value: string) => value.toLowerCase());
+  const resolveOrigin =
+    resolvers.resolveOrigin ?? ((value: string) => value.toLowerCase());
 
-  let priceMin = parseAmount(params.get("price_min"));
-  let priceMax = parseAmount(params.get("price_max"));
+  state.category = supported.has("category")
+    ? dedupeSorted(
+        readRawList(params, "category")
+          .map(throughTaxonomy(resolvers.resolveCategory))
+          .filter((value): value is string => Boolean(value)),
+      )
+    : [];
+  state.collection = supported.has("collection")
+    ? dedupeSorted(
+        readRawList(params, "collection")
+          .map(throughTaxonomy(resolvers.resolveCollection))
+          .filter((value): value is string => Boolean(value)),
+      )
+    : [];
+
+  let priceMin = supported.has("price_min")
+    ? parseAmount(params.get("price_min"))
+    : null;
+  let priceMax = supported.has("price_max")
+    ? parseAmount(params.get("price_max"))
+    : null;
   if (priceMin !== null && priceMax !== null && priceMin > priceMax) {
     [priceMin, priceMax] = [priceMax, priceMin];
   }
   state.price_min = priceMin;
   state.price_max = priceMax;
 
-  state.size = [...new Set(readList(params, "size"))].sort(compareSizes);
-  state.origin = dedupeSorted(readList(params, "origin"));
-  state.color = dedupeSorted(readList(params, "color"));
-  state.brand = dedupeSorted(readList(params, "brand"));
+  state.size = supported.has("size")
+    ? [
+        ...new Set(
+          readRawList(params, "size")
+            .map(throughTaxonomy(resolveSize))
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ].sort(compareSizes)
+    : [];
+  state.origin = supported.has("origin")
+    ? dedupeSorted(
+        readRawList(params, "origin")
+          .map(throughTaxonomy(resolveOrigin))
+          .filter((value): value is string => Boolean(value)),
+      )
+    : [];
+  state.color = supported.has("color")
+    ? dedupeSorted(readList(params, "color"))
+    : [];
+  state.brand = supported.has("brand")
+    ? dedupeSorted(readList(params, "brand"))
+    : [];
 
-  state.sale = parseSaleFlag(params, "sale");
-  state.in_stock = parseSaleFlag(params, "in_stock");
+  state.sale = supported.has("sale") && parseSaleFlag(params, "sale");
+  state.in_stock =
+    supported.has("in_stock") && parseSaleFlag(params, "in_stock");
 
   // `newest` is the default order — asking for it explicitly is redundant, so
   // it normalises away and `?sort=newest` 301s onto the clean URL.
   const sort = params.get("sort")?.trim().toLowerCase();
   state.sort =
+    supported.has("sort") &&
     sort &&
     sort !== "newest" &&
     (SORT_VALUES as readonly string[]).includes(sort)
@@ -197,7 +265,8 @@ export const normalizeSearch = (
       : null;
 
   const page = Number.parseInt(params.get("page") ?? "", 10);
-  state.page = Number.isFinite(page) && page > 1 ? page : null;
+  state.page =
+    supported.has("page") && Number.isFinite(page) && page > 1 ? page : null;
 
   const managed = new Set<string>(FILTER_PARAM_ORDER);
   const tracking: [string, string][] = [];

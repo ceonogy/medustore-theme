@@ -1,11 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import { sdk } from "@lib/sdk";
+import { originOf, sizeValuesOf } from "@lib/utils/catalog";
+import type { ProductVariant } from "../../types/global";
 
 /**
  * Server-side snapshot of the catalogue taxonomy: handle ↔ id maps for
- * categories, collections and products, plus a persisted history of handles
- * that were renamed so old URLs can 301 to their replacement.
+ * categories, collections and products, a persisted history of handles
+ * that were renamed so old URLs can 301 to their replacement, and the
+ * vocabulary the filter URL accepts (every size and origin the shop carries).
  *
  * Everything is cached for a minute — middleware runs on every page request
  * and must not turn into an N+1 against Medusa. The history file lives in
@@ -43,6 +46,10 @@ export type Taxonomy = {
   /** Collections that currently carry at least one product. */
   collectionIdsWithProducts: Set<string>;
   productHandleById: Map<string, string>;
+  /** Every size the catalogue offers (lowercase — the canonical URL form). */
+  sizeValues: Set<string>;
+  /** Every ISO-2 origin the catalogue offers (lowercase). */
+  originValues: Set<string>;
   /** renamed handle -> current handle, per entity kind. */
   legacy: {
     category: Map<string, string>;
@@ -145,17 +152,26 @@ type CollectionRow = {
   metadata?: Record<string, unknown> | null;
 };
 
-/** Pages through the light product projection used for handle history. */
-const listLightProducts = async (): Promise<
-  { id: string; handle: string; collection_id: string | null }[]
-> => {
-  const all: { id: string; handle: string; collection_id: string | null }[] =
-    [];
+/** A product projection light enough to page through for taxonomy purposes. */
+type LightProduct = {
+  id: string;
+  handle: string;
+  collection_id: string | null;
+  origin_country?: string | null;
+  options?: { id: string; title?: string | null }[] | null;
+  variants?: ProductVariant[] | null;
+};
+
+/** Pages through the light product projection used for handle history — it
+ *  also carries the attributes that make up the filter vocabulary. */
+const listLightProducts = async (): Promise<LightProduct[]> => {
+  const all: LightProduct[] = [];
   let offset = 0;
 
   for (;;) {
     const { products, count } = await sdk.store.product.list({
-      fields: "id,handle,collection_id,*collection",
+      fields:
+        "id,handle,collection_id,*collection,origin_country,*options,*variants.options",
       limit: PAGE_SIZE,
       offset,
     });
@@ -165,6 +181,9 @@ const listLightProducts = async (): Promise<
           id: string;
           handle?: string | null;
           collection_id?: string | null;
+          origin_country?: string | null;
+          options?: { id: string; title?: string | null }[] | null;
+          variants?: ProductVariant[] | null;
         }) => ({
           id: product.id,
           handle: product.handle ?? "",
@@ -173,6 +192,9 @@ const listLightProducts = async (): Promise<
             (product as { collection?: { id?: string } | null }).collection
               ?.id ??
             null,
+          origin_country: product.origin_country ?? null,
+          options: product.options ?? null,
+          variants: product.variants ?? null,
         }),
       ),
     );
@@ -250,10 +272,17 @@ const loadTaxonomy = async (): Promise<Taxonomy> => {
 
   const productHandleById = new Map<string, string>();
   const collectionIdsWithProducts = new Set<string>();
+  const sizeValues = new Set<string>();
+  const originValues = new Set<string>();
   lightProducts.forEach((product) => {
     if (product.handle) productHandleById.set(product.id, product.handle);
     if (product.collection_id)
       collectionIdsWithProducts.add(product.collection_id);
+    // The filter vocabulary — every size/origin a `?size=`/`?origin=` value
+    // may name, harvested during the pass that already reads all products.
+    sizeValuesOf(product).forEach((value) => sizeValues.add(value));
+    const origin = originOf(product);
+    if (origin) originValues.add(origin);
   });
 
   const history = readHistoryFile();
@@ -273,6 +302,8 @@ const loadTaxonomy = async (): Promise<Taxonomy> => {
     collectionHandleById,
     collectionIdsWithProducts,
     productHandleById,
+    sizeValues,
+    originValues,
     legacy: {
       category: toLegacyMap(history, "category"),
       collection: toLegacyMap(history, "collection"),
@@ -324,6 +355,21 @@ export const resolveCollectionHandle = (
   }
   return null;
 };
+
+/**
+ * Size/origin values the catalogue carries. The sets are lowercase, and
+ * `throughTaxonomy` in front of these resolvers gives a hand-typed `?size=XL`
+ * one retry in lower case — so the canonical URL is always the lowercase form.
+ */
+export const resolveSizeValue = (
+  taxonomy: Taxonomy,
+  value: string,
+): string | null => (taxonomy.sizeValues.has(value) ? value : null);
+
+export const resolveOriginValue = (
+  taxonomy: Taxonomy,
+  value: string,
+): string | null => (taxonomy.originValues.has(value) ? value : null);
 
 /** The path handle plus every descendant handle — what a category URL covers. */
 export const categoryPathHandles = (

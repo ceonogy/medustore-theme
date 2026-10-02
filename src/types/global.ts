@@ -11,9 +11,17 @@ export type ProductVariant = {
       price_list_type: string | null;
     };
   };
+  /** Variant options carry the size vocabulary (value + owning option). */
+  options?:
+    | {
+        value?: string | null;
+        option_id?: string | null;
+        option?: { title?: string | null } | null;
+      }[]
+    | null;
 };
 
-export type FilterKey = "category" | "collection";
+export type FilterKey = "category" | "collection" | "size" | "origin";
 
 export type FilterOption = {
   value: string;

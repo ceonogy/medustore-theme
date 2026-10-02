@@ -18,7 +18,7 @@ try {
   }
   // The middleware already canonicalised the query string, so this renders the
   // filter state it validated (or the unfiltered page when there is none).
-  listing = await buildListing(region.id, Astro.url.search);
+  listing = await buildListing(region.id, Astro.url.search, { locale });
 } catch (error) {
   // Medusa unreachable is a temporary failure, never a 404.
   console.error(error);

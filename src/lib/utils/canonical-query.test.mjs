@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  ACTIVE_FILTER_PARAMS,
   compareSizes,
   emptyCatalogState,
   normalizeSearch,
@@ -86,6 +87,38 @@ describe("normalizeSearch", () => {
     assert.deepEqual(passthrough, [["ref", "partner"]]);
     assert.equal(hasFilterParams, true);
     assert.equal(search("?utm_source=fb").hasFilterParams, false);
+  });
+
+  it("validates size and origin through the catalogue vocabulary", () => {
+    const { state } = normalizeSearch("?size=40,XL,banana&origin=VN,jp", {
+      ...resolvers,
+      resolveSize: (value) => (["40", "xl"].includes(value) ? value : null),
+      resolveOrigin: (value) => (value === "vn" ? value : null),
+    });
+
+    // Unknown values drop out (their URL 301s onto the clean one), known ones
+    // arrive canonicalised: lower case, deduped, in natural size order.
+    assert.deepEqual(state.size, ["40", "xl"]);
+    assert.deepEqual(state.origin, ["vn"]);
+  });
+
+  it("accepts lower-case sizes without a validator (the island's view)", () => {
+    const { state } = search("?size=XL&origin=VN");
+    assert.deepEqual(state.size, ["xl"]);
+    assert.deepEqual(state.origin, ["vn"]);
+  });
+
+  it("normalises params with no facet behind them away", () => {
+    const { state } = normalizeSearch(
+      "?color=red&brand=nike&sale=true&in_stock=true&size=40",
+      { ...resolvers, supported: ACTIVE_FILTER_PARAMS },
+    );
+
+    assert.deepEqual(state.color, []);
+    assert.deepEqual(state.brand, []);
+    assert.equal(state.sale, false);
+    assert.equal(state.in_stock, false);
+    assert.deepEqual(state.size, ["40"]);
   });
 });
 
@@ -175,6 +208,19 @@ describe("serializeCatalogState", () => {
 
   it("omits everything that is not set", () => {
     assert.equal(serializeCatalogState(emptyCatalogState()), "");
+  });
+
+  it("re-sorts size and origin into canonical form on the way out", () => {
+    const state = emptyCatalogState();
+    state.price_min = 100000;
+    state.size = ["s", "40"];
+    state.origin = ["vn", "cn"];
+    state.sort = "price_asc";
+
+    assert.equal(
+      serializeCatalogState(state),
+      "price_min=100000&size=40,s&origin=cn,vn&sort=price_asc",
+    );
   });
 });
 

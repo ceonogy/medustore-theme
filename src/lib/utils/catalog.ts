@@ -1,5 +1,13 @@
-import type { FilterGroup, ProductVariant } from "../../types/global";
-import type { CatalogState, SortValue } from "./canonical-query";
+import type {
+  FilterGroup,
+  FilterKey,
+  ProductVariant,
+} from "../../types/global";
+import {
+  compareSizes,
+  type CatalogState,
+  type SortValue,
+} from "./canonical-query.ts";
 
 /**
  * Server-side catalogue logic: filter, sort, paginate and count.
@@ -18,8 +26,11 @@ export const CATALOG_PAGE_SIZE = 12;
 export type CatalogProduct = {
   id?: string;
   created_at?: string | Date | null;
+  origin_country?: string | null;
   categories?: { id: string; name: string; handle?: string | null }[] | null;
   collection?: { id: string; title: string; handle?: string | null } | null;
+  /** Product-level options: the id → title lookup for variant options. */
+  options?: { id: string; title?: string | null }[] | null;
   variants?: ProductVariant[] | null;
 };
 
@@ -30,6 +41,8 @@ export type CatalogOptions = {
   primaryCategory?: string;
   /** Handle the URL path already selects (collection pages). */
   pathCollection?: string | null;
+  /** Locale for data-shaped labels (country names), defaulting to Vietnamese. */
+  locale?: string;
 };
 
 const amountsFor = (product: CatalogProduct): number[] =>
@@ -99,6 +112,67 @@ const collectionHandle = (product: CatalogProduct): string | null =>
   product.collection?.handle ?? product.collection?.id ?? null;
 
 /**
+ * Option titles the catalogue uses for sizes. Live products say "Kích cỡ";
+ * the English "Size" only appears on non-visible products, but is matched
+ * anyway so publishing one later cannot silently break the facet.
+ */
+const SIZE_OPTION_TITLES = new Set(["kích cỡ", "size"]);
+
+const isSizeTitle = (title: string | null | undefined): boolean =>
+  Boolean(title && SIZE_OPTION_TITLES.has(title.toLowerCase()));
+
+/** The size values a product offers, in canonical (lowercase) URL form. */
+export const sizeValuesOf = (product: CatalogProduct): string[] => {
+  const titleByOptionId = new Map(
+    (product.options ?? []).map((option) => [option.id, option.title]),
+  );
+  const values = new Set<string>();
+
+  for (const variant of product.variants ?? []) {
+    for (const option of variant.options ?? []) {
+      const title =
+        option.option?.title ?? titleByOptionId.get(option.option_id ?? "");
+      if (!isSizeTitle(title) || !option.value) continue;
+      values.add(option.value.toLowerCase());
+    }
+  }
+
+  return [...values];
+};
+
+/** The product's ISO-2 origin in lowercase, or null when it carries none. */
+export const originOf = (product: CatalogProduct): string | null => {
+  const origin = product.origin_country?.trim().toLowerCase();
+  return origin || null;
+};
+
+/**
+ * How a facet value reads in the UI.
+ *
+ * Country names come from the platform's locale-aware region lookup — the
+ * exact call the product detail page makes — so the facet and the attribute
+ * table can never disagree. Letter sizes get their natural casing.
+ */
+export const facetOptionLabel = (
+  key: FilterKey,
+  value: string,
+  locale?: string,
+): string => {
+  if (key === "origin") {
+    try {
+      const name = new Intl.DisplayNames([locale ?? "vi"], {
+        type: "region",
+      }).of(value.toUpperCase());
+      return name || value;
+    } catch {
+      return value;
+    }
+  }
+  if (key === "size") return /^\d+$/.test(value) ? value : value.toUpperCase();
+  return value;
+};
+
+/**
  * OR inside a facet group, AND across groups — the behaviour shoppers expect
  * from faceted navigation. `pathCategories`/`pathCollection` act as an extra
  * selection that the query string cannot remove (it lives in the URL path).
@@ -115,13 +189,15 @@ export const filterCatalog = <T extends CatalogProduct>(
   const collectionSelection = options.pathCollection
     ? [options.pathCollection, ...state.collection]
     : state.collection;
-  const { price_min: priceMin, price_max: priceMax } = state;
+  const { price_min: priceMin, price_max: priceMax, size, origin } = state;
 
   if (
     !categorySelection.length &&
     !collectionSelection.length &&
     priceMin === null &&
-    priceMax === null
+    priceMax === null &&
+    !size.length &&
+    !origin.length
   ) {
     return products;
   }
@@ -137,6 +213,17 @@ export const filterCatalog = <T extends CatalogProduct>(
     if (collectionSelection.length) {
       const handle = collectionHandle(product);
       if (!handle || !collectionSelection.includes(handle)) return false;
+    }
+
+    // Products without the attribute can never match a selection of it —
+    // a bag has no size, and a product with no origin is unplaceable.
+    if (size.length) {
+      const sizes = sizeValuesOf(product);
+      if (!size.some((value) => sizes.includes(value))) return false;
+    }
+    if (origin.length) {
+      const productOrigin = originOf(product);
+      if (!productOrigin || !origin.includes(productOrigin)) return false;
     }
 
     return priceInRange(product, priceMin, priceMax);
@@ -246,6 +333,8 @@ export const buildFacetGroups = <T extends CatalogProduct>(
     { ...state, collection: [] },
     options,
   );
+  const sizeBase = filterCatalog(products, { ...state, size: [] }, options);
+  const originBase = filterCatalog(products, { ...state, origin: [] }, options);
 
   // The page itself is the path selection: it cannot be toggled off from its
   // own facet, so its handle never appears as an option of that facet.
@@ -270,16 +359,51 @@ export const buildFacetGroups = <T extends CatalogProduct>(
     (product) => product.collection?.title ?? "",
   );
 
+  const sizes = tally(
+    sizeBase,
+    (product) => sizeValuesOf(product),
+    (_product, value) => facetOptionLabel("size", value),
+  );
+
+  const origins = tally(
+    originBase,
+    (product) => {
+      const origin = originOf(product);
+      return origin ? [origin] : [];
+    },
+    (_product, value) => facetOptionLabel("origin", value, options.locale),
+  );
+
   const toOptions = (
     source: Map<string, { label: string; count: number }>,
-  ): FilterGroup["options"] =>
-    [...source.entries()]
-      .map(([value, { label, count }]) => ({ value, label, count }))
-      .sort((a, b) => a.label.localeCompare(b.label, "vi"));
+    key: FilterKey,
+  ): FilterGroup["options"] => {
+    const options = [...source.entries()].map(([value, { label, count }]) => ({
+      value,
+      label,
+      count,
+    }));
+    // Sizes order by magnitude (30 < 40 < S < M < L) — labels would sort
+    // them alphabetically; every other group reads alphabetically by label.
+    if (key === "size") {
+      return options.sort((a, b) => compareSizes(a.value, b.value));
+    }
+    return options.sort((a, b) => a.label.localeCompare(b.label, "vi"));
+  };
 
   const groups: FilterGroup[] = [
-    { key: "category", label: "Category", options: toOptions(categories) },
-    { key: "collection", label: "Collection", options: toOptions(collections) },
+    {
+      key: "category",
+      label: "Category",
+      options: toOptions(categories, "category"),
+    },
+    {
+      key: "collection",
+      label: "Collection",
+      options: toOptions(collections, "collection"),
+    },
+    { key: "size", label: "Size", options: toOptions(sizes, "size") },
+    { key: "origin", label: "Origin", options: toOptions(origins, "origin") },
   ];
 
   return groups.filter((group) => group.options.length > 0);
