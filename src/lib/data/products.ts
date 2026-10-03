@@ -36,7 +36,10 @@ const isNotFoundResponse = (error: unknown): boolean =>
 
 const PRODUCT_DETAIL_FIELDS =
   "*variants.calculated_price,+variants.inventory_quantity,*variants.images,+metadata,+tags," +
-  "+material,+origin_country,+weight,+length,+width,+height,+type,+handle";
+  "+material,+origin_country,+weight,+length,+width,+height,+type,+handle," +
+  // Crumbs for the page's structured data: the owning category (with its
+  // parent, for two-level URLs) and the collection shown on the breadcrumb.
+  "*categories,*collection";
 
 /**
  * Resolves a product from the route segment, which is either the SEO handle

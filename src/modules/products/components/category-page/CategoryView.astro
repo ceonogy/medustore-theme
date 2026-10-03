@@ -2,6 +2,8 @@
 import { localizePath, useTranslations } from "@i18n";
 import Layout from "@layouts/Layout.astro";
 import type { CategoryPageData } from "@lib/data/catalog";
+import { breadcrumbJsonLd, itemListJsonLd } from "@lib/utils/seo";
+import JsonLd from "@modules/layout/components/JsonLd.astro";
 import NotFoundNotice from "@modules/layout/components/NotFoundNotice.astro";
 import ProductListing from "@modules/products/components/product-listing/ProductListing.astro";
 
@@ -20,12 +22,39 @@ const description = data
   : undefined;
 
 const showListing = Boolean(data && !data.listing.beyond);
+
+const origin = Astro.site?.origin ?? Astro.url.origin;
+// Structured data mirrors the visible breadcrumb and the rendered grid.
+const structuredData =
+  showListing && data
+    ? [
+        breadcrumbJsonLd(
+          [
+            { name: t("products.breadcrumb.home"), path: "/" },
+            ...(data.parent
+              ? [{ name: data.parent.name, path: `/${data.parent.handle}` }]
+              : []),
+            { name: data.node.name, path: data.basePath },
+          ],
+          origin,
+        ),
+        itemListJsonLd(
+          data.listing.products.map((product) => ({
+            name: product.title,
+            path: `/store/${product.handle}`,
+          })),
+          origin,
+        ),
+      ]
+    : null;
 ---
 
 <Layout
   title={data?.node.name ?? t("common.pageNotFound")}
   description={description}
+  noindex={!showListing}
 >
+  {structuredData && <JsonLd data={structuredData} />}
   <div class="wrap section">
     {
       showListing && data ? (

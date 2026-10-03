@@ -51,4 +51,13 @@ export default [
       "@typescript-eslint/no-unused-vars": "warn",
     },
   },
+  {
+    // The one sanctioned `set:html`: JSON-LD payloads are built with
+    // JSON.stringify and have every `<` escaped, so no data can close the
+    // script tag. The rule stays `error` for every other component.
+    files: ["src/modules/layout/components/JsonLd.astro"],
+    rules: {
+      "astro/no-set-html-directive": "off",
+    },
+  },
 ];

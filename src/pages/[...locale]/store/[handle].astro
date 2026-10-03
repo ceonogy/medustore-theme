@@ -5,6 +5,8 @@ import { ResourceNotFoundError, retrieveProduct } from "@lib/data/products";
 import { getRegion } from "@lib/data/regions";
 import { getTaxonomy } from "@lib/data/taxonomy";
 import { getProductPrice } from "@lib/utils/get-product-price";
+import { breadcrumbJsonLd, productJsonLd, type Crumb } from "@lib/utils/seo";
+import JsonLd from "@modules/layout/components/JsonLd.astro";
 import NotFoundNotice from "@modules/layout/components/NotFoundNotice.astro";
 import ImageCarouselWrapper from "@modules/products/components/product-details/image-carousel/ImageCarouselWrapper.astro";
 import { ProductActions } from "@modules/products/components/product-details/ProductActions";
@@ -89,6 +91,74 @@ const {
 const { cheapestPrice } = getProductPrice({
   productVariants: variants ?? [],
 });
+
+const origin = Astro.site?.origin ?? Astro.url.origin;
+
+// Availability from what the variants say: unmanaged inventory and
+// backorderable variants are always sellable, a managed one is only in
+// stock while its quantity lasts (the store API exposes it with
+// `+variants.inventory_quantity`, part of PRODUCT_DETAIL_FIELDS).
+const inStock = (variants ?? []).some(
+  (variant) =>
+    !variant.manage_inventory ||
+    variant.allow_backorder ||
+    (variant.inventory_quantity ?? 0) > 0,
+);
+
+// Breadcrumb: home → owning category (its parent first, when the category
+// sits a level down) → this product, falling back to the collection. The
+// taxonomy lookup only deepens the crumb — if it fails, the crumb shortens
+// and the product page still renders.
+const crumbs: Crumb[] = [{ name: t("products.breadcrumb.home"), path: "/" }];
+const category = product?.categories?.[0];
+
+if (product) {
+  if (category) {
+    if (category.parent_category_id) {
+      try {
+        const taxonomy = await getTaxonomy();
+        const parentHandle = taxonomy.categoryHandleById.get(
+          category.parent_category_id,
+        );
+        const parent = parentHandle
+          ? taxonomy.categoryByHandle.get(parentHandle)
+          : undefined;
+        if (parent) {
+          crumbs.push({ name: parent.name, path: `/${parent.handle}` });
+        }
+      } catch (taxonomyError) {
+        console.error(taxonomyError);
+      }
+    }
+    crumbs.push({ name: category.name, path: `/${category.handle}` });
+  } else if (product.collection?.handle) {
+    crumbs.push({
+      name: product.collection.title || product.collection.handle,
+      path: `/bo-suu-tap/${product.collection.handle}`,
+    });
+  }
+  crumbs.push({ name: product.title, path: `/store/${product.handle}` });
+}
+
+const structuredData = product
+  ? [
+      productJsonLd(
+        {
+          name: product.title,
+          description: product.description,
+          path: `/store/${product.handle}`,
+          images: (images ?? []).map((image) => image.url),
+          price: cheapestPrice?.calculated_price_number,
+          currencyCode: cheapestPrice?.currency_code,
+          inStock,
+          siteName: t("site.name"),
+        },
+        origin,
+      ),
+      // A lone "home" crumb would be noise; only emit a real hierarchy.
+      ...(crumbs.length > 1 ? [breadcrumbJsonLd(crumbs, origin)] : []),
+    ]
+  : null;
 ---
 
 <Layout
@@ -97,7 +167,9 @@ const { cheapestPrice } = getProductPrice({
     t("product.metaDescription", { title: title ?? "" })}
   image={images?.[0]?.url}
   type="product"
+  noindex={Boolean(error)}
 >
+  {structuredData && <JsonLd data={structuredData} />}
   {
     error && (
       <div class="wrap section">

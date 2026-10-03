@@ -5,6 +5,8 @@ import Layout from "@layouts/Layout.astro";
 import { listProducts } from "@lib/data/products";
 import { getRegion } from "@lib/data/regions";
 import { listPromotions } from "@lib/data/promotions";
+import { breadcrumbJsonLd, itemListJsonLd } from "@lib/utils/seo";
+import JsonLd from "@modules/layout/components/JsonLd.astro";
 
 /**
  * `/khuyen-mai` — the index of every promotion that is live right now
@@ -87,12 +89,33 @@ const cards = promotions.map((promotion) => {
     dateLine,
   };
 });
+
+const origin = Astro.site?.origin ?? Astro.url.origin;
+// The breadcrumb mirrors the visible one; the list mirrors the promo cards.
+const structuredData = [
+  breadcrumbJsonLd(
+    [
+      { name: t("products.breadcrumb.home"), path: "/" },
+      { name: t("promotions.title"), path: "/khuyen-mai" },
+    ],
+    origin,
+  ),
+  ...(cards.length
+    ? [
+        itemListJsonLd(
+          cards.map((card) => ({ name: card.title, path: card.href })),
+          origin,
+        ),
+      ]
+    : []),
+];
 ---
 
 <Layout
   title={t("promotions.title")}
   description={t("promotions.metaDescription")}
 >
+  <JsonLd data={structuredData} />
   <div class="wrap section">
     <nav
       aria-label={t("products.breadcrumb.home")}

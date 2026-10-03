@@ -6,22 +6,42 @@ import Layout from "@layouts/Layout.astro";
 import { listProducts } from "@lib/data/products";
 import { getRegion } from "@lib/data/regions";
 import { getTaxonomy } from "@lib/data/taxonomy";
+import {
+  organizationJsonLd,
+  webSiteJsonLd,
+  type JsonLdNode,
+} from "@lib/utils/seo";
 import { Newsletter } from "@modules/layout/components/Newsletter";
 import BenefitIcon from "@modules/layout/components/BenefitIcon.astro";
+import JsonLd from "@modules/layout/components/JsonLd.astro";
 import ProductPreview from "@modules/products/components/product-preview/ProductPreview.astro";
 
 const { locale, countryCode } = Astro.locals;
 const t = useTranslations(locale);
 
-const region = await getRegion(countryCode);
+const unavailable = () =>
+  new Response(t("common.serviceUnavailable"), {
+    status: 503,
+    headers: {
+      "Retry-After": "30",
+      "Content-Type": "text/plain; charset=utf-8",
+    },
+  });
 
-let products: Awaited<ReturnType<typeof listProducts>> = [];
-if (region) {
-  try {
-    products = await listProducts(region.id);
-  } catch (error) {
-    console.error(error);
-  }
+// The homepage is built from Medusa on every render: a backend that cannot
+// answer is a 503 (with a retry hint), never a silently empty storefront.
+const region = await getRegion(countryCode);
+if (!region) {
+  console.error("homepage: no region resolves the market");
+  return unavailable();
+}
+
+let products: Awaited<ReturnType<typeof listProducts>>;
+try {
+  products = await listProducts(region.id);
+} catch (error) {
+  console.error(error);
+  return unavailable();
 }
 
 const featured = products.slice(0, 8);
@@ -64,6 +84,7 @@ try {
     }));
 } catch (error) {
   console.error(error);
+  return unavailable();
 }
 
 const featureNames = ["shipping", "refund", "support", "secure"] as const;
@@ -73,9 +94,16 @@ const features = [1, 2, 3, 4].map((n, index) => ({
   sub: t(`home.feature${n}Sub`),
   icon: featureNames[index],
 }));
+
+const origin = Astro.site?.origin ?? Astro.url.origin;
+const structuredData: JsonLdNode[] = [
+  organizationJsonLd(t("site.name"), origin, "/favicon.svg"),
+  webSiteJsonLd(t("site.name"), origin),
+];
 ---
 
 <Layout description={t("site.description")} image={heroImage.src}>
+  <JsonLd data={structuredData} />
   {/* ------------------------------------------------------------ hero */}
   <section
     class="wrap grid items-center gap-8 pb-16 pt-10 tablet:min-h-[600px] tablet:grid-cols-2 tablet:pb-20 tablet:pt-14 wide:min-h-[800px] wide:gap-16"

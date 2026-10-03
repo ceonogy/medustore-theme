@@ -1,4 +1,5 @@
 ---
+import heroImage from "@assets/hero.png";
 import { useTranslations } from "@i18n";
 import { getRegion } from "@lib/data/regions";
 import { CartSidebar } from "@modules/layout/components/CartSidebar";
@@ -44,6 +45,13 @@ const canonicalPath =
     : "");
 const canonicalUrl = new URL(canonicalPath, Astro.site ?? Astro.url.origin);
 
+// Social crawlers only read absolute image URLs: every page gets the brand
+// hero when it has none of its own (product pages pass their first photo).
+const socialImage = new URL(
+  image ?? heroImage.src,
+  Astro.site ?? Astro.url.origin,
+).href;
+
 const region = await getRegion(countryCode);
 const regionId = region?.id || null;
 ---
@@ -87,16 +95,14 @@ const regionId = region?.id || null;
     <meta property="og:type" content={type} />
     <meta property="og:url" content={canonicalUrl.href} />
     <meta property="og:site_name" content={siteName} />
-    {image && <meta property="og:image" content={image} />}
+    <meta property="og:image" content={socialImage} />
+    <meta property="og:image:alt" content={siteName} />
 
     <!-- Twitter Card -->
-    <meta
-      name="twitter:card"
-      content={image ? "summary_large_image" : "summary"}
-    />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={pageTitle} />
     <meta name="twitter:description" content={metaDescription} />
-    {image && <meta name="twitter:image" content={image} />}
+    <meta name="twitter:image" content={socialImage} />
   </head>
   <body class="min-h-screen bg-paper text-ink">
     <Nav

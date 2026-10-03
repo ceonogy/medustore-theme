@@ -3,6 +3,8 @@ import { useTranslations } from "@i18n";
 import Layout from "@layouts/Layout.astro";
 import { buildListing } from "@lib/data/catalog";
 import { getRegion } from "@lib/data/regions";
+import { itemListJsonLd } from "@lib/utils/seo";
+import JsonLd from "@modules/layout/components/JsonLd.astro";
 import NotFoundNotice from "@modules/layout/components/NotFoundNotice.astro";
 import ProductListing from "@modules/products/components/product-listing/ProductListing.astro";
 
@@ -35,9 +37,26 @@ try {
 if (listing.beyond) {
   Astro.response.status = 404;
 }
+
+const origin = Astro.site?.origin ?? Astro.url.origin;
+// The grid's current page, as the crawler-visible list of product URLs.
+const structuredData = listing.beyond
+  ? null
+  : itemListJsonLd(
+      listing.products.map((product) => ({
+        name: product.title,
+        path: `/store/${product.handle}`,
+      })),
+      origin,
+    );
 ---
 
-<Layout title={t("store.title")} description={t("store.description")}>
+<Layout
+  title={t("store.title")}
+  description={t("store.description")}
+  noindex={listing.beyond}
+>
+  {structuredData && <JsonLd data={structuredData} />}
   <div class="wrap section">
     <h1 class="type-display mb-8">{t("store.title")}</h1>
     {

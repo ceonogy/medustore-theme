@@ -1,0 +1,19 @@
+---
+import type { JsonLdNode } from "@lib/utils/seo";
+
+interface Props {
+  /** One node or several; both are emitted as a single schema.org @graph. */
+  data: JsonLdNode | JsonLdNode[];
+}
+
+const { data } = Astro.props;
+const graph = Array.isArray(data) ? data : [data];
+// `is:inline` keeps Astro from treating this as a bundled script, and `<` is
+// escaped so no description can close the tag and inject markup.
+const json = JSON.stringify({
+  "@context": "https://schema.org",
+  "@graph": graph,
+}).replace(/</g, "\\u003c");
+---
+
+<script type="application/ld+json" is:inline set:html={json} />

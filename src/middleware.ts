@@ -144,6 +144,7 @@ const serviceUnavailable = () =>
     status: 503,
     headers: {
       "Retry-After": "30",
+      "Cache-Control": "private, no-store",
       "Content-Type": "text/plain; charset=utf-8",
     },
   });
@@ -278,10 +279,39 @@ const normalizeCatalogQuery = (
   return null;
 };
 
+/** Top-level routes whose rendered HTML is per-visitor, never shareable. */
+const PER_VISITOR_ROOTS = new Set(["cart", "checkout", "order"]);
+
 export const onRequest = defineMiddleware(async (context, next) => {
   // Never redirect non-page requests (assets, dev internals, etc.)
   if (isStaticOrInternalPath(context.url.pathname)) {
-    return next();
+    const response = await next();
+    // Edge caching for what lives here: content-hashed bundles, the
+    // parameterised image renditions, and root files (robots, favicon).
+    // Only successful answers are stored; the sitemap endpoint keeps the
+    // policy it set for itself, everything else gets the root-file default
+    // (Astro's bare `public, max-age=0` on public/ files earns no edge hit).
+    if (response.status < 400 && context.url.pathname !== "/sitemap.xml") {
+      const path = context.url.pathname;
+      if (path.startsWith("/_astro/")) {
+        if (!response.headers.has("Cache-Control")) {
+          response.headers.set(
+            "Cache-Control",
+            "public, max-age=31536000, immutable",
+          );
+        }
+      } else if (path.startsWith("/_image")) {
+        if (!response.headers.has("Cache-Control")) {
+          response.headers.set("Cache-Control", "public, max-age=604800");
+        }
+      } else {
+        response.headers.set(
+          "Cache-Control",
+          "public, max-age=0, s-maxage=3600",
+        );
+      }
+    }
+    return response;
   }
 
   // Only redirect navigations; avoid changing semantics for form submits, etc.
@@ -315,8 +345,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   // Segments after any locale prefix — the path the router actually matches.
   let appSegments = segments;
-
-  const regionMap = await getRegionMap();
 
   // Behind OpenLiteSpeed the app only sees plain HTTP, so honor the proxy
   // headers to keep redirects on https:// instead of downgrading them.
@@ -367,36 +395,53 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
     locale = firstSegment;
     appSegments = rest;
-  } else if (firstSegment && regionMap.has(firstSegment)) {
-    // Legacy `/dk/store` market URLs → the market now lives in the cookie,
-    // so drop the segment and keep the visitor on the equivalent page.
-    const rest = segments.slice(1);
-    return redirectTo(rest.length ? `/${rest.join("/")}` : "/");
-  } else if (firstSegment && !ROUTE_ROOTS.has(firstSegment)) {
-    // Static routes already won above — what is left may only be a category
-    // handle (flat `/{handle}` or `/{parent}/{child}`), 301'd when it was
-    // renamed, and 404 for anything else.
-    let taxonomy: Taxonomy;
+  } else if (firstSegment) {
+    // The region map exists only to recognise legacy market prefixes
+    // (`/dk/store`), so the lookup happens here — after the pure path
+    // redirects above, which keep working even when Medusa is down. A
+    // backend that cannot answer is a 503 with a retry hint: never an
+    // unhandled middleware error, never a wrong redirect.
+    let isLegacyMarket = false;
     try {
-      taxonomy = await getTaxonomy();
+      isLegacyMarket = (await getRegionMap()).has(firstSegment);
     } catch (error) {
-      console.error("taxonomy lookup failed", error);
+      console.error("region lookup failed", error);
       return serviceUnavailable();
     }
 
-    const resolution = resolveFlatPath(appSegments, taxonomy);
-    if (resolution.kind === "not-found") return notFound();
-    if (resolution.kind === "redirect") {
-      return redirectTo(resolution.path, 301, resolution.search);
+    if (isLegacyMarket) {
+      // The market now lives in the cookie, so drop the segment and keep
+      // the visitor on the equivalent page.
+      const rest = segments.slice(1);
+      return redirectTo(rest.length ? `/${rest.join("/")}` : "/");
     }
 
-    const target = normalizeCatalogQuery(
-      `/${appSegments.join("/")}`,
-      search,
-      "category",
-      taxonomy,
-    );
-    if (target) return redirectTo(target.path, 301, target.search);
+    if (!ROUTE_ROOTS.has(firstSegment)) {
+      // Static routes already won above — what is left may only be a category
+      // handle (flat `/{handle}` or `/{parent}/{child}`), 301'd when it was
+      // renamed, and 404 for anything else.
+      let taxonomy: Taxonomy;
+      try {
+        taxonomy = await getTaxonomy();
+      } catch (error) {
+        console.error("taxonomy lookup failed", error);
+        return serviceUnavailable();
+      }
+
+      const resolution = resolveFlatPath(appSegments, taxonomy);
+      if (resolution.kind === "not-found") return notFound();
+      if (resolution.kind === "redirect") {
+        return redirectTo(resolution.path, 301, resolution.search);
+      }
+
+      const target = normalizeCatalogQuery(
+        `/${appSegments.join("/")}`,
+        search,
+        "category",
+        taxonomy,
+      );
+      if (target) return redirectTo(target.path, 301, target.search);
+    }
   }
 
   // Deeper-than-supported paths must 404 rather than fall through to the
@@ -424,14 +469,39 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   const cookieCountry = context.cookies.get("country")?.value;
-  const countryCode = await resolveMarketCountry(cookieCountry);
-
-  if (!countryCode) {
-    return next();
+  let countryCode: string | undefined;
+  try {
+    countryCode = await resolveMarketCountry(cookieCountry);
+  } catch (error) {
+    // The region map is served by Medusa: a down backend is a 503 with a
+    // retry hint, never an unhandled 500.
+    console.error("region lookup failed", error);
+    return serviceUnavailable();
   }
 
-  context.locals.locale = locale;
-  context.locals.countryCode = countryCode;
+  if (countryCode) {
+    context.locals.locale = locale;
+    context.locals.countryCode = countryCode;
+  }
 
-  return next();
+  const response = await next();
+
+  // Edge-cache policy for rendered HTML: failures are never stored, the
+  // per-visitor app routes stay private, and everything else is shareable —
+  // but only between visitors of the same market, because the country cookie
+  // picks the region and therefore the prices. Hence `Vary: Cookie` for the
+  // shared cache, while the browser itself always revalidates (`max-age=0`).
+  if (response.status >= 500 || PER_VISITOR_ROOTS.has(appSegments[0] ?? "")) {
+    response.headers.set("Cache-Control", "private, no-store");
+    return response;
+  }
+  if (!response.headers.has("Cache-Control")) {
+    response.headers.set(
+      "Cache-Control",
+      "public, max-age=0, s-maxage=60, stale-while-revalidate=600",
+    );
+    response.headers.append("Vary", "Cookie");
+  }
+
+  return response;
 });
