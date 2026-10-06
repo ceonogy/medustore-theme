@@ -1,32 +1,32 @@
 # Astro Medusa Storefront
 
-A blazing-fast, open-source ecommerce storefront built with **Astro**, **React**, and **Medusa v2** — deployed to the edge on **Cloudflare Workers**.
+A blazing-fast, open-source ecommerce storefront built with **Astro**, **React**, and **Medusa v2** — server-rendered on Node behind OpenLiteSpeed.
 
-Static-first architecture. Interactive where it matters. Zero compromise on performance.
+Server-rendered with edge-cache headers. Interactive where it matters. Zero compromise on performance.
 
 ## Tech Stack
 
 | Layer      | Technology                                                                               |
 | ---------- | ---------------------------------------------------------------------------------------- |
-| Framework  | [Astro 6](https://astro.build) — static HTML, islands of interactivity                   |
+| Framework  | [Astro 6](https://astro.build) — server-rendered HTML, islands of interactivity          |
 | UI         | [React 19](https://react.dev) — only where you need it                                   |
 | Styling    | [Tailwind CSS v4](https://tailwindcss.com) — zero-config Vite plugin                     |
 | Backend    | [Medusa v2](https://medusajs.com) — headless commerce engine                             |
 | Payments   | [Stripe](https://stripe.com) — secure checkout                                           |
 | State      | [Nanostores](https://github.com/nanostores/nanostores) — tiny, framework-agnostic stores |
 | Forms      | [React Hook Form](https://react-hook-form.com) + [Zod](https://zod.dev) validation       |
-| Deployment | [Cloudflare Workers](https://workers.cloudflare.com) — edge-first                        |
+| Deployment | [Node adapter](https://docs.astro.build/en/guides/integrations-guide/node/) — PM2 behind OpenLiteSpeed |
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────┐
-│                Cloudflare Workers                │
+│         VPS · OpenLiteSpeed → Node (PM2)         │
 │                                                 │
 │   ┌──────────┐  ┌──────────┐  ┌──────────────┐  │
-│   │  Static  │  │  Astro   │  │    React     │  │
-│   │   HTML   │──│Middleware│──│   Islands    │  │
-│   │  (SSG)   │  │ (Region) │  │ (Cart, Nav)  │  │
+│   │   SSR    │  │  Astro   │  │    React     │  │
+│   │ + edge   │──│Middleware│──│   Islands    │  │
+│   │  cache   │  │ (Region) │  │ (Cart, Nav)  │  │
 │   └──────────┘  └──────────┘  └──────┬───────┘  │
 │                                       │         │
 └───────────────────────────────────────┼─────────┘
@@ -41,10 +41,10 @@ Static-first architecture. Interactive where it matters. Zero compromise on perf
                               └───────────────────┘
 ```
 
-**Static where possible, dynamic where necessary:**
+**SSR with edge caching, live data:**
 
-- Product pages, store listing, and landing page are statically generated at build time
-- Medusa webhooks trigger a re-deploy when products are created, updated, or deleted — keeping static pages in sync
+- Catalog, product, and promotion pages render server-side (Node adapter) and are edge-cached (`public, s-maxage=60, stale-while-revalidate`), so prices and stock stay fresh with no rebuilds
+- Every URL follows an SEO contract — `trailingSlash: "never"` (301 from middleware), flat category/collection paths, canonical query strings, and an explicit redirect/404/status policy
 - Product variant availability is refreshed client-side to prevent stale inventory data
 - Cart, checkout, and navigation hydrate as interactive React islands
 - Middleware handles region detection and country-based routing
@@ -52,18 +52,26 @@ Static-first architecture. Interactive where it matters. Zero compromise on perf
 
 ## Pages
 
-| Route                        | Description                                      |
-| ---------------------------- | ------------------------------------------------ |
-| `/`                          | Landing page (Vietnamese, default locale)        |
-| `/store`                     | Product catalog                                  |
-| `/store/:productId`          | Product detail with image carousel               |
-| `/cart`                      | Shopping cart                                    |
-| `/checkout`                  | Multi-step checkout (address, shipping, payment) |
-| `/order/confirmed`           | Order confirmation                               |
+| Route                          | Description                                     |
+| ------------------------------ | ----------------------------------------------- |
+| `/`                            | Landing page (Vietnamese, default locale)       |
+| `/store`                       | Product catalog (filters, facets, price slider) |
+| `/store/:handle`               | Product detail (2-column, image carousel)       |
+| `/:category`, `/:parent/:child` | Flat category pages (e.g. `/giay-dep`)          |
+| `/bo-suu-tap/:handle`          | Collection pages                                |
+| `/khuyen-mai`                  | Active promotions index                         |
+| `/khuyen-mai/:slug`            | Promotion detail (scoped filters)               |
+| `/cart`                        | Shopping cart                                   |
+| `/checkout`                    | Multi-step checkout (address, shipping, payment) |
+| `/order/confirmed`             | Order confirmation                              |
+| `/privacy`, `/terms`           | Static legal pages                              |
+| `/robots.txt`, `/sitemap.xml`  | SEO endpoints (dynamic routes)                  |
 
 The default locale (Vietnamese) is served from the domain root with **no** locale
 prefix. Other locales are prefixed, e.g. `/en/store`. See
-[Internationalization](#internationalization-i18n).
+[Internationalization](#internationalization-i18n). Trailing slashes, wrong case,
+and non-canonical query strings 301-redirect to the canonical URL
+(`src/middleware.ts` + `src/lib/utils/canonical-query.ts`).
 
 ## Getting Started
 
@@ -78,8 +86,8 @@ prefix. Other locales are prefixed, e.g. `/en/store`. See
 
 ```bash
 # Clone the repo
-git clone https://github.com/bystrol/astro-medusa-starter.git
-cd astro-medusa-starter/
+git clone https://github.com/ceonogy/medustore-theme.git
+cd medustore-theme/
 
 # Install dependencies
 yarn
@@ -93,7 +101,7 @@ Fill in your `.env`:
 ```env
 PUBLIC_MEDUSA_BACKEND_URL=http://localhost:9000
 PUBLIC_MEDUSA_PUBLISHABLE_KEY=pk_...
-DEFAULT_REGION=us
+DEFAULT_REGION=vi
 PUBLIC_STRIPE_KEY=pk_test_...
 S3_DOMAIN=your-bucket.s3.us-east-1.amazonaws.com
 PUBLIC_INPOST_GEOWIDGET_TOKEN=your-token
@@ -105,13 +113,13 @@ PUBLIC_INPOST_SANDBOX=true
 ### Development
 
 ```bash
-yarn dev        # Start dev server on localhost:8000
+yarn dev        # Start dev server on localhost:3001
 ```
 
 ### Production
 
 ```bash
-yarn build      # Build for Cloudflare Workers
+yarn build      # Production build (Node adapter → dist/)
 yarn preview    # Preview the production build locally
 ```
 
@@ -120,34 +128,41 @@ yarn preview    # Preview the production build locally
 ```
 src/
 ├── assets/              # Static assets (images, fonts)
-├── components/          # Shared UI components
-├── layouts/             # Page layouts
+├── i18n/                # Translation dictionaries (vi = source of truth)
+├── layouts/             # Page layout (head, canonical/OG tags, JSON-LD)
 ├── lib/
+│   ├── data/            # Server data layer: catalog, promotions (+ tests)
 │   ├── sdk.ts           # Medusa SDK singleton
 │   ├── stores/          # Nanostores (cart state)
-│   ├── params/          # Static path generation
-│   └── utils/           # Helpers (pricing, stock, etc.)
-├── loaders/             # Astro content loaders
-├── middleware.ts         # Region detection & routing
+│   └── utils/           # URL/SEO/catalog helpers (unit-tested)
+├── middleware.ts         # URL contract, region detection, cache matrix
 ├── modules/
 │   ├── cart/            # Cart page & sidebar
 │   ├── checkout/        # Multi-step checkout flow
-│   ├── layout/          # Nav, footer
+│   ├── layout/          # Nav, footer, JSON-LD
 │   ├── order/           # Order confirmation
-│   └── products/        # Product cards, detail, carousel
+│   └── products/        # Product cards, detail, filters, carousel
 ├── pages/
-│   └── [...locale]/    # All routes; default locale is prefix-less
+│   └── [...locale]/     # All routes; default locale is prefix-less
+│       ├── store/       # Catalog + /store/:handle detail
+│       ├── khuyen-mai/  # Promotion index + /khuyen-mai/:slug
+│       ├── bo-suu-tap/  # Collections (/bo-suu-tap/:handle)
+│       └── [category]/  # Flat categories (/:category, /:parent/:child)
 ├── styles/              # Global styles & Tailwind theme
 └── types/               # TypeScript type definitions
+
+Top-level routes also include `src/pages/robots.txt.ts` and
+`src/pages/sitemap.xml.ts` (dynamic SEO endpoints).
 ```
 
 ## Key Design Decisions
 
-- **Islands architecture** — React only loads for interactive components (cart, nav, checkout). Everything else ships as zero-JS static HTML.
-- **Real-time inventory checks** — Product variant stock data is fetched client-side on page load, ensuring accurate availability even though pages are statically generated.
-- **Edge deployment** — Cloudflare Workers adapter means your storefront runs close to your customers, everywhere.
+- **Islands architecture** — React only loads for interactive components (cart, nav, checkout). Everything else ships as zero-JS server-rendered HTML.
+- **Real-time inventory checks** — Product variant stock data is fetched client-side on page load, ensuring accurate availability alongside server-rendered pages.
+- **Self-hosted SSR** — the Node adapter runs under PM2 behind OpenLiteSpeed; catalog responses carry `s-maxage` edge-cache headers (with `Vary: Cookie` for regional pricing), while cart, checkout, and orders stay `no-store`.
 - **Tailwind v4** — No config file. Theme customization lives in CSS with `@theme`. Powered by the Vite plugin.
 - **Region-aware routing** — The market (country) drives pricing, currency, and available shipping options via Medusa regions. It is resolved from the `country` cookie / `DEFAULT_REGION` instead of the URL, so the locale prefix can stay clean.
+- **SEO URL contract** — `trailingSlash: "never"`, flat category/collection paths, canonical query strings, and an explicit redirect/404/status policy, enforced in `src/middleware.ts` with helpers from `src/lib/utils/canonical-query.ts`.
 
 ## Internationalization (i18n)
 

@@ -6,9 +6,9 @@ Review correctness and user-visible failure modes first, then security, compatib
 
 ## Storefront checks
 
-- Preserve country-prefixed routing and region lookup behavior under `src/pages/[countryCode]`, `src/middleware.ts`, and `src/lib/params`.
-- Use Astro for static rendering and React only for interactive islands. Shared island state belongs in Nanostores rather than prop-drilling.
-- Keep browser code compatible with the Cloudflare edge adapter and avoid Node-only runtime APIs.
+- Preserve the URL contract under `src/pages/[...locale]`, `src/middleware.ts`, and `src/lib/utils/canonical-query.ts`: flat SEO paths, redirect rules, canonical query strings, and region lookup behavior.
+- Use Astro for server-side rendering and React only for interactive islands. Shared island state belongs in Nanostores rather than prop-drilling.
+- Keep shared browser/server code portable: the runtime is Node (`@astrojs/node`) behind OpenLiteSpeed, but URL and query logic should stay pure and unit-testable.
 - Treat checkout, cart persistence, prices, inventory, region selection, delivery, and payment paths as contract-sensitive. Check empty, loading, error, narrow viewport, and retry behavior where applicable.
 - Use the Medusa SDK patterns already established in `src/lib/sdk.ts` and the data helpers. Do not expose server credentials to client bundles.
 - Preserve Tailwind CSS v4's CSS-based configuration; this project intentionally has no `tailwind.config.js`.

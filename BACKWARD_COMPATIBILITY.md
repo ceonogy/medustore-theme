@@ -2,10 +2,10 @@
 
 ## Protected surfaces
 
-- **Routes and parameters:** country-prefixed storefront URLs under `src/pages/[countryCode]`, product identifiers, and order-confirmation navigation.
+- **Routes and parameters:** the URL contract in `src/lib/utils/canonical-query.ts` (flat category/collection paths, `trailingSlash: "never"`, canonical query strings) over routes in `src/pages/[...locale]`, product identifiers (SEO handles), and order-confirmation navigation.
 - **Medusa contracts:** SDK configuration, Store API request parameters, response assumptions in `src/lib/data`, region selection, cart state, checkout steps, delivery options, payment sessions, and order creation.
 - **Persisted browser state:** Nanostores/localStorage cart keys and serialized shapes.
-- **Deployment configuration:** Cloudflare adapter behavior, `wrangler.jsonc`, public asset headers, and environment-variable names consumed by Astro configuration.
+- **Deployment configuration:** Node adapter behavior (`@astrojs/node`), the cache-header matrix in `src/middleware.ts`, public asset headers, and environment-variable names consumed by Astro configuration (`.env.example`).
 - **Component-facing types:** exported types and props used across Astro pages and React islands.
 
 ## Breaking changes
