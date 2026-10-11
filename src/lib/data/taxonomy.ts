@@ -110,7 +110,13 @@ const updateHistory = (
 
   for (const [id, handle] of current) {
     const previous = snapshot[id];
-    if (previous && previous !== handle) {
+    if (!previous) {
+      // A brand-new entity must dirty the history too: without persisting it
+      // now, a rename that happens before any other change would find no
+      // "previous" handle in the file and the old URL would 404 instead of
+      // 301-ing to the replacement.
+      changed = true;
+    } else if (previous !== handle) {
       legacy[previous] = handle;
       changed = true;
     }
