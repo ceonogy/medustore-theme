@@ -4,7 +4,7 @@ module.exports = {
       name: "storefront",
       script: "node",
       args: "./dist/server/entry.mjs",
-      cwd: "/home/storefront",
+      cwd: __dirname, // wherever the repo is checked out
       env: {
         NODE_ENV: "production",
         PORT: 3001,
