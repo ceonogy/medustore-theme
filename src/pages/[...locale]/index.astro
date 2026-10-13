@@ -249,20 +249,30 @@ const structuredData: JsonLdNode[] = [
   }
 
   {/* ---------------------------------------------------- benefits */}
+  {
+    /* Mirrors the template's Features Section: phone/tablet stack each
+      cell centred with a rule underneath; wide becomes four flush cells
+      split by vertical rules, icon beside the copy — so every item sits
+      on the same justified grid at each breakpoint. */
+  }
   <section class="section bg-sand">
-    <div class="wrap grid gap-8 tablet:grid-cols-2 wide:grid-cols-4">
+    <div
+      class="wrap grid grid-cols-1 gap-4 tablet:grid-cols-2 wide:grid-cols-4 wide:gap-0"
+    >
       {
         features.map((feature, index) => (
           <div
-            class="reveal"
+            class="reveal flex flex-col items-center border-b border-line py-4 text-center [&:last-child]:border-b-0 tablet:[&:nth-last-child(-n+2)]:border-b-0 wide:flex-row wide:items-start wide:border-b-0 wide:border-r wide:p-8 wide:text-left wide:last:border-r-0"
             data-reveal
             style={`--reveal-delay: ${index * 80}ms`}
           >
-            <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-ink text-sand">
+            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-ink text-sand">
               <BenefitIcon name={feature.icon} />
             </span>
-            <p class="type-label mt-4">{feature.title}</p>
-            <p class="type-body mt-1 text-muted">{feature.sub}</p>
+            <div class="mt-2 min-w-0 wide:mt-0 wide:flex-1">
+              <p class="type-label">{feature.title}</p>
+              <p class="type-body mt-1.5 text-muted">{feature.sub}</p>
+            </div>
           </div>
         ))
       }
