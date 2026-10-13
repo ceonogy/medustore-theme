@@ -1,5 +1,6 @@
 import type { HttpTypes } from "@medusajs/types";
 import { defineMiddleware } from "astro:middleware";
+import type { APIContext, MiddlewareNext } from "astro";
 import {
   DEFAULT_LOCALE,
   I18N_ENABLED,
@@ -282,7 +283,10 @@ const normalizeCatalogQuery = (
 /** Top-level routes whose rendered HTML is per-visitor, never shareable. */
 const PER_VISITOR_ROOTS = new Set(["cart", "checkout", "order"]);
 
-export const onRequest = defineMiddleware(async (context, next) => {
+const handle = async (
+  context: APIContext,
+  next: MiddlewareNext,
+): Promise<Response> => {
   // Never redirect non-page requests (assets, dev internals, etc.)
   if (isStaticOrInternalPath(context.url.pathname)) {
     const response = await next();
@@ -504,4 +508,30 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   return response;
-});
+};
+
+/**
+ * One post-processing pass over every response the handler can produce —
+ * rendered pages, redirects, 404s, 503s and static passthrough — so the
+ * security posture lives in a single list. Deliberately conservative:
+ * no full CSP (the inline reveal script and Astro islands make that a
+ * separate project), just framing/clickjacking, sniffing, referrer and
+ * feature-policy hygiene. Browsers ignore HSTS on plain http, so it is
+ * sent unconditionally — only clients that already reached https store it.
+ */
+const secureHeaders = (response: Response): Response => {
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("Content-Security-Policy", "frame-ancestors 'none'");
+  response.headers.set(
+    "Permissions-Policy",
+    "camera=(), geolocation=(), microphone=()",
+  );
+  response.headers.set("Strict-Transport-Security", "max-age=31536000");
+  return response;
+};
+
+export const onRequest = defineMiddleware(async (context, next) =>
+  secureHeaders(await handle(context, next)),
+);
