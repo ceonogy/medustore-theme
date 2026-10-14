@@ -3,6 +3,7 @@ import { useStore } from "@nanostores/react";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { useEffect, useState } from "react";
+import { useHydrated } from "@lib/hooks/use-hydrated";
 import { localizePath, useTranslations, type Locale } from "@i18n";
 import { type RegionCountry } from "./AddressFields";
 import { DeliveryStep } from "./DeliveryStep";
@@ -52,6 +53,10 @@ export const CheckoutPage = ({
 }: CheckoutPageProps) => {
   const t = useTranslations(locale);
   const cart = useStore($cart);
+  // Hydration gate — first client render must match the SSR (address step,
+  // no cart) HTML; see useHydrated for the ClientRouter/#418 background.
+  const hydrated = useHydrated();
+  const displayedCart = hydrated ? cart : null;
   const [, setSearch] = useState(() =>
     typeof window !== "undefined" ? window.location.search : "",
   );
@@ -69,9 +74,11 @@ export const CheckoutPage = ({
     setSearch(url.search);
   };
 
-  const step = cart ? validateStep(readStepFromUrl(), cart) : "address";
+  const step = displayedCart
+    ? validateStep(readStepFromUrl(), displayedCart)
+    : "address";
 
-  if (!cart || !cart.items?.length) {
+  if (!displayedCart || !displayedCart.items?.length) {
     return (
       <div className="wrap py-16 text-center">
         <h1 className="text-3xl font-bold mb-4">
@@ -88,9 +95,10 @@ export const CheckoutPage = ({
     );
   }
 
-  const stripeSession = cart.payment_collection?.payment_sessions?.find((s) =>
-    s.provider_id?.startsWith("pp_stripe_"),
-  );
+  const stripeSession =
+    displayedCart.payment_collection?.payment_sessions?.find((s) =>
+      s.provider_id?.startsWith("pp_stripe_"),
+    );
   const stripeClientSecret = stripeSession?.data?.client_secret as
     | string
     | undefined;
@@ -100,7 +108,7 @@ export const CheckoutPage = ({
       <div className="grid grid-cols-1 gap-12 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-0">
           <ShippingAddressStep
-            cart={cart}
+            cart={displayedCart}
             locale={locale}
             countries={countries}
             countryCode={countryCode}
@@ -110,7 +118,7 @@ export const CheckoutPage = ({
           />
 
           <DeliveryStep
-            cart={cart}
+            cart={displayedCart}
             locale={locale}
             mode={
               step === "delivery"
@@ -124,14 +132,14 @@ export const CheckoutPage = ({
           />
 
           <PaymentStep
-            cart={cart}
+            cart={displayedCart}
             locale={locale}
             mode={step === "payment" ? "edit" : "inactive"}
           />
         </div>
 
         <div className="lg:col-span-1">
-          <OrderSummary cart={cart} locale={locale} />
+          <OrderSummary cart={displayedCart} locale={locale} />
         </div>
       </div>
     </div>

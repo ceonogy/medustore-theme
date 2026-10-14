@@ -8,6 +8,7 @@ import {
 import { convertToLocale } from "@lib/utils/money";
 import { useStore } from "@nanostores/react";
 import { useEffect, useRef } from "react";
+import { useHydrated } from "@lib/hooks/use-hydrated";
 
 interface CartSidebarProps {
   locale: Locale;
@@ -15,7 +16,14 @@ interface CartSidebarProps {
 
 export const CartSidebar = ({ locale }: CartSidebarProps) => {
   const cart = useStore($cart);
+  // Hydration gate — first client render must match the SSR (empty) HTML;
+  // see useHydrated for the ClientRouter/#418 background.
+  const hydrated = useHydrated();
+  const displayedCart = hydrated ? cart : null;
   const isOpen = useStore($isCartSidebarOpen);
+  // Same gate for the open state: a drawer left open by the previous page
+  // must not un-hide itself while hydrating the next page's SSR (closed) HTML.
+  const displayedOpen = hydrated && isOpen;
   const sidebarRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const t = useTranslations(locale);
@@ -63,7 +71,7 @@ export const CartSidebar = ({ locale }: CartSidebarProps) => {
     }
   };
 
-  const itemCount = cart?.items?.length ?? 0;
+  const itemCount = displayedCart?.items?.length ?? 0;
   const isEmpty = itemCount === 0;
 
   return (
@@ -73,7 +81,7 @@ export const CartSidebar = ({ locale }: CartSidebarProps) => {
         ref={backdropRef}
         onClick={handleBackdropClick}
         className={`fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300 ${
-          isOpen ? "opacity-50" : "opacity-0 pointer-events-none"
+          displayedOpen ? "opacity-50" : "opacity-0 pointer-events-none"
         }`}
         aria-hidden="true"
       />
@@ -85,7 +93,7 @@ export const CartSidebar = ({ locale }: CartSidebarProps) => {
         aria-modal="true"
         aria-label={t("cart.shoppingCartAria")}
         className={`fixed top-0 right-0 h-full w-full max-w-md bg-white z-50 shadow-xl transform transition-transform duration-300 ease-in-out ${
-          isOpen ? "translate-x-0" : "translate-x-full"
+          displayedOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <div className="flex flex-col h-full">
@@ -109,14 +117,14 @@ export const CartSidebar = ({ locale }: CartSidebarProps) => {
                 <a
                   href={localizePath(locale, "/store")}
                   onClick={closeCartSidebar}
-                  className="text-sm text-blue-600 hover:underline"
+                  className="text-sm text-ink hover:underline"
                 >
                   {t("cart.continueShopping")}
                 </a>
               </div>
             ) : (
               <div className="space-y-6">
-                {cart?.items?.map((item) => {
+                {displayedCart?.items?.map((item) => {
                   const thumbnailUrl =
                     item.variant?.product?.thumbnail ||
                     item.variant?.product?.images?.[0]?.url;
@@ -124,7 +132,7 @@ export const CartSidebar = ({ locale }: CartSidebarProps) => {
                     item.variant?.product?.title || t("cart.productFallback");
                   const variantTitle = item.variant?.title || "";
                   const unitPrice = item.unit_price || 0;
-                  const currencyCode = cart.currency_code || "USD";
+                  const currencyCode = displayedCart.currency_code || "USD";
 
                   return (
                     <div
@@ -205,8 +213,8 @@ export const CartSidebar = ({ locale }: CartSidebarProps) => {
                 </span>
                 <span className="font-medium">
                   {convertToLocale({
-                    amount: cart?.item_subtotal || 0,
-                    currencyCode: cart?.currency_code || "USD",
+                    amount: displayedCart?.item_subtotal || 0,
+                    currencyCode: displayedCart?.currency_code || "USD",
                   })}
                 </span>
               </div>

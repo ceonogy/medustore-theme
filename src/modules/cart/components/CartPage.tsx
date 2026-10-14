@@ -5,6 +5,7 @@ import {
   updateLineItemQuantity,
 } from "@lib/stores/cart";
 import { convertToLocale } from "@lib/utils/money";
+import { useHydrated } from "@lib/hooks/use-hydrated";
 import { useStore } from "@nanostores/react";
 
 interface CartPageProps {
@@ -13,6 +14,10 @@ interface CartPageProps {
 
 export const CartPage = ({ locale }: CartPageProps) => {
   const cart = useStore($cart);
+  // Hydration gate — first client render must match the SSR (empty) HTML;
+  // see useHydrated for the ClientRouter/#418 background.
+  const hydrated = useHydrated();
+  const displayedCart = hydrated ? cart : null;
   const t = useTranslations(locale);
 
   const handleRemoveItem = async (lineItemId: string) => {
@@ -34,9 +39,9 @@ export const CartPage = ({ locale }: CartPageProps) => {
     }
   };
 
-  const itemCount = cart?.items?.length ?? 0;
+  const itemCount = displayedCart?.items?.length ?? 0;
   const isEmpty = itemCount === 0;
-  const currencyCode = cart?.currency_code || "USD";
+  const currencyCode = displayedCart?.currency_code || "USD";
 
   return (
     <div className="wrap py-8">
@@ -71,7 +76,7 @@ export const CartPage = ({ locale }: CartPageProps) => {
                 <div className="col-span-1"></div>
               </div>
 
-              {cart?.items?.map((item) => {
+              {displayedCart?.items?.map((item) => {
                 const thumbnailUrl =
                   item.variant?.product?.thumbnail ||
                   item.variant?.product?.images?.[0]?.url;
@@ -209,7 +214,7 @@ export const CartPage = ({ locale }: CartPageProps) => {
                     </span>
                     <span>
                       {convertToLocale({
-                        amount: cart?.item_subtotal || 0,
+                        amount: displayedCart?.item_subtotal || 0,
                         currencyCode,
                       })}
                     </span>
@@ -219,7 +224,7 @@ export const CartPage = ({ locale }: CartPageProps) => {
                     <span className="text-gray-600">{t("cart.shipping")}</span>
                     <span>
                       {convertToLocale({
-                        amount: cart?.shipping_total || 0,
+                        amount: displayedCart?.shipping_total || 0,
                         currencyCode,
                       })}
                     </span>
@@ -229,7 +234,7 @@ export const CartPage = ({ locale }: CartPageProps) => {
                     <span className="text-gray-600">{t("cart.taxes")}</span>
                     <span>
                       {convertToLocale({
-                        amount: cart?.tax_total || 0,
+                        amount: displayedCart?.tax_total || 0,
                         currencyCode,
                       })}
                     </span>
@@ -240,7 +245,7 @@ export const CartPage = ({ locale }: CartPageProps) => {
                       <span>{t("cart.total")}</span>
                       <span>
                         {convertToLocale({
-                          amount: cart?.total || 0,
+                          amount: displayedCart?.total || 0,
                           currencyCode,
                         })}
                       </span>

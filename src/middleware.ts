@@ -283,6 +283,66 @@ const normalizeCatalogQuery = (
 /** Top-level routes whose rendered HTML is per-visitor, never shareable. */
 const PER_VISITOR_ROOTS = new Set(["cart", "checkout", "order"]);
 
+// Same-origin proxy for the Medusa store API: `/medusa/store/...` →
+// backend `/store/...`. The browser-side SDK points here so every
+// cart/checkout call is same-origin and CORS never enters the picture —
+// it cannot: Medusa's publishable-key guard answers preflight OPTIONS
+// with 400 before any CORS middleware runs (drilled against the live
+// backend). SSR keeps talking to the backend URL directly.
+const MEDUSA_PROXY_PREFIX = "/medusa";
+
+const PROXY_REQUEST_HEADERS = [
+  "accept",
+  "content-type",
+  "authorization",
+  "idempotency-key",
+  "x-publishable-api-key",
+];
+
+const proxyToBackend = async (context: APIContext): Promise<Response> => {
+  if (!MEDUSA_BACKEND_URL) {
+    return new Response(JSON.stringify({ message: "backend not configured" }), {
+      status: 502,
+      headers: { "content-type": "application/json" },
+    });
+  }
+
+  const target =
+    MEDUSA_BACKEND_URL +
+    context.url.pathname.slice(MEDUSA_PROXY_PREFIX.length) +
+    context.url.search;
+
+  const headers = new Headers();
+  for (const name of PROXY_REQUEST_HEADERS) {
+    const value = context.request.headers.get(name);
+    if (value) headers.set(name, value);
+  }
+
+  const method = context.request.method.toUpperCase();
+  const hasBody = method !== "GET" && method !== "HEAD";
+
+  const upstream = await fetch(target, {
+    method,
+    headers,
+    body: hasBody ? context.request.body : undefined,
+    // Node's fetch requires this to stream a request body through.
+    ...(hasBody
+      ? ({ duplex: "half" } as RequestInit & { duplex: string })
+      : {}),
+    redirect: "manual",
+  });
+
+  return new Response(upstream.body, {
+    status: upstream.status,
+    headers: {
+      "content-type":
+        upstream.headers.get("content-type") ?? "application/json",
+      // Cart, payment and order traffic — never cacheable anywhere.
+      "cache-control": "private, no-store",
+    },
+  });
+};
+
 const handle = async (
   context: APIContext,
   next: MiddlewareNext,
@@ -316,6 +376,15 @@ const handle = async (
       }
     }
     return response;
+  }
+
+  // Medusa store API proxy — must run before the method gate below,
+  // because cart/payment traffic arrives as POST.
+  if (
+    context.url.pathname === MEDUSA_PROXY_PREFIX ||
+    context.url.pathname.startsWith(`${MEDUSA_PROXY_PREFIX}/`)
+  ) {
+    return proxyToBackend(context);
   }
 
   // Only redirect navigations; avoid changing semantics for form submits, etc.

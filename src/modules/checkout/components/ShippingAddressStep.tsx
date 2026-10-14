@@ -189,7 +189,7 @@ const ReadOnlyView = ({
         <button
           type="button"
           onClick={onEdit}
-          className="text-blue-600 hover:underline text-sm"
+          className="text-ink hover:underline text-sm"
         >
           {t("checkout.shipping.edit")}
         </button>

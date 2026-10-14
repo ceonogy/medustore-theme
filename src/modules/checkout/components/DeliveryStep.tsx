@@ -186,7 +186,7 @@ export const DeliveryStep = ({
           <button
             type="button"
             onClick={onEdit}
-            className="text-blue-600 hover:underline text-sm"
+            className="text-ink hover:underline text-sm"
           >
             {t("checkout.delivery.edit")}
           </button>
@@ -298,7 +298,7 @@ export const DeliveryStep = ({
                         onClick={() =>
                           document.dispatchEvent(new CustomEvent("inpost:open"))
                         }
-                        className="text-sm text-blue-600 hover:underline"
+                        className="text-sm text-ink hover:underline"
                       >
                         {selectedLockerPoint
                           ? t("checkout.delivery.changeLocker")

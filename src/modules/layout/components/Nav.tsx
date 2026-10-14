@@ -13,6 +13,7 @@ import {
 } from "@lib/stores/cart";
 import { useStore } from "@nanostores/react";
 import { useEffect, useState } from "react";
+import { useHydrated } from "@lib/hooks/use-hydrated";
 
 interface NavProps {
   locale: Locale;
@@ -23,6 +24,11 @@ interface NavProps {
 
 export const Nav = ({ locale, regionId, currentPath = "/" }: NavProps) => {
   const cartItemCount = useStore($cartItemCount);
+  // Hydration gate: show the SSR value (0) on the first client render so a
+  // cart left in the store by a previous ClientRouter navigation cannot
+  // mismatch the fresh SSR HTML (React #418).
+  const hydrated = useHydrated();
+  const displayedItemCount = hydrated ? cartItemCount : 0;
   const t = useTranslations(locale);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -106,10 +112,10 @@ export const Nav = ({ locale, regionId, currentPath = "/" }: NavProps) => {
             type="button"
             onClick={() => toggleCartSidebar()}
             className="type-body relative font-medium hover:underline"
-            aria-label={t("nav.cartAria", { count: cartItemCount })}
+            aria-label={t("nav.cartAria", { count: displayedItemCount })}
           >
             <span aria-live="polite" aria-atomic="true">
-              {t("nav.cartCount", { count: cartItemCount })}
+              {t("nav.cartCount", { count: displayedItemCount })}
             </span>
           </button>
 
