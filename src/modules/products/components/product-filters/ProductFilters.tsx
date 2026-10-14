@@ -7,6 +7,7 @@ import type {
 import {
   SORT_VALUES,
   compareSizes,
+  emptyCatalogState,
   normalizeSearch,
   resolveCanonical,
   type CatalogState,
@@ -74,16 +75,43 @@ const chipWidth = (key: FilterKey) =>
   key === "size" ? "min-w-14 justify-center px-2.5" : "";
 
 /**
+ * Result count of a draft filter state — served by /api/filter-count, which
+ * runs the same buildListing the listing route renders with (path scope
+ * included), so it can never drift from the applied page. On failure the
+ * last known count stays on the button; a zero is never invented.
+ */
+const fetchDraftCount = async (
+  path: string,
+  search: string,
+  signal: AbortSignal,
+): Promise<number | null> => {
+  // `search` arrives with its leading "?" — join it as parameters of the
+  // same query string, or the second "?" would be swallowed into `path`.
+  const query = search.startsWith("?") ? search.slice(1) : search;
+  const response = await fetch(
+    `/api/filter-count?path=${encodeURIComponent(path)}${query ? `&${query}` : ""}`,
+    {
+      headers: { accept: "application/json" },
+      signal,
+    },
+  );
+  if (!response.ok) return null;
+  const data = (await response.json()) as { count?: number };
+  return typeof data.count === "number" ? data.count : null;
+};
+
+/**
  * Listing toolbar + right-side filter drawer.
  *
- * Selection behaves exactly like the original filter panel: every option is
- * a plain `<a href>` to the canonical URL of the resulting state and the
- * click performs a hard redirect to it — the server then re-renders with
- * true counts, and the drawer closes naturally with the navigation. This is
- * also why the option links keep working (and crawlable) without JS.
+ * The drawer edits a draft copy of the filter state: chips and the price
+ * slider never navigate, the footer's "Hiển thị N sản phẩm" shows the live
+ * result count of the draft and applies it with a hard redirect through the
+ * same canonical contract as before. Toolbar chips (removals) and the sort
+ * select navigate immediately, like the original panel.
  *
- * The counts shown are always the server's: the toolbar from `totalCount`,
- * applied chips' labels from the taxonomy-wide `optionLabels`.
+ * Every drawer option stays a plain `<a href>` to the canonical URL of the
+ * resulting state — crawlable, and a working filter without JavaScript; the
+ * click handler merely intercepts the navigation to edit the draft instead.
  */
 export const ProductFilters = ({
   groups,
@@ -97,12 +125,19 @@ export const ProductFilters = ({
 }: ProductFiltersProps) => {
   const t = useTranslations(locale);
 
-  const state = useMemo(
+  const applied = useMemo(
     () => normalizeSearch(initialSearch, PASSTHROUGH_RESOLVERS).state,
     [initialSearch],
   );
+  /** Draft edits live here; the applied state only changes on navigation. */
+  const [draft, setDraft] = useState<CatalogState>(applied);
+  useEffect(() => setDraft(applied), [applied]);
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [draftCount, setDraftCount] = useState<number | null>(null);
+  /** Bumped by the drawer's clear-all so the slider remounts cleared. */
+  const [priceResetKey, setPriceResetKey] = useState(0);
+
   const panelRef = useRef<HTMLDivElement>(null);
 
   /** Canonical URL (path + query) for a filter state. */
@@ -111,9 +146,12 @@ export const ProductFilters = ({
     return `${target.path}${target.search}`;
   };
 
-  /** The current state with one facet value toggled (applied instantly). */
-  const toggle = (key: FilterKey, value: string): CatalogState => {
-    const current = state[key];
+  const toggle = (
+    source: CatalogState,
+    key: FilterKey,
+    value: string,
+  ): CatalogState => {
+    const current = source[key];
     // Sizes keep their canonical magnitude order (40 before s before m) so
     // the state mirrors what the URL round-trip would produce.
     const nextValues = current.includes(value)
@@ -122,17 +160,17 @@ export const ProductFilters = ({
           key === "size" ? compareSizes(a, b) : a.localeCompare(b, "vi"),
         );
 
-    return { ...state, [key]: nextValues, page: null };
+    return { ...source, [key]: nextValues, page: null };
   };
 
-  const activeCount = activeFacetCount(state);
+  const activeCount = activeFacetCount(applied);
 
   const formatPrice = (value: number): string =>
     convertToLocale({ amount: value, currencyCode: "VND" });
 
   /** "450.000 ₫ – 1.200.000 ₫", or one-sided when only one bound is set. */
   const priceLabel = (): string => {
-    const { price_min: min, price_max: max } = state;
+    const { price_min: min, price_max: max } = applied;
     if (min !== null && max !== null)
       return `${formatPrice(min)} – ${formatPrice(max)}`;
     if (min !== null)
@@ -150,30 +188,65 @@ export const ProductFilters = ({
     optionLabels[group.key]?.[value] ??
     facetOptionLabel(group.key, value, locale);
 
-  // Applied-filter chips (toolbar): plain removal links.
+  // Applied-filter chips (toolbar): plain removal links that navigate.
   const appliedPills = groups.flatMap((group) =>
-    state[group.key].map((value) => ({
+    applied[group.key].map((value) => ({
       key: `${group.key}:${value}`,
       label: optionLabel(group, value),
-      href: hrefFor(toggle(group.key, value)),
+      href: hrefFor(toggle(applied, group.key, value)),
     })),
   );
 
-  if (state.price_min !== null || state.price_max !== null) {
+  if (applied.price_min !== null || applied.price_max !== null) {
     appliedPills.push({
       key: "price",
       label: priceLabel(),
-      href: hrefFor({ ...state, price_min: null, price_max: null, page: null }),
+      href: hrefFor({
+        ...applied,
+        price_min: null,
+        price_max: null,
+        page: null,
+      }),
     });
   }
 
-  // The slider commits a hard navigation like any other filter — same code
-  // path the pre-drawer panel used.
-  const onPrice = (range: PriceRangeValue) => {
-    if (!priceBounds) return;
-    const { low, high } = sliderBounds(priceBounds);
-    window.location.assign(hrefFor(withPrice(state, range, low, high)));
-  };
+  // The draft's canonical target — path included, because a draft may move
+  // the page (e.g. two categories leave a flat category page for /store),
+  // and the count must follow the route the results would land on.
+  const appliedTarget = useMemo(
+    () => resolveCanonical({ pageType, path: basePath, state: applied }),
+    [pageType, basePath, applied],
+  );
+  const draftTarget = useMemo(
+    () => resolveCanonical({ pageType, path: basePath, state: draft }),
+    [pageType, basePath, draft],
+  );
+  const draftIsApplied =
+    draftTarget.path === appliedTarget.path &&
+    draftTarget.search === appliedTarget.search;
+
+  useEffect(() => {
+    if (draftIsApplied) {
+      setDraftCount(null);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      fetchDraftCount(draftTarget.path, draftTarget.search, controller.signal)
+        .then((count) => {
+          if (count !== null) setDraftCount(count);
+        })
+        .catch(() => {
+          /* aborted — the button keeps the last known count */
+        });
+    }, 300);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [draftTarget, draftIsApplied]);
+
+  const shownCount = draftIsApplied ? totalCount : (draftCount ?? totalCount);
 
   // Drawer focus management: move focus in, trap Tab, lock the page scroll
   // without letting the disappearing scrollbar resize the layout (CLS), and
@@ -217,6 +290,26 @@ export const ProductFilters = ({
     };
   }, [isDrawerOpen]);
 
+  const applyDraft = () => {
+    setIsDrawerOpen(false);
+    window.location.assign(hrefFor(draft));
+  };
+
+  /** Clears the draft in place — no navigation until "Hiển thị". */
+  const resetDraft = () => {
+    setDraft({ ...emptyCatalogState(), sort: draft.sort });
+    setDraftCount(null);
+    setPriceResetKey((key) => key + 1);
+  };
+
+  // The slider edits the draft like every other chip: committed (debounced)
+  // into the state, applied only when the shopper asks for the results.
+  const onDraftPrice = (range: PriceRangeValue) => {
+    if (!priceBounds) return;
+    const { low, high } = sliderBounds(priceBounds);
+    setDraft((current) => withPrice(current, range, low, high));
+  };
+
   if (groups.length === 0 && activeCount === 0 && !priceBounds) {
     return null;
   }
@@ -226,9 +319,9 @@ export const ProductFilters = ({
     price_asc: t("products.sort.priceAsc"),
     price_desc: t("products.sort.priceDesc"),
   };
-  const currentSort: SortValue = state.sort ?? "newest";
+  const currentSort: SortValue = applied.sort ?? "newest";
   const sortValue = (sort: SortValue): string =>
-    hrefFor({ ...state, sort: sort === "newest" ? null : sort, page: null });
+    hrefFor({ ...applied, sort: sort === "newest" ? null : sort, page: null });
 
   const resultText =
     totalCount === 1
@@ -381,13 +474,19 @@ export const ProductFilters = ({
               </h3>
               <div className="flex flex-wrap gap-2">
                 {group.options.map((option) => {
-                  const isActive = state[group.key].includes(option.value);
+                  const isActive = draft[group.key].includes(option.value);
 
                   return (
                     <a
                       key={option.value}
-                      href={hrefFor(toggle(group.key, option.value))}
+                      href={hrefFor(toggle(draft, group.key, option.value))}
                       aria-current={isActive ? "true" : undefined}
+                      onClick={(event) => {
+                        // With JS the click edits the draft; the href keeps
+                        // the option a real, crawlable, no-JS filter link.
+                        event.preventDefault();
+                        setDraft(toggle(draft, group.key, option.value));
+                      }}
                       className={`flex min-h-11 items-center gap-1.5 rounded-md border px-3 text-sm transition-colors ${chipWidth(group.key)} ${
                         isActive
                           ? "border-ink bg-ink text-paper"
@@ -408,9 +507,10 @@ export const ProductFilters = ({
           ))}
 
           <PriceRange
+            key={priceResetKey}
             bounds={priceBounds}
-            value={state}
-            onCommit={onPrice}
+            value={draft}
+            onCommit={onDraftPrice}
             locale={locale}
           />
         </div>
@@ -418,16 +518,21 @@ export const ProductFilters = ({
         <div className="flex shrink-0 items-center gap-3 border-t border-line px-5 py-4">
           <a
             href={basePath}
+            onClick={(event) => {
+              // Reset the draft in place; the href keeps it working without JS.
+              event.preventDefault();
+              resetDraft();
+            }}
             className="flex min-h-11 items-center justify-center rounded-md border border-line px-4 text-sm font-medium transition-colors hover:border-ink"
           >
             {t("products.filters.clearAll")}
           </a>
           <button
             type="button"
-            onClick={() => setIsDrawerOpen(false)}
+            onClick={applyDraft}
             className="min-h-11 flex-1 rounded-md bg-ink px-4 text-sm font-medium text-paper transition-colors hover:bg-black/80"
           >
-            {t("products.filters.showResults", { count: totalCount })}
+            {t("products.filters.showResults", { count: shownCount })}
           </button>
         </div>
       </div>
