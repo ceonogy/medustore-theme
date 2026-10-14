@@ -341,7 +341,7 @@ export const ProductFilters = ({
             onClick={() => setIsDrawerOpen(true)}
             aria-expanded={isDrawerOpen}
             aria-controls="product-filter-drawer"
-            className="flex min-h-10 items-center gap-2 rounded-md border border-ink px-4 text-sm font-medium transition-colors hover:bg-fog"
+            className="flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-ink px-4 text-sm font-medium transition-colors hover:bg-fog"
           >
             <svg
               aria-hidden="true"
@@ -441,7 +441,7 @@ export const ProductFilters = ({
             data-drawer-close
             aria-label={t("products.filters.closeDrawer")}
             onClick={() => setIsDrawerOpen(false)}
-            className="-mr-2 flex h-11 w-11 items-center justify-center rounded-md transition-colors hover:bg-fog"
+            className="-mr-2 flex h-11 w-11 cursor-pointer items-center justify-center rounded-md transition-colors hover:bg-fog"
           >
             <svg
               aria-hidden="true"
@@ -487,18 +487,13 @@ export const ProductFilters = ({
                         event.preventDefault();
                         setDraft(toggle(draft, group.key, option.value));
                       }}
-                      className={`flex min-h-11 items-center gap-1.5 rounded-md border px-3 text-sm transition-colors ${chipWidth(group.key)} ${
+                      className={`flex min-h-11 cursor-pointer items-center rounded-md border px-3 text-sm transition-colors ${chipWidth(group.key)} ${
                         isActive
                           ? "border-ink bg-ink text-paper"
                           : "border-line text-ink hover:border-ink"
                       }`}
                     >
                       {option.label}
-                      <span
-                        className={`text-xs ${isActive ? "text-paper/70" : "text-muted"}`}
-                      >
-                        {option.count}
-                      </span>
                     </a>
                   );
                 })}
@@ -530,7 +525,7 @@ export const ProductFilters = ({
           <button
             type="button"
             onClick={applyDraft}
-            className="min-h-11 flex-1 rounded-md bg-ink px-4 text-sm font-medium text-paper transition-colors hover:bg-black/80"
+            className="min-h-11 flex-1 cursor-pointer rounded-md bg-ink px-4 text-sm font-medium text-paper transition-colors hover:bg-black/80"
           >
             {t("products.filters.showResults", { count: shownCount })}
           </button>
