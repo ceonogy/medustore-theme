@@ -21,6 +21,12 @@ export default defineConfig({
   // Canonical URLs never carry a trailing slash — the middleware 301s any
   // `/page/` request onto `/page`, so the two never compete for one content.
   trailingSlash: "never",
+  // Astro 7 flipped the default to compressHTML: 'jsx', which strips the
+  // whitespace between adjacent inline elements (`<span>a</span>
+  // <span>b</span>` → "ab"). v6's HTML-aware compression preserved that
+  // space, and the Framer-derived markup relies on it — keep the old
+  // behaviour so nothing in the design loses its spacing.
+  compressHTML: true,
   adapter: node({
     mode: "standalone",
   }),

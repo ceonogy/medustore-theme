@@ -10,8 +10,8 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/node": "^10.1.4",
-    "@astrojs/react": "5.0.2",
+    "@astrojs/node": "^11.1.0",
+    "@astrojs/react": "^7.0.1",
     "@fontsource/albert-sans": "^5.3.0",
     "@hookform/resolvers": "^5.2.2",
     "@medusajs/js-sdk": "^2.13.1",
@@ -19,7 +19,7 @@
     "@stripe/react-stripe-js": "^5.6.1",
     "@stripe/stripe-js": "^8.9.0",
     "@tailwindcss/vite": "^4.1.18",
-    "astro": "^6.3.0",
+    "astro": "^7.3.0",
     "clsx": "^2.1.1",
     "nanostores": "^1.1.0",
     "react": "^19.2.4",

@@ -8,7 +8,7 @@ Server-rendered with edge-cache headers. Interactive where it matters. Zero comp
 
 | Layer      | Technology                                                                                             |
 | ---------- | ------------------------------------------------------------------------------------------------------ |
-| Framework  | [Astro 6](https://astro.build) — server-rendered HTML, islands of interactivity                        |
+| Framework  | [Astro 7](https://astro.build) — server-rendered HTML, islands of interactivity                        |
 | UI         | [React 19](https://react.dev) — only where you need it                                                 |
 | Styling    | [Tailwind CSS v4](https://tailwindcss.com) — zero-config Vite plugin                                   |
 | Backend    | [Medusa v2](https://medusajs.com) — headless commerce engine                                           |
