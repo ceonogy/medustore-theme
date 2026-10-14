@@ -5,6 +5,8 @@ import { getRegion } from "@lib/data/regions";
 import { CartSidebar } from "@modules/layout/components/CartSidebar";
 import Footer from "@modules/layout/components/Footer.astro";
 import { Nav } from "@modules/layout/components/Nav";
+import albertSansLatin400 from "@fontsource/albert-sans/files/albert-sans-latin-400-normal.woff2?url";
+import albertSansLatinExt400 from "@fontsource/albert-sans/files/albert-sans-latin-ext-400-normal.woff2?url";
 import "@fontsource/albert-sans/400.css";
 import "@fontsource/albert-sans/500.css";
 import "@fontsource/albert-sans/700.css";
@@ -70,6 +72,27 @@ const regionId = region?.id || null;
     <script is:inline>
       document.documentElement.classList.add("has-reveal");
     </script>
+    {
+      /* Body copy (weight 400) ships in two subsets — Vietnamese mixes
+        latin ASCII with latin-ext diacritics — so both woff2s are
+        preloaded: first paint shouldn't wait on the CSS → @font-face →
+        fetch chain. `?url` imports keep the preload pointing at the
+        hashed asset. */
+    }
+    <link
+      rel="preload"
+      href={albertSansLatin400}
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href={albertSansLatinExt400}
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <link
       rel="dns-prefetch"
       href="//medusa-public-images.s3.eu-west-1.amazonaws.com"
