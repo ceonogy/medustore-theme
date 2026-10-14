@@ -23,6 +23,9 @@ import ProductPreview from "@modules/products/components/product-preview/Product
 
 const { locale, countryCode } = Astro.locals;
 const t = useTranslations(locale);
+/* The hero headline is one translatable string with an intentional line
+   break; each line gets its own mask for the staggered entrance. */
+const heroLines = t("home.heroTitle").split("\n");
 
 const unavailable = () =>
   new Response(t("common.serviceUnavailable"), {
@@ -117,26 +120,49 @@ const structuredData: JsonLdNode[] = [
   <section
     class="wrap grid items-center gap-10 pb-16 pt-10 tablet:grid-cols-[48fr_52fr] tablet:gap-12 tablet:pb-20 tablet:pt-14 wide:gap-16"
   >
-    <div class="reveal reveal-left flex flex-col items-start" data-reveal>
-      <p class="type-kicker text-muted">{t("home.heroEyebrow")}</p>
-      <h1
-        class="mt-5 text-[clamp(36px,5vw,76px)] font-black uppercase leading-[1.05] tracking-[-0.03em] whitespace-pre-line"
+    <div class="flex flex-col items-start">
+      <p
+        class="hero-fade type-kicker text-muted"
+        style="--hero-delay: 80ms; --hero-dur: 500ms"
       >
-        {t("home.heroTitle")}
+        {t("home.heroEyebrow")}
+      </p>
+      <h1
+        class="mt-5 text-[clamp(36px,5vw,76px)] font-black uppercase leading-[1.05] tracking-[-0.03em]"
+      >
+        {
+          heroLines.map((line, index) => (
+            <span class="hero-line">
+              <span
+                class="hero-line-in"
+                style={`--hero-delay: ${300 + index * 150}ms`}
+              >
+                {line}
+              </span>
+            </span>
+          ))
+        }
       </h1>
-      <p class="mt-6 max-w-md text-base leading-relaxed text-muted">
+      <p
+        class="hero-fade mt-6 max-w-md text-base leading-relaxed text-muted"
+        style="--hero-delay: 700ms"
+      >
         {t("home.heroSub")}
       </p>
-      <div class="mt-9 flex flex-wrap items-center gap-x-8 gap-y-4">
+      <div
+        class="hero-fade mt-9 flex flex-wrap items-center gap-x-8 gap-y-4"
+        style="--hero-delay: 800ms"
+      >
         <a
-          class="btn rounded-[8px] font-semibold"
+          class="btn rounded-[8px] font-semibold active:translate-y-0 active:scale-[0.97] hover:bg-[#1f1f1f]"
           href={localizePath(locale, "/store")}
         >
           {t("home.heroCta")}
+          <span aria-hidden="true" class="hero-cta-arrow">↗</span>
         </a>
         <a
           href="#bo-suu-tap"
-          class="border-b border-ink/25 pb-1 text-[13px] font-semibold uppercase tracking-[0.12em] text-ink transition-colors hover:border-ink hover:text-muted"
+          class="hero-link text-[13px] font-semibold uppercase tracking-[0.12em] text-ink"
         >
           {t("home.heroCtaSecondary")}
         </a>
@@ -144,24 +170,26 @@ const structuredData: JsonLdNode[] = [
     </div>
 
     <div
-      class="reveal overflow-hidden rounded-lg bg-sand"
-      data-reveal
-      style="--reveal-delay: 120ms"
+      class="hero-visual group overflow-hidden rounded-lg bg-sand"
+      style="--hero-delay: 180ms"
     >
-      <Image
-        src={heroImage}
-        width={1200}
-        height={1500}
-        alt={t("home.heroImageAlt")}
-        widths={[600, 900, 1200]}
-        sizes="(max-width: 809px) 100vw, 50vw"
-        format="webp"
-        quality={80}
-        class="h-[420px] w-full object-contain tablet:h-[560px] wide:h-[680px]"
-      />
+      <div class="hero-visual-in h-[420px] tablet:h-[560px] wide:h-[680px]">
+        <Image
+          src={heroImage}
+          width={1200}
+          height={1500}
+          alt={t("home.heroImageAlt")}
+          widths={[600, 900, 1200]}
+          sizes="(max-width: 809px) 100vw, 50vw"
+          format="webp"
+          quality={80}
+          class="hero-tee h-full w-full object-contain ease-out group-hover:-translate-y-1 group-hover:scale-[1.025] duration-[420ms] transition-transform"
+        />
+      </div>
       <div
-        class="flex items-center justify-between px-5 pb-4 text-[11px] font-medium uppercase tracking-[0.16em] text-muted"
+        class="hero-labels flex items-center justify-between px-5 pb-4 text-[11px] font-medium uppercase tracking-[0.16em] text-muted"
         aria-hidden="true"
+        style="--hero-delay: 1250ms; --hero-dur: 600ms"
       >
         <span>{t("home.heroImageLabel")}</span>
         <span>{t("home.heroImageIndex")}</span>
@@ -330,3 +358,143 @@ const structuredData: JsonLdNode[] = [
     </div>
   </section>
 </Layout>
+
+<style>
+  /* ================================================================
+     Hero entrance + micro-interactions — pure CSS: no JS, no
+     animation library. Choreography on first paint:
+
+       eyebrow      fade-up        500ms  @    80ms
+       headline L1  masked rise    950ms  @   300ms
+       headline L2  masked rise    950ms  @   450ms
+       description  fade-up        700ms  @   700ms
+       CTA row      fade-up        700ms  @   800ms
+       tee visual   veil + slide  1100ms  @   120ms
+       labels       fade-up        600ms  @  1250ms
+
+     Easing: cubic-bezier(0.16, 1, 0.3, 1). Like the site-wide scroll
+     reveal, every hidden state is scoped under `.has-reveal` — the
+     inline head script that marks JS alive before first paint — so
+     with JS disabled the hero simply renders in its final state.
+     Transform and opacity only: no layout involvement, no CLS.
+     ================================================================ */
+
+  @keyframes hero-fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+  }
+
+  @keyframes hero-line-up {
+    from {
+      transform: translateY(120%);
+    }
+  }
+
+  @keyframes hero-veil {
+    from {
+      opacity: 0;
+      transform: scale(0.99);
+    }
+  }
+
+  @keyframes hero-tee-in {
+    from {
+      transform: translateX(56px) scale(0.96);
+    }
+  }
+
+  :global(.has-reveal) .hero-fade {
+    animation: hero-fade-up var(--hero-dur, 700ms) cubic-bezier(0.16, 1, 0.3, 1)
+      var(--hero-delay, 0ms) both;
+  }
+
+  /* Per-line mask for the headline. The mask carries symmetric padding
+     so stacked Vietnamese diacritics (Ầ above the caps, Ặ above AND
+     below the baseline) never clip while the line rises; matching
+     negative margins keep the layout box — and the type rhythm —
+     exactly where the static design put it. */
+  .hero-line {
+    display: block;
+    overflow: hidden;
+    padding-block: 0.2em;
+    margin-block: -0.2em;
+  }
+
+  :global(.has-reveal) .hero-line-in {
+    display: block;
+    animation: hero-line-up 950ms cubic-bezier(0.16, 1, 0.3, 1)
+      var(--hero-delay, 0ms) both;
+  }
+
+  :global(.has-reveal) .hero-visual {
+    animation: hero-veil 900ms cubic-bezier(0.16, 1, 0.3, 1)
+      var(--hero-delay, 0ms) both;
+  }
+
+  :global(.has-reveal) .hero-visual-in {
+    animation: hero-tee-in 1100ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+  }
+
+  :global(.has-reveal) .hero-labels {
+    animation: hero-fade-up var(--hero-dur, 600ms) cubic-bezier(0.16, 1, 0.3, 1)
+      var(--hero-delay, 0ms) both;
+  }
+
+  /* CTA arrow nudges right on hover; the button keeps the design
+     system's lift plus the page's darken + press utilities. */
+  .hero-cta-arrow {
+    display: inline-block;
+    transition: transform 250ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .btn:hover .hero-cta-arrow {
+    transform: translateX(4px);
+  }
+
+  /* Secondary link: underline draws in left → right on hover/focus. */
+  .hero-link {
+    position: relative;
+    padding-bottom: 5px;
+  }
+
+  .hero-link::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 1px;
+    background-color: currentColor;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .hero-link:hover::after,
+  .hero-link:focus-visible::after {
+    transform: scaleX(1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.has-reveal) .hero-fade,
+    :global(.has-reveal) .hero-line-in,
+    :global(.has-reveal) .hero-visual,
+    :global(.has-reveal) .hero-visual-in,
+    :global(.has-reveal) .hero-labels {
+      animation: none;
+    }
+
+    .hero-tee,
+    .hero-cta-arrow,
+    .hero-link::after {
+      transition: none;
+    }
+
+    .group:hover .hero-tee,
+    .btn:hover .hero-cta-arrow {
+      transform: none;
+    }
+  }
+</style>
