@@ -414,6 +414,8 @@ const handle = async (
     "khuyen-mai",
     "tim-kiem",
     "tai-khoan",
+    // JSON helpers (filter-count) — not pages, never categories.
+    "api",
   ]);
 
   // Segments after any locale prefix — the path the router actually matches.

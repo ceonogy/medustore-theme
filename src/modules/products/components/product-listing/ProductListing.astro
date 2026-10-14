@@ -7,7 +7,6 @@ import type { FilterGroup } from "../../../../types/global";
 import { ProductFilters } from "@modules/products/components/product-filters/ProductFilters";
 import ProductPreview from "@modules/products/components/product-preview/ProductPreview.astro";
 import Pagination from "./Pagination.astro";
-import SortLinks from "./SortLinks.astro";
 
 interface Props {
   products: HttpTypes.StoreProduct[];
@@ -39,23 +38,11 @@ const {
 const { locale } = Astro.locals;
 const t = useTranslations(locale);
 
-const resultText =
-  totalCount === 1
-    ? t("products.filters.resultSingular", { count: totalCount })
-    : t("products.filters.resultPlural", { count: totalCount });
-
 const gridClass =
   "grid lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 w-full gap-x-6 gap-y-8";
 ---
 
 <div>
-  <div
-    class="mb-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-line pb-4"
-  >
-    <p class="type-body text-muted" aria-live="polite">{resultText}</p>
-    <SortLinks basePath={basePath} pageType={pageType} state={state} />
-  </div>
-
   <ProductFilters
     client:load
     groups={groups}

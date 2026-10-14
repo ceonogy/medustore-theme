@@ -9,16 +9,16 @@ import {
   initialRange,
   parsePriceInput,
   sliderBounds,
-  withPrice,
   type PriceRangeValue,
 } from "../../../../lib/utils/price-range";
 
 interface PriceRangeProps {
   bounds: PriceBounds;
-  /** Canonical state of the current URL — the slider starts from it. */
-  state: CatalogState;
-  /** Canonical URL (path + query) for a filter state. */
-  hrefFor: (next: CatalogState) => string;
+  /** Currently applied price bounds — seeds the slider on mount. */
+  value: Pick<CatalogState, "price_min" | "price_max">;
+  /** Called (debounced) whenever the range changes; the parent owns the
+   *  filter state and decides when to navigate. */
+  onCommit: (range: PriceRangeValue) => void;
   locale?: Locale;
 }
 
@@ -44,15 +44,15 @@ const formatNumber = (value: number): string => value.toLocaleString("vi-VN");
  */
 export const PriceRange = ({
   bounds,
-  state,
-  hrefFor,
+  value,
+  onCommit,
   locale,
 }: PriceRangeProps) => {
   const t = useTranslations(locale);
   const { low, high } = bounds ? sliderBounds(bounds) : { low: 0, high: 0 };
 
   const [draft, setDraft] = useState<PriceRangeValue>(() =>
-    bounds ? initialRange(state, low, high) : { min: 0, max: 0 },
+    bounds ? initialRange(value, low, high) : { min: 0, max: 0 },
   );
   // The inputs display grouped thousands ("450.000"); parsePriceInput strips
   // the separators, so the URL always receives plain digits.
@@ -83,14 +83,7 @@ export const PriceRange = ({
     setMinText(formatNumber(ordered.min));
     setMaxText(formatNumber(ordered.max));
 
-    const next = withPrice(state, ordered, low, high);
-    if (
-      next.price_min === state.price_min &&
-      next.price_max === state.price_max
-    ) {
-      return;
-    }
-    window.location.assign(`${hrefFor(next)}`);
+    onCommit(ordered);
   };
 
   const schedule = (read: () => { range: PriceRangeValue; side: Side }) => {
@@ -141,16 +134,13 @@ export const PriceRange = ({
   return (
     <section
       aria-labelledby="filter-group-price"
-      className="flex flex-col gap-3 border-t border-line px-5 py-4 tablet:flex-row tablet:gap-6"
+      className="flex flex-col gap-3 border-t border-line py-4"
     >
-      <h3
-        id="filter-group-price"
-        className="type-kicker shrink-0 pt-1.5 text-muted tablet:w-32"
-      >
+      <h3 id="filter-group-price" className="text-sm font-medium text-ink">
         {t("products.filters.price")}
       </h3>
 
-      <div className="min-w-0 flex-1">
+      <div className="w-full">
         <div
           className="flex w-full max-w-md justify-between text-xs text-muted"
           aria-hidden="true"

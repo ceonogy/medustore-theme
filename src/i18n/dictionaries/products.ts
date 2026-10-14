@@ -43,6 +43,8 @@ export const vi = {
   "products.filters.noResults":
     "Không có sản phẩm nào khớp với bộ lọc đã chọn.",
   "products.filters.noResultsHint": "để xem toàn bộ sản phẩm.",
+  "products.filters.showResults": "Hiển thị {{count}} sản phẩm",
+  "products.filters.closeDrawer": "Đóng bộ lọc",
 
   // product-listing → SortLinks / Pagination / empty states
   "products.sort.label": "Sắp xếp",
@@ -101,6 +103,8 @@ export const en: typeof vi = {
   "products.filters.clearAllFilters": "Clear all filters",
   "products.filters.noResults": "No products match the selected filters.",
   "products.filters.noResultsHint": "to see the full collection.",
+  "products.filters.showResults": "Show {{count}} products",
+  "products.filters.closeDrawer": "Close filters",
 
   // product-listing → SortLinks / Pagination / empty states
   "products.sort.label": "Sort by",

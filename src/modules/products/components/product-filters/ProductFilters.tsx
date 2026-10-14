@@ -1,16 +1,20 @@
 import { useTranslations, type Locale } from "@i18n";
 import type { FilterGroup, FilterKey } from "../../../../types/global";
 import {
+  SORT_VALUES,
   compareSizes,
+  emptyCatalogState,
   normalizeSearch,
   resolveCanonical,
   type CatalogState,
   type PageType,
+  type SortValue,
 } from "../../../../lib/utils/canonical-query";
 import type { PriceBounds } from "../../../../lib/utils/catalog";
 import { facetOptionLabel } from "../../../../lib/utils/catalog";
 import { convertToLocale } from "../../../../lib/utils/money";
-import { useMemo, useState } from "react";
+import type { PriceRangeValue } from "../../../../lib/utils/price-range";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PriceRange } from "./PriceRange";
 
 interface ProductFiltersProps {
@@ -55,13 +59,35 @@ const activeFacetCount = (state: CatalogState): number =>
   (state.sale ? 1 : 0) +
   (state.in_stock ? 1 : 0);
 
+/** Uniform chip width so numeric sizes and S/M/L scan as one aligned row. */
+const chipWidth = (key: FilterKey) =>
+  key === "size" ? "min-w-14 justify-center px-2.5" : "";
+
+/** Count fetched for an un-applied draft — one round-trip per settled edit. */
+const fetchDraftCount = async (
+  search: string,
+  signal: AbortSignal,
+): Promise<number | null> => {
+  const response = await fetch(`/api/filter-count${search}`, {
+    headers: { accept: "application/json" },
+    signal,
+  });
+  if (!response.ok) return null;
+  const data = (await response.json()) as { count?: number };
+  return typeof data.count === "number" ? data.count : null;
+};
+
 /**
- * The filter rail for every listing page.
+ * Listing toolbar + filter drawer.
  *
- * Every option and every active chip is a plain `<a href>` pointing at the
- * canonical URL for the resulting state — crawlable, and usable before this
- * island hydrates. Hydration only powers the mobile drawer; the grid itself
- * stays static Astro markup owned by the server-rendered page.
+ * The toolbar (count, filter trigger, sort) and the applied-filter chips are
+ * always rendered. The drawer edits a draft copy of the filter state; the
+ * URL only changes when the shopper applies it ("Hiển thị N sản phẩm"), and
+ * that navigation goes through the same canonical contract as before.
+ *
+ * Every drawer option stays a plain `<a href>` to the canonical URL of the
+ * resulting state — crawlable, and a working filter without JavaScript; the
+ * click handler merely intercepts the navigation to edit the draft instead.
  */
 export const ProductFilters = ({
   groups,
@@ -72,13 +98,22 @@ export const ProductFilters = ({
   priceBounds,
   locale,
 }: ProductFiltersProps) => {
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const t = useTranslations(locale);
 
-  const state = useMemo(
+  const applied = useMemo(
     () => normalizeSearch(initialSearch, PASSTHROUGH_RESOLVERS).state,
     [initialSearch],
   );
+  /** Draft edits live here; the applied state only changes on navigation. */
+  const [draft, setDraft] = useState<CatalogState>(applied);
+  useEffect(() => setDraft(applied), [applied]);
+
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [draftCount, setDraftCount] = useState<number | null>(null);
+  /** Bumped by "Xóa bộ lọc" so the slider remounts at the cleared range. */
+  const [priceResetKey, setPriceResetKey] = useState(0);
+
+  const panelRef = useRef<HTMLDivElement>(null);
 
   /** Canonical URL (path + query) for a filter state. */
   const hrefFor = (next: CatalogState): string => {
@@ -86,8 +121,16 @@ export const ProductFilters = ({
     return `${target.path}${target.search}`;
   };
 
-  const toggle = (key: FilterKey, value: string): CatalogState => {
-    const current = state[key];
+  /** Canonical query string only — the draft-count endpoint's input. */
+  const searchFor = (next: CatalogState): string =>
+    resolveCanonical({ pageType, path: basePath, state: next }).search;
+
+  const toggle = (
+    source: CatalogState,
+    key: FilterKey,
+    value: string,
+  ): CatalogState => {
+    const current = source[key];
     // Sizes keep their canonical magnitude order (40 before s before m) so
     // the state mirrors what the URL round-trip would produce.
     const nextValues = current.includes(value)
@@ -96,17 +139,17 @@ export const ProductFilters = ({
           key === "size" ? compareSizes(a, b) : a.localeCompare(b, "vi"),
         );
 
-    return { ...state, [key]: nextValues, page: null };
+    return { ...source, [key]: nextValues, page: null };
   };
 
-  const activeCount = activeFacetCount(state);
+  const appliedCount = activeFacetCount(applied);
 
   const formatPrice = (value: number): string =>
     convertToLocale({ amount: value, currencyCode: "VND" });
 
   /** "450.000 ₫ – 1.200.000 ₫", or one-sided when only one bound is set. */
   const priceLabel = (): string => {
-    const { price_min: min, price_max: max } = state;
+    const { price_min: min, price_max: max } = applied;
     if (min !== null && max !== null)
       return `${formatPrice(min)} – ${formatPrice(max)}`;
     if (min !== null)
@@ -116,111 +159,188 @@ export const ProductFilters = ({
     return t("products.filters.price");
   };
 
-  const pills = groups.flatMap((group) =>
-    state[group.key].map((value) => ({
+  // Applied-filter chips (toolbar): plain removal links, as before.
+  const appliedPills = groups.flatMap((group) =>
+    applied[group.key].map((value) => ({
       key: `${group.key}:${value}`,
       // A selection can outlive its option (the path scope may not carry it),
       // so the label falls back to the value's own rendering.
       label:
         group.options.find((option) => option.value === value)?.label ??
         facetOptionLabel(group.key, value, locale),
-      href: hrefFor(toggle(group.key, value)),
+      href: hrefFor(toggle(applied, group.key, value)),
     })),
   );
 
-  if (state.price_min !== null || state.price_max !== null) {
-    pills.push({
+  if (applied.price_min !== null || applied.price_max !== null) {
+    appliedPills.push({
       key: "price",
       label: priceLabel(),
-      href: hrefFor({ ...state, price_min: null, price_max: null, page: null }),
+      href: hrefFor({
+        ...applied,
+        price_min: null,
+        price_max: null,
+        page: null,
+      }),
     });
   }
 
-  if (groups.length === 0 && activeCount === 0 && !priceBounds) {
+  // The draft's result count: served by /api/filter-count, which runs the
+  // exact listing logic the page itself uses — never a client-side estimate.
+  const appliedSearch = useMemo(() => searchFor(applied), [applied]);
+  const draftSearch = useMemo(() => searchFor(draft), [draft]);
+  const draftIsApplied = draftSearch === appliedSearch;
+
+  useEffect(() => {
+    if (draftIsApplied) {
+      setDraftCount(null);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      fetchDraftCount(draftSearch, controller.signal)
+        .then((count) => {
+          if (count !== null) setDraftCount(count);
+        })
+        .catch(() => {
+          /* aborted — the button keeps the last known count */
+        });
+    }, 300);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [draftSearch, draftIsApplied]);
+
+  const shownCount = draftIsApplied ? totalCount : (draftCount ?? totalCount);
+
+  // Drawer focus management: move focus in, trap Tab, lock the page scroll,
+  // and return focus to the trigger on close.
+  useEffect(() => {
+    if (!isDrawerOpen) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    document.body.style.overflow = "hidden";
+    panelRef.current
+      ?.querySelector<HTMLElement>("[data-drawer-close]")
+      ?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsDrawerOpen(false);
+        return;
+      }
+      if (event.key !== "Tab" || !panelRef.current) return;
+      const focusables = panelRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input, select, [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = "";
+      document.removeEventListener("keydown", onKeyDown);
+      previouslyFocused?.focus?.();
+    };
+  }, [isDrawerOpen]);
+
+  const applyDraft = () => {
+    setIsDrawerOpen(false);
+    window.location.assign(hrefFor(draft));
+  };
+
+  const resetDraft = () => {
+    setDraft({ ...emptyCatalogState(), sort: draft.sort });
+    setPriceResetKey((key) => key + 1);
+  };
+
+  const onDraftPrice = (range: PriceRangeValue) =>
+    setDraft((current) => ({
+      ...current,
+      price_min: range.min,
+      price_max: range.max,
+      page: null,
+    }));
+
+  if (groups.length === 0 && appliedCount === 0 && !priceBounds) {
     return null;
   }
 
-  /** Size chips get a uniform width so the numeric and S/M/L values line up
-   *  as one scannable row; the other groups keep their natural width. */
-  const chipWidth = (key: FilterKey) =>
-    key === "size" ? "min-w-14 justify-center px-2.5" : "";
+  const sortLabels: Record<SortValue, string> = {
+    newest: t("products.sort.newest"),
+    price_asc: t("products.sort.priceAsc"),
+    price_desc: t("products.sort.priceDesc"),
+  };
+  const currentSort: SortValue = applied.sort ?? "newest";
+  const sortValue = (sort: SortValue): string =>
+    hrefFor({ ...applied, sort: sort === "newest" ? null : sort, page: null });
+
+  const resultText =
+    totalCount === 1
+      ? t("products.filters.resultSingular", { count: totalCount })
+      : t("products.filters.resultPlural", { count: totalCount });
 
   return (
     <div className="mb-8">
-      <div className="mb-4 flex lg:hidden">
-        <button
-          type="button"
-          onClick={() => setIsDrawerOpen((open) => !open)}
-          aria-expanded={isDrawerOpen}
-          aria-controls="product-filter-panel"
-          className="flex min-h-10 items-center gap-2 rounded-md border border-ink px-4 text-sm font-medium transition-colors hover:bg-fog"
-        >
-          {t("products.filters.title")}
-          {activeCount > 0 && (
-            <span className="rounded-md bg-ink px-2 py-0.5 text-xs text-paper">
-              {activeCount}
-            </span>
-          )}
-        </button>
-      </div>
-
-      <div
-        id="product-filter-panel"
-        className={`${isDrawerOpen ? "block" : "hidden"} overflow-hidden rounded-2xl border border-line bg-paper lg:block`}
-      >
-        {groups.map((group, index) => (
-          <section
-            key={group.key}
-            aria-labelledby={`filter-group-${group.key}`}
-            className={`flex flex-col gap-3 px-5 py-4 tablet:flex-row tablet:gap-6 ${
-              index > 0 ? "border-t border-line" : ""
-            }`}
+      {/* Toolbar: count left; filter trigger + sort right. */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-line pb-4">
+        <p className="type-body text-muted" aria-live="polite">
+          {resultText}
+        </p>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setIsDrawerOpen(true)}
+            aria-expanded={isDrawerOpen}
+            aria-controls="product-filter-drawer"
+            className="flex min-h-10 items-center gap-2 rounded-md border border-ink px-4 text-sm font-medium transition-colors hover:bg-fog"
           >
-            <h3
-              id={`filter-group-${group.key}`}
-              className="type-kicker shrink-0 pt-1.5 text-muted tablet:w-32"
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+              className="h-4 w-4"
             >
-              {t(GROUP_LABEL_KEYS[group.key])}
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {group.options.map((option) => {
-                const isActive = state[group.key].includes(option.value);
+              <path d="M2.5 4.5h15l-6 7v5l-3 1.5v-6.5l-6-7z" />
+            </svg>
+            {t("products.filters.title")}
+            {appliedCount > 0 && (
+              <span className="rounded-md bg-ink px-1.5 py-0.5 text-xs text-paper">
+                {appliedCount}
+              </span>
+            )}
+          </button>
 
-                return (
-                  <a
-                    key={option.value}
-                    href={hrefFor(toggle(group.key, option.value))}
-                    aria-current={isActive ? "true" : undefined}
-                    className={`flex min-h-9 items-center gap-1.5 rounded-md border px-3 text-sm transition-colors ${chipWidth(group.key)} ${
-                      isActive
-                        ? "border-ink bg-ink text-paper"
-                        : "border-line text-ink hover:border-ink"
-                    }`}
-                  >
-                    {option.label}
-                    <span
-                      className={`text-xs ${isActive ? "text-paper/70" : "text-muted"}`}
-                    >
-                      {option.count}
-                    </span>
-                  </a>
-                );
-              })}
-            </div>
-          </section>
-        ))}
-
-        <PriceRange
-          bounds={priceBounds}
-          state={state}
-          hrefFor={hrefFor}
-          locale={locale}
-        />
+          <select
+            aria-label={t("products.sort.label")}
+            value={sortValue(currentSort)}
+            onChange={(event) => window.location.assign(event.target.value)}
+            className="h-10 rounded-md border border-line bg-paper px-3 text-sm text-ink transition-colors hover:border-ink focus:border-ink focus:outline-none"
+          >
+            {SORT_VALUES.map((sort) => (
+              <option key={sort} value={sortValue(sort)}>
+                {sortLabels[sort]}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      {pills.length > 0 && (
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          {pills.map((pill) => (
+      {/* Applied filters: removal links + clear all. */}
+      {appliedPills.length > 0 && (
+        <div className="mb-5 flex flex-wrap items-center gap-2">
+          {appliedPills.map((pill) => (
             <a
               key={pill.key}
               href={pill.href}
@@ -242,6 +362,136 @@ export const ProductFilters = ({
           </a>
         </div>
       )}
+
+      {/* Backdrop */}
+      <div
+        aria-hidden="true"
+        onClick={() => setIsDrawerOpen(false)}
+        className={`fixed inset-0 z-40 bg-black/40 transition-opacity duration-300 motion-reduce:transition-none ${
+          isDrawerOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      />
+
+      {/* Drawer */}
+      <div
+        ref={panelRef}
+        id="product-filter-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="product-filter-drawer-title"
+        inert={!isDrawerOpen}
+        className={`fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-line bg-paper transition-transform duration-300 ease-out motion-reduce:transition-none sm:max-w-md ${
+          isDrawerOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="flex shrink-0 items-center justify-between border-b border-line px-5 py-4">
+          <h2
+            id="product-filter-drawer-title"
+            className="flex items-center gap-2 text-xl font-medium"
+          >
+            {t("products.filters.title")}
+            {appliedCount > 0 && (
+              <span className="rounded-md bg-ink px-2 py-0.5 text-xs font-normal text-paper">
+                {appliedCount}
+              </span>
+            )}
+          </h2>
+          <button
+            type="button"
+            data-drawer-close
+            aria-label={t("products.filters.closeDrawer")}
+            onClick={() => setIsDrawerOpen(false)}
+            className="-mr-2 flex h-11 w-11 items-center justify-center rounded-md transition-colors hover:bg-fog"
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              className="h-4 w-4"
+            >
+              <path d="M5 5l10 10M15 5L5 15" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto overscroll-contain px-5">
+          {groups.map((group, index) => (
+            <section
+              key={group.key}
+              aria-labelledby={`drawer-group-${group.key}`}
+              className={`flex flex-col gap-3 py-4 ${
+                index > 0 ? "border-t border-line" : ""
+              }`}
+            >
+              <h3
+                id={`drawer-group-${group.key}`}
+                className="text-sm font-medium text-ink"
+              >
+                {t(GROUP_LABEL_KEYS[group.key])}
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {group.options.map((option) => {
+                  const isActive = draft[group.key].includes(option.value);
+
+                  return (
+                    <a
+                      key={option.value}
+                      href={hrefFor(toggle(draft, group.key, option.value))}
+                      aria-current={isActive ? "true" : undefined}
+                      onClick={(event) => {
+                        // With JS the click edits the draft; the href keeps
+                        // the option a real, crawlable, no-JS filter link.
+                        event.preventDefault();
+                        setDraft(toggle(draft, group.key, option.value));
+                      }}
+                      className={`flex min-h-11 items-center gap-1.5 rounded-md border px-3 text-sm transition-colors ${chipWidth(group.key)} ${
+                        isActive
+                          ? "border-ink bg-ink text-paper"
+                          : "border-line text-ink hover:border-ink"
+                      }`}
+                    >
+                      {option.label}
+                      <span
+                        className={`text-xs ${isActive ? "text-paper/70" : "text-muted"}`}
+                      >
+                        {option.count}
+                      </span>
+                    </a>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+
+          <PriceRange
+            key={priceResetKey}
+            bounds={priceBounds}
+            value={draft}
+            onCommit={onDraftPrice}
+            locale={locale}
+          />
+        </div>
+
+        <div className="flex shrink-0 items-center gap-3 border-t border-line px-5 py-4">
+          <button
+            type="button"
+            onClick={resetDraft}
+            className="min-h-11 rounded-md border border-line px-4 text-sm font-medium transition-colors hover:border-ink"
+          >
+            {t("products.filters.clearAll")}
+          </button>
+          <button
+            type="button"
+            onClick={applyDraft}
+            className="min-h-11 flex-1 rounded-md bg-ink px-4 text-sm font-medium text-paper transition-colors hover:bg-black/80"
+          >
+            {t("products.filters.showResults", { count: shownCount })}
+          </button>
+        </div>
+      </div>
 
       {totalCount === 0 && (
         <p className="mt-8 text-sm text-muted">
