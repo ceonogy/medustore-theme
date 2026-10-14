@@ -34,3 +34,11 @@ export type FilterGroup = {
   label: string;
   options: FilterOption[];
 };
+
+/**
+ * Taxonomy-wide human labels (value → name) per facet group. The applied
+ * filters of a page may reference handles the page's scoped option list
+ * dropped (zero count under the other active filters) — chips resolve
+ * labels here first so they never fall back to raw URL slugs.
+ */
+export type FacetLabels = Partial<Record<FilterKey, Record<string, string>>>;

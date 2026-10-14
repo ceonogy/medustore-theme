@@ -1,12 +1,14 @@
 import type { HttpTypes } from "@medusajs/types";
-import type { FilterGroup } from "../../types/global";
+import type { FacetLabels, FilterGroup, FilterKey } from "../../types/global";
 import {
   normalizeSearch,
   emptyCatalogState,
+  compareSizes,
   type CatalogState,
 } from "../utils/canonical-query";
 import {
   buildFacetGroups,
+  facetOptionLabel,
   filterCatalog,
   paginateCatalog,
   priceBoundsOf,
@@ -17,6 +19,7 @@ import {
 import { listProducts } from "./products";
 import {
   categoryPathHandles,
+  getTaxonomy,
   type CategoryNode,
   type Taxonomy,
 } from "./taxonomy";
@@ -40,6 +43,8 @@ export type CatalogListing = {
   /** Shown when the filters match nothing — products from outside the result. */
   suggestions: HttpTypes.StoreProduct[];
   groups: FilterGroup[];
+  /** Every category/collection handle's human label — for applied chips. */
+  optionLabels: FacetLabels;
   totalCount: number;
   page: number;
   pageCount: number;
@@ -66,6 +71,68 @@ const pickSuggestions = (
   return [...inPath, ...rest].slice(0, 4);
 };
 
+/** English literals mirror what buildFacetGroups uses for its group labels
+ *  (the drawer renders translated headings of its own). */
+const GROUP_FALLBACK_LABELS: Record<FilterKey, string> = {
+  category: "Category",
+  collection: "Collection",
+  size: "Size",
+  origin: "Origin",
+};
+
+/**
+ * `buildFacetGroups` drops options whose scoped count is zero — including
+ * whole groups. An applied selection that lands there would stay active in
+ * the URL yet vanish from the drawer and the toolbar chips, so the shopper
+ * could see it neither to read nor to remove it. Re-add every applied value
+ * as a marked option (labelled from the taxonomy, count honestly 0).
+ */
+const keepAppliedVisible = (
+  groups: FilterGroup[],
+  state: CatalogState,
+  optionLabels: FacetLabels,
+  locale?: string,
+): FilterGroup[] => {
+  const merged = groups.map((group) => ({
+    ...group,
+    options: [...group.options],
+  }));
+
+  for (const key of Object.keys(GROUP_FALLBACK_LABELS) as FilterKey[]) {
+    const appliedValues = state[key];
+    if (appliedValues.length === 0) continue;
+
+    let group = merged.find((candidate) => candidate.key === key);
+    let added = false;
+    for (const value of appliedValues) {
+      if (group?.options.some((option) => option.value === value)) continue;
+      const option = {
+        value,
+        label:
+          optionLabels[key]?.[value] ?? facetOptionLabel(key, value, locale),
+        count: 0,
+      };
+      if (group) {
+        group.options.push(option);
+      } else {
+        group = { key, label: GROUP_FALLBACK_LABELS[key], options: [option] };
+        merged.push(group);
+      }
+      added = true;
+    }
+
+    if (added && group) {
+      group.options.sort((a, b) =>
+        key === "size"
+          ? compareSizes(a.value, b.value)
+          : a.label.localeCompare(b.label, "vi"),
+      );
+    }
+  }
+
+  return merged;
+};
+
 export const buildListing = async (
   regionId: string,
   search: string,
@@ -75,10 +142,35 @@ export const buildListing = async (
   const all = await listProducts(regionId);
 
   const selected = sortCatalog(filterCatalog(all, state, options), state.sort);
-  const groups = buildFacetGroups(all, state, options);
   const { items, count, page, pageCount, beyond } = paginateCatalog(
     selected,
     state.page,
+  );
+
+  // Taxonomy-wide labels: a chip's selection may be outside this page's
+  // scoped option list (dropped for a zero count under other filters), and
+  // facetOptionLabel alone would render its raw handle.
+  const taxonomy = await getTaxonomy();
+  const optionLabels: FacetLabels = {
+    category: Object.fromEntries(
+      [...taxonomy.categoryByHandle].map(([handle, node]) => [
+        handle,
+        node.name,
+      ]),
+    ),
+    collection: Object.fromEntries(
+      [...taxonomy.collectionByHandle].map(([handle, node]) => [
+        handle,
+        node.title,
+      ]),
+    ),
+  };
+
+  const groups = keepAppliedVisible(
+    buildFacetGroups(all, state, options),
+    state,
+    optionLabels,
+    options.locale,
   );
 
   return {
@@ -86,6 +178,7 @@ export const buildListing = async (
     products: items,
     suggestions: pickSuggestions(all, selected, options),
     groups,
+    optionLabels,
     totalCount: count,
     page,
     pageCount,

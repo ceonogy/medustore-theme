@@ -1,9 +1,12 @@
 import { useTranslations, type Locale } from "@i18n";
-import type { FilterGroup, FilterKey } from "../../../../types/global";
+import type {
+  FacetLabels,
+  FilterGroup,
+  FilterKey,
+} from "../../../../types/global";
 import {
   SORT_VALUES,
   compareSizes,
-  emptyCatalogState,
   normalizeSearch,
   resolveCanonical,
   type CatalogState,
@@ -13,12 +16,19 @@ import {
 import type { PriceBounds } from "../../../../lib/utils/catalog";
 import { facetOptionLabel } from "../../../../lib/utils/catalog";
 import { convertToLocale } from "../../../../lib/utils/money";
-import type { PriceRangeValue } from "../../../../lib/utils/price-range";
+import {
+  sliderBounds,
+  withPrice,
+  type PriceRangeValue,
+} from "../../../../lib/utils/price-range";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PriceRange } from "./PriceRange";
 
 interface ProductFiltersProps {
   groups: FilterGroup[];
+  /** Taxonomy-wide labels (value → name) for applied-filter chips whose
+   *  selection fell outside this page's scoped option list. */
+  optionLabels: FacetLabels;
   /** Path the request is rendered on (already canonical). */
   basePath: string;
   pageType: PageType;
@@ -63,34 +73,21 @@ const activeFacetCount = (state: CatalogState): number =>
 const chipWidth = (key: FilterKey) =>
   key === "size" ? "min-w-14 justify-center px-2.5" : "";
 
-/** Count fetched for an un-applied draft — one round-trip per settled edit. */
-const fetchDraftCount = async (
-  search: string,
-  signal: AbortSignal,
-): Promise<number | null> => {
-  const response = await fetch(`/api/filter-count${search}`, {
-    headers: { accept: "application/json" },
-    signal,
-  });
-  if (!response.ok) return null;
-  const data = (await response.json()) as { count?: number };
-  return typeof data.count === "number" ? data.count : null;
-};
-
 /**
- * Listing toolbar + filter drawer.
+ * Listing toolbar + right-side filter drawer.
  *
- * The toolbar (count, filter trigger, sort) and the applied-filter chips are
- * always rendered. The drawer edits a draft copy of the filter state; the
- * URL only changes when the shopper applies it ("Hiển thị N sản phẩm"), and
- * that navigation goes through the same canonical contract as before.
+ * Selection behaves exactly like the original filter panel: every option is
+ * a plain `<a href>` to the canonical URL of the resulting state and the
+ * click performs a hard redirect to it — the server then re-renders with
+ * true counts, and the drawer closes naturally with the navigation. This is
+ * also why the option links keep working (and crawlable) without JS.
  *
- * Every drawer option stays a plain `<a href>` to the canonical URL of the
- * resulting state — crawlable, and a working filter without JavaScript; the
- * click handler merely intercepts the navigation to edit the draft instead.
+ * The counts shown are always the server's: the toolbar from `totalCount`,
+ * applied chips' labels from the taxonomy-wide `optionLabels`.
  */
 export const ProductFilters = ({
   groups,
+  optionLabels,
   basePath,
   pageType,
   initialSearch,
@@ -100,19 +97,12 @@ export const ProductFilters = ({
 }: ProductFiltersProps) => {
   const t = useTranslations(locale);
 
-  const applied = useMemo(
+  const state = useMemo(
     () => normalizeSearch(initialSearch, PASSTHROUGH_RESOLVERS).state,
     [initialSearch],
   );
-  /** Draft edits live here; the applied state only changes on navigation. */
-  const [draft, setDraft] = useState<CatalogState>(applied);
-  useEffect(() => setDraft(applied), [applied]);
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [draftCount, setDraftCount] = useState<number | null>(null);
-  /** Bumped by "Xóa bộ lọc" so the slider remounts at the cleared range. */
-  const [priceResetKey, setPriceResetKey] = useState(0);
-
   const panelRef = useRef<HTMLDivElement>(null);
 
   /** Canonical URL (path + query) for a filter state. */
@@ -121,16 +111,9 @@ export const ProductFilters = ({
     return `${target.path}${target.search}`;
   };
 
-  /** Canonical query string only — the draft-count endpoint's input. */
-  const searchFor = (next: CatalogState): string =>
-    resolveCanonical({ pageType, path: basePath, state: next }).search;
-
-  const toggle = (
-    source: CatalogState,
-    key: FilterKey,
-    value: string,
-  ): CatalogState => {
-    const current = source[key];
+  /** The current state with one facet value toggled (applied instantly). */
+  const toggle = (key: FilterKey, value: string): CatalogState => {
+    const current = state[key];
     // Sizes keep their canonical magnitude order (40 before s before m) so
     // the state mirrors what the URL round-trip would produce.
     const nextValues = current.includes(value)
@@ -139,17 +122,17 @@ export const ProductFilters = ({
           key === "size" ? compareSizes(a, b) : a.localeCompare(b, "vi"),
         );
 
-    return { ...source, [key]: nextValues, page: null };
+    return { ...state, [key]: nextValues, page: null };
   };
 
-  const appliedCount = activeFacetCount(applied);
+  const activeCount = activeFacetCount(state);
 
   const formatPrice = (value: number): string =>
     convertToLocale({ amount: value, currencyCode: "VND" });
 
   /** "450.000 ₫ – 1.200.000 ₫", or one-sided when only one bound is set. */
   const priceLabel = (): string => {
-    const { price_min: min, price_max: max } = applied;
+    const { price_min: min, price_max: max } = state;
     if (min !== null && max !== null)
       return `${formatPrice(min)} – ${formatPrice(max)}`;
     if (min !== null)
@@ -159,67 +142,48 @@ export const ProductFilters = ({
     return t("products.filters.price");
   };
 
-  // Applied-filter chips (toolbar): plain removal links, as before.
+  /** Label precedence: the rendered option (drawer chip and pill then read
+   *  identically), then the taxonomy-wide map, then the value's own
+   *  rendering (origin/size resolve locally either way). */
+  const optionLabel = (group: FilterGroup, value: string): string =>
+    group.options.find((option) => option.value === value)?.label ??
+    optionLabels[group.key]?.[value] ??
+    facetOptionLabel(group.key, value, locale);
+
+  // Applied-filter chips (toolbar): plain removal links.
   const appliedPills = groups.flatMap((group) =>
-    applied[group.key].map((value) => ({
+    state[group.key].map((value) => ({
       key: `${group.key}:${value}`,
-      // A selection can outlive its option (the path scope may not carry it),
-      // so the label falls back to the value's own rendering.
-      label:
-        group.options.find((option) => option.value === value)?.label ??
-        facetOptionLabel(group.key, value, locale),
-      href: hrefFor(toggle(applied, group.key, value)),
+      label: optionLabel(group, value),
+      href: hrefFor(toggle(group.key, value)),
     })),
   );
 
-  if (applied.price_min !== null || applied.price_max !== null) {
+  if (state.price_min !== null || state.price_max !== null) {
     appliedPills.push({
       key: "price",
       label: priceLabel(),
-      href: hrefFor({
-        ...applied,
-        price_min: null,
-        price_max: null,
-        page: null,
-      }),
+      href: hrefFor({ ...state, price_min: null, price_max: null, page: null }),
     });
   }
 
-  // The draft's result count: served by /api/filter-count, which runs the
-  // exact listing logic the page itself uses — never a client-side estimate.
-  const appliedSearch = useMemo(() => searchFor(applied), [applied]);
-  const draftSearch = useMemo(() => searchFor(draft), [draft]);
-  const draftIsApplied = draftSearch === appliedSearch;
+  // The slider commits a hard navigation like any other filter — same code
+  // path the pre-drawer panel used.
+  const onPrice = (range: PriceRangeValue) => {
+    if (!priceBounds) return;
+    const { low, high } = sliderBounds(priceBounds);
+    window.location.assign(hrefFor(withPrice(state, range, low, high)));
+  };
 
-  useEffect(() => {
-    if (draftIsApplied) {
-      setDraftCount(null);
-      return;
-    }
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      fetchDraftCount(draftSearch, controller.signal)
-        .then((count) => {
-          if (count !== null) setDraftCount(count);
-        })
-        .catch(() => {
-          /* aborted — the button keeps the last known count */
-        });
-    }, 300);
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [draftSearch, draftIsApplied]);
-
-  const shownCount = draftIsApplied ? totalCount : (draftCount ?? totalCount);
-
-  // Drawer focus management: move focus in, trap Tab, lock the page scroll,
-  // and return focus to the trigger on close.
+  // Drawer focus management: move focus in, trap Tab, lock the page scroll
+  // without letting the disappearing scrollbar resize the layout (CLS), and
+  // return focus to the trigger on close.
   useEffect(() => {
     if (!isDrawerOpen) return;
     const previouslyFocused = document.activeElement as HTMLElement | null;
+    const gutter = window.innerWidth - document.documentElement.clientWidth;
     document.body.style.overflow = "hidden";
+    if (gutter > 0) document.body.style.paddingRight = `${gutter}px`;
     panelRef.current
       ?.querySelector<HTMLElement>("[data-drawer-close]")
       ?.focus();
@@ -247,30 +211,13 @@ export const ProductFilters = ({
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.body.style.overflow = "";
+      document.body.style.paddingRight = "";
       document.removeEventListener("keydown", onKeyDown);
       previouslyFocused?.focus?.();
     };
   }, [isDrawerOpen]);
 
-  const applyDraft = () => {
-    setIsDrawerOpen(false);
-    window.location.assign(hrefFor(draft));
-  };
-
-  const resetDraft = () => {
-    setDraft({ ...emptyCatalogState(), sort: draft.sort });
-    setPriceResetKey((key) => key + 1);
-  };
-
-  const onDraftPrice = (range: PriceRangeValue) =>
-    setDraft((current) => ({
-      ...current,
-      price_min: range.min,
-      price_max: range.max,
-      page: null,
-    }));
-
-  if (groups.length === 0 && appliedCount === 0 && !priceBounds) {
+  if (groups.length === 0 && activeCount === 0 && !priceBounds) {
     return null;
   }
 
@@ -279,9 +226,9 @@ export const ProductFilters = ({
     price_asc: t("products.sort.priceAsc"),
     price_desc: t("products.sort.priceDesc"),
   };
-  const currentSort: SortValue = applied.sort ?? "newest";
+  const currentSort: SortValue = state.sort ?? "newest";
   const sortValue = (sort: SortValue): string =>
-    hrefFor({ ...applied, sort: sort === "newest" ? null : sort, page: null });
+    hrefFor({ ...state, sort: sort === "newest" ? null : sort, page: null });
 
   const resultText =
     totalCount === 1
@@ -315,9 +262,9 @@ export const ProductFilters = ({
               <path d="M2.5 4.5h15l-6 7v5l-3 1.5v-6.5l-6-7z" />
             </svg>
             {t("products.filters.title")}
-            {appliedCount > 0 && (
+            {activeCount > 0 && (
               <span className="rounded-md bg-ink px-1.5 py-0.5 text-xs text-paper">
-                {appliedCount}
+                {activeCount}
               </span>
             )}
           </button>
@@ -390,9 +337,9 @@ export const ProductFilters = ({
             className="flex items-center gap-2 text-xl font-medium"
           >
             {t("products.filters.title")}
-            {appliedCount > 0 && (
+            {activeCount > 0 && (
               <span className="rounded-md bg-ink px-2 py-0.5 text-xs font-normal text-paper">
-                {appliedCount}
+                {activeCount}
               </span>
             )}
           </h2>
@@ -434,19 +381,13 @@ export const ProductFilters = ({
               </h3>
               <div className="flex flex-wrap gap-2">
                 {group.options.map((option) => {
-                  const isActive = draft[group.key].includes(option.value);
+                  const isActive = state[group.key].includes(option.value);
 
                   return (
                     <a
                       key={option.value}
-                      href={hrefFor(toggle(draft, group.key, option.value))}
+                      href={hrefFor(toggle(group.key, option.value))}
                       aria-current={isActive ? "true" : undefined}
-                      onClick={(event) => {
-                        // With JS the click edits the draft; the href keeps
-                        // the option a real, crawlable, no-JS filter link.
-                        event.preventDefault();
-                        setDraft(toggle(draft, group.key, option.value));
-                      }}
                       className={`flex min-h-11 items-center gap-1.5 rounded-md border px-3 text-sm transition-colors ${chipWidth(group.key)} ${
                         isActive
                           ? "border-ink bg-ink text-paper"
@@ -467,28 +408,26 @@ export const ProductFilters = ({
           ))}
 
           <PriceRange
-            key={priceResetKey}
             bounds={priceBounds}
-            value={draft}
-            onCommit={onDraftPrice}
+            value={state}
+            onCommit={onPrice}
             locale={locale}
           />
         </div>
 
         <div className="flex shrink-0 items-center gap-3 border-t border-line px-5 py-4">
-          <button
-            type="button"
-            onClick={resetDraft}
-            className="min-h-11 rounded-md border border-line px-4 text-sm font-medium transition-colors hover:border-ink"
+          <a
+            href={basePath}
+            className="flex min-h-11 items-center justify-center rounded-md border border-line px-4 text-sm font-medium transition-colors hover:border-ink"
           >
             {t("products.filters.clearAll")}
-          </button>
+          </a>
           <button
             type="button"
-            onClick={applyDraft}
+            onClick={() => setIsDrawerOpen(false)}
             className="min-h-11 flex-1 rounded-md bg-ink px-4 text-sm font-medium text-paper transition-colors hover:bg-black/80"
           >
-            {t("products.filters.showResults", { count: shownCount })}
+            {t("products.filters.showResults", { count: totalCount })}
           </button>
         </div>
       </div>

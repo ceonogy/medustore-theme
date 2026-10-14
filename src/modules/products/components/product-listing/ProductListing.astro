@@ -3,7 +3,7 @@ import type { HttpTypes } from "@medusajs/types";
 import { useTranslations } from "@i18n";
 import type { CatalogState, PageType } from "@lib/utils/canonical-query";
 import type { PriceBounds } from "@lib/utils/catalog";
-import type { FilterGroup } from "../../../../types/global";
+import type { FacetLabels, FilterGroup } from "../../../../types/global";
 import { ProductFilters } from "@modules/products/components/product-filters/ProductFilters";
 import ProductPreview from "@modules/products/components/product-preview/ProductPreview.astro";
 import Pagination from "./Pagination.astro";
@@ -13,6 +13,8 @@ interface Props {
   /** Offered when the current filters match nothing. */
   suggestions: HttpTypes.StoreProduct[];
   groups: FilterGroup[];
+  /** Taxonomy-wide labels for applied-filter chips (see FacetLabels). */
+  optionLabels: FacetLabels;
   state: CatalogState;
   pageType: PageType;
   basePath: string;
@@ -26,6 +28,7 @@ const {
   products,
   suggestions,
   groups,
+  optionLabels,
   state,
   pageType,
   basePath,
@@ -46,6 +49,7 @@ const gridClass =
   <ProductFilters
     client:load
     groups={groups}
+    optionLabels={optionLabels}
     basePath={basePath}
     pageType={pageType}
     initialSearch={Astro.url.search}
