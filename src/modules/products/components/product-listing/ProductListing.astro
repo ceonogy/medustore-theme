@@ -39,11 +39,23 @@ const {
 const { locale } = Astro.locals;
 const t = useTranslations(locale);
 
+const resultText =
+  totalCount === 1
+    ? t("products.filters.resultSingular", { count: totalCount })
+    : t("products.filters.resultPlural", { count: totalCount });
+
 const gridClass =
   "grid lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 w-full gap-x-6 gap-y-8";
 ---
 
 <div>
+  <div
+    class="mb-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-line pb-4"
+  >
+    <p class="type-body text-muted" aria-live="polite">{resultText}</p>
+    <SortLinks basePath={basePath} pageType={pageType} state={state} />
+  </div>
+
   <ProductFilters
     client:load
     groups={groups}
@@ -54,10 +66,6 @@ const gridClass =
     priceBounds={priceBounds}
     locale={locale}
   />
-
-  <div class="mb-6 flex justify-end">
-    <SortLinks basePath={basePath} pageType={pageType} state={state} />
-  </div>
 
   {
     products.length > 0 ? (

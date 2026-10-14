@@ -140,40 +140,48 @@ export const ProductFilters = ({
     return null;
   }
 
+  /** Size chips get a uniform width so the numeric and S/M/L values line up
+   *  as one scannable row; the other groups keep their natural width. */
+  const chipWidth = (key: FilterKey) =>
+    key === "size" ? "min-w-14 justify-center px-2.5" : "";
+
   return (
     <div className="mb-8">
-      <div className="mb-4 flex items-center justify-between gap-4">
+      <div className="mb-4 flex lg:hidden">
         <button
           type="button"
           onClick={() => setIsDrawerOpen((open) => !open)}
           aria-expanded={isDrawerOpen}
           aria-controls="product-filter-panel"
-          className="flex min-h-11 items-center gap-2 rounded-full border border-black px-5 text-sm font-medium transition-colors hover:bg-gray-100 lg:hidden"
+          className="flex min-h-10 items-center gap-2 rounded-md border border-ink px-4 text-sm font-medium transition-colors hover:bg-fog"
         >
           {t("products.filters.title")}
           {activeCount > 0 && (
-            <span className="rounded-full bg-black px-2 py-0.5 text-xs text-white">
+            <span className="rounded-md bg-ink px-2 py-0.5 text-xs text-paper">
               {activeCount}
             </span>
           )}
         </button>
-
-        <p className="text-sm text-gray-500" aria-live="polite">
-          {totalCount === 1
-            ? t("products.filters.resultSingular", { count: totalCount })
-            : t("products.filters.resultPlural", { count: totalCount })}
-        </p>
       </div>
 
       <div
         id="product-filter-panel"
-        className={`${isDrawerOpen ? "flex" : "hidden"} mt-4 flex-col gap-6 lg:mt-0 lg:flex lg:flex-row lg:flex-wrap lg:items-start lg:gap-8`}
+        className={`${isDrawerOpen ? "block" : "hidden"} overflow-hidden rounded-2xl border border-line bg-paper lg:block`}
       >
-        {groups.map((group) => (
-          <fieldset key={group.key} className="flex flex-col gap-3">
-            <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+        {groups.map((group, index) => (
+          <section
+            key={group.key}
+            aria-labelledby={`filter-group-${group.key}`}
+            className={`flex flex-col gap-3 px-5 py-4 tablet:flex-row tablet:gap-6 ${
+              index > 0 ? "border-t border-line" : ""
+            }`}
+          >
+            <h3
+              id={`filter-group-${group.key}`}
+              className="type-kicker shrink-0 pt-1.5 text-muted tablet:w-32"
+            >
               {t(GROUP_LABEL_KEYS[group.key])}
-            </legend>
+            </h3>
             <div className="flex flex-wrap gap-2">
               {group.options.map((option) => {
                 const isActive = state[group.key].includes(option.value);
@@ -183,15 +191,15 @@ export const ProductFilters = ({
                     key={option.value}
                     href={hrefFor(toggle(group.key, option.value))}
                     aria-current={isActive ? "true" : undefined}
-                    className={`flex min-h-11 items-center rounded-full border px-4 text-sm transition-colors ${
+                    className={`flex min-h-9 items-center gap-1.5 rounded-md border px-3 text-sm transition-colors ${chipWidth(group.key)} ${
                       isActive
-                        ? "border-black bg-black text-white"
-                        : "border-gray-300 text-black hover:bg-gray-100"
+                        ? "border-ink bg-ink text-paper"
+                        : "border-line text-ink hover:border-ink"
                     }`}
                   >
                     {option.label}
                     <span
-                      className={`ml-2 text-xs ${isActive ? "text-gray-300" : "text-gray-500"}`}
+                      className={`text-xs ${isActive ? "text-paper/70" : "text-muted"}`}
                     >
                       {option.count}
                     </span>
@@ -199,7 +207,7 @@ export const ProductFilters = ({
                 );
               })}
             </div>
-          </fieldset>
+          </section>
         ))}
 
         <PriceRange
@@ -211,7 +219,7 @@ export const ProductFilters = ({
       </div>
 
       {pills.length > 0 && (
-        <div className="mt-6 flex flex-wrap items-center gap-2">
+        <div className="mt-4 flex flex-wrap items-center gap-2">
           {pills.map((pill) => (
             <a
               key={pill.key}
@@ -219,7 +227,7 @@ export const ProductFilters = ({
               aria-label={t("products.filters.removeFilter", {
                 label: pill.label,
               })}
-              className="flex min-h-11 items-center gap-2 rounded-full bg-gray-100 px-4 text-sm transition-colors hover:bg-gray-200"
+              className="flex min-h-9 items-center gap-2 rounded-md bg-fog px-3 text-sm transition-colors hover:bg-line"
             >
               {pill.label}
               <span aria-hidden="true">&times;</span>
@@ -228,7 +236,7 @@ export const ProductFilters = ({
 
           <a
             href={basePath}
-            className="flex min-h-11 items-center px-2 text-sm underline hover:no-underline"
+            className="flex min-h-9 items-center px-2 text-sm underline hover:no-underline"
           >
             {t("products.filters.clearAll")}
           </a>
@@ -236,7 +244,7 @@ export const ProductFilters = ({
       )}
 
       {totalCount === 0 && (
-        <p className="mt-8 text-sm text-gray-500">
+        <p className="mt-8 text-sm text-muted">
           {t("products.filters.noResults")}{" "}
           <a href={basePath} className="underline hover:no-underline">
             {t("products.filters.clearAllFilters")}

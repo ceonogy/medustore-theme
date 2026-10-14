@@ -41,16 +41,16 @@ const current: SortValue = state.sort ?? "newest";
   aria-label={t("products.sort.label")}
   class="flex flex-wrap items-center gap-2"
 >
-  <span class="text-sm text-gray-500">{t("products.sort.label")}</span>
+  <span class="type-body mr-1 text-muted">{t("products.sort.label")}</span>
   {
     SORT_VALUES.map((sort) => (
       <a
         href={hrefFor(sort)}
         aria-current={current === sort ? "true" : undefined}
-        class={`flex min-h-11 items-center rounded-full border px-4 text-sm transition-colors ${
+        class={`flex min-h-10 items-center rounded-md border px-4 text-sm transition-colors ${
           current === sort
-            ? "border-black bg-black text-white"
-            : "border-gray-300 text-black hover:bg-gray-100"
+            ? "border-ink bg-ink text-paper"
+            : "border-line hover:border-ink"
         }`}
       >
         {labels[sort]}

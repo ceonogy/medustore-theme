@@ -31,6 +31,9 @@ type Side = "min" | "max" | "slider";
 const formatPrice = (value: number): string =>
   convertToLocale({ amount: value, currencyCode: "VND" });
 
+/** Grouped thousands for the input display ("450.000"). */
+const formatNumber = (value: number): string => value.toLocaleString("vi-VN");
+
 /**
  * The two-handle price filter.
  *
@@ -51,8 +54,10 @@ export const PriceRange = ({
   const [draft, setDraft] = useState<PriceRangeValue>(() =>
     bounds ? initialRange(state, low, high) : { min: 0, max: 0 },
   );
-  const [minText, setMinText] = useState(() => String(draft.min));
-  const [maxText, setMaxText] = useState(() => String(draft.max));
+  // The inputs display grouped thousands ("450.000"); parsePriceInput strips
+  // the separators, so the URL always receives plain digits.
+  const [minText, setMinText] = useState(() => formatNumber(draft.min));
+  const [maxText, setMaxText] = useState(() => formatNumber(draft.max));
 
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const latest = useRef({ draft, minText, maxText });
@@ -75,8 +80,8 @@ export const PriceRange = ({
 
     const ordered = { min, max };
     setDraft(ordered);
-    setMinText(String(ordered.min));
-    setMaxText(String(ordered.max));
+    setMinText(formatNumber(ordered.min));
+    setMaxText(formatNumber(ordered.max));
 
     const next = withPrice(state, ordered, low, high);
     if (
@@ -104,8 +109,8 @@ export const PriceRange = ({
         : { min: current.min, max: Math.max(value, current.min) };
 
     setDraft(next);
-    setMinText(String(next.min));
-    setMaxText(String(next.max));
+    setMinText(formatNumber(next.min));
+    setMaxText(formatNumber(next.max));
     schedule(() => ({ range: next, side: "slider" }));
   };
 
@@ -128,111 +133,122 @@ export const PriceRange = ({
     high === low ? 0 : ((value - low) / (high - low)) * 100;
 
   const inputClass =
-    "h-11 w-28 rounded-full border border-gray-300 px-3 text-sm focus:border-black focus:outline-none";
+    "h-9 w-28 rounded-md border border-line px-3 text-sm focus:border-ink focus:outline-none";
   // Full class strings (variants included) so Tailwind's scanner sees them.
   const thumbClass =
-    "[&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-black [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-black [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:shadow";
+    "[&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-md [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-ink [&::-webkit-slider-thumb]:bg-paper [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-md [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-ink [&::-moz-range-thumb]:bg-paper";
 
   return (
-    <fieldset className="flex flex-col gap-3">
-      <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-        {t("products.filters.price")}
-      </legend>
-
-      <div
-        className="flex w-56 justify-between text-xs text-gray-500"
-        aria-hidden="true"
+    <section
+      aria-labelledby="filter-group-price"
+      className="flex flex-col gap-3 border-t border-line px-5 py-4 tablet:flex-row tablet:gap-6"
+    >
+      <h3
+        id="filter-group-price"
+        className="type-kicker shrink-0 pt-1.5 text-muted tablet:w-32"
       >
-        <span>{formatPrice(low)}</span>
-        <span>{formatPrice(high)}</span>
-      </div>
+        {t("products.filters.price")}
+      </h3>
 
-      <div className="relative h-6 w-56">
+      <div className="min-w-0 flex-1">
         <div
-          className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-gray-200"
+          className="flex w-full max-w-md justify-between text-xs text-muted"
           aria-hidden="true"
-        />
-        <div
-          className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-black"
-          style={{
-            left: `${pct(draft.min)}%`,
-            width: `${Math.max(pct(draft.max) - pct(draft.min), 0)}%`,
-          }}
-          aria-hidden="true"
-        />
-        <input
-          type="range"
-          min={low}
-          max={high}
-          step={PRICE_STEP}
-          value={draft.min}
-          aria-label={t("products.filters.priceMin")}
-          aria-valuetext={formatPrice(draft.min)}
-          onChange={(event) => moveSlider("min", Number(event.target.value))}
-          onPointerUp={releaseHandle}
-          className={`pointer-events-none absolute inset-0 z-10 h-6 w-full cursor-pointer appearance-none bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-black ${thumbClass}`}
-        />
-        <input
-          type="range"
-          min={low}
-          max={high}
-          step={PRICE_STEP}
-          value={draft.max}
-          aria-label={t("products.filters.priceMax")}
-          aria-valuetext={formatPrice(draft.max)}
-          onChange={(event) => moveSlider("max", Number(event.target.value))}
-          onPointerUp={releaseHandle}
-          className={`pointer-events-none absolute inset-0 z-20 h-6 w-full cursor-pointer appearance-none bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-black ${thumbClass}`}
-        />
-      </div>
+        >
+          <span>{formatPrice(low)}</span>
+          <span>{formatPrice(high)}</span>
+        </div>
 
-      <div className="flex items-center gap-2">
-        <input
-          type="number"
-          inputMode="numeric"
-          min={low}
-          max={high}
-          step={PRICE_STEP}
-          value={minText}
-          aria-label={t("products.filters.priceMin")}
-          onChange={(event) => {
-            setMinText(digitsOnly(event.target.value));
-            schedule(() => rangeFromText("min"));
-          }}
-          onBlur={() => commit(rangeFromText("min").range, "min")}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              commit(rangeFromText("min").range, "min");
-            }
-          }}
-          className={inputClass}
-        />
-        <span aria-hidden="true" className="text-gray-400">
-          –
-        </span>
-        <input
-          type="number"
-          inputMode="numeric"
-          min={low}
-          max={high}
-          step={PRICE_STEP}
-          value={maxText}
-          aria-label={t("products.filters.priceMax")}
-          onChange={(event) => {
-            setMaxText(digitsOnly(event.target.value));
-            schedule(() => rangeFromText("max"));
-          }}
-          onBlur={() => commit(rangeFromText("max").range, "max")}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              commit(rangeFromText("max").range, "max");
-            }
-          }}
-          className={inputClass}
-        />
+        <div className="relative my-2 h-5 w-full max-w-md">
+          <div
+            className="absolute inset-x-0 top-1/2 h-0.5 -translate-y-1/2 bg-line"
+            aria-hidden="true"
+          />
+          <div
+            className="absolute top-1/2 h-0.5 -translate-y-1/2 bg-ink"
+            style={{
+              left: `${pct(draft.min)}%`,
+              width: `${Math.max(pct(draft.max) - pct(draft.min), 0)}%`,
+            }}
+            aria-hidden="true"
+          />
+          <input
+            type="range"
+            min={low}
+            max={high}
+            step={PRICE_STEP}
+            value={draft.min}
+            aria-label={t("products.filters.priceMin")}
+            aria-valuetext={formatPrice(draft.min)}
+            onChange={(event) => moveSlider("min", Number(event.target.value))}
+            onPointerUp={releaseHandle}
+            className={`pointer-events-none absolute inset-0 z-10 h-5 w-full cursor-pointer appearance-none bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-black ${thumbClass}`}
+          />
+          <input
+            type="range"
+            min={low}
+            max={high}
+            step={PRICE_STEP}
+            value={draft.max}
+            aria-label={t("products.filters.priceMax")}
+            aria-valuetext={formatPrice(draft.max)}
+            onChange={(event) => moveSlider("max", Number(event.target.value))}
+            onPointerUp={releaseHandle}
+            className={`pointer-events-none absolute inset-0 z-20 h-5 w-full cursor-pointer appearance-none bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-black ${thumbClass}`}
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            inputMode="numeric"
+            min={low}
+            max={high}
+            value={minText}
+            aria-label={t("products.filters.priceMin")}
+            onChange={(event) => {
+              const digits = digitsOnly(event.target.value);
+              setMinText(digits ? formatNumber(Number(digits)) : "");
+              schedule(() => rangeFromText("min"));
+            }}
+            onBlur={() => commit(rangeFromText("min").range, "min")}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                commit(rangeFromText("min").range, "min");
+              }
+            }}
+            className={inputClass}
+          />
+          <span aria-hidden="true" className="text-muted">
+            –
+          </span>
+          <input
+            type="text"
+            inputMode="numeric"
+            min={low}
+            max={high}
+            value={maxText}
+            aria-label={t("products.filters.priceMax")}
+            onChange={(event) => {
+              const digits = digitsOnly(event.target.value);
+              setMaxText(digits ? formatNumber(Number(digits)) : "");
+              schedule(() => rangeFromText("max"));
+            }}
+            onBlur={() => commit(rangeFromText("max").range, "max")}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                commit(rangeFromText("max").range, "max");
+              }
+            }}
+            className={inputClass}
+          />
+          <span aria-hidden="true" className="text-xs text-muted">
+            ₫
+          </span>
+        </div>
       </div>
-    </fieldset>
+    </section>
   );
 };
