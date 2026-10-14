@@ -1,6 +1,11 @@
 ---
 import { Image } from "astro:assets";
 import heroImage from "@assets/hero.png";
+/* Hero display headline ships at weight 900: both subsets are preloaded on
+   this page only (Layout takes an opt-in list) so the first paint never
+   flashes a fallback face on the largest text of the site. */
+import albertSansLatin900 from "@fontsource/albert-sans/files/albert-sans-latin-900-normal.woff2?url";
+import albertSansLatinExt900 from "@fontsource/albert-sans/files/albert-sans-latin-ext-900-normal.woff2?url";
 import { localizePath, useTranslations } from "@i18n";
 import Layout from "@layouts/Layout.astro";
 import { listProducts } from "@lib/data/products";
@@ -102,21 +107,44 @@ const structuredData: JsonLdNode[] = [
 ];
 ---
 
-<Layout description={t("site.description")} image={heroImage.src}>
+<Layout
+  description={t("site.description")}
+  image={heroImage.src}
+  preloadFonts={[albertSansLatin900, albertSansLatinExt900]}
+>
   <JsonLd data={structuredData} />
   {/* ------------------------------------------------------------ hero */}
   <section
-    class="wrap grid items-center gap-8 pb-16 pt-10 tablet:min-h-[600px] tablet:grid-cols-2 tablet:pb-20 tablet:pt-14 wide:min-h-[800px] wide:gap-16"
+    class="wrap grid items-center gap-10 pb-16 pt-10 tablet:grid-cols-[48fr_52fr] tablet:gap-12 tablet:pb-20 tablet:pt-14 wide:gap-16"
   >
     <div class="reveal reveal-left flex flex-col items-start" data-reveal>
-      <h1 class="type-display uppercase">{t("home.heroTitle")}</h1>
-      <a class="btn mt-8" href={localizePath(locale, "/store")}>
-        {t("home.heroCta")}
-      </a>
+      <p class="type-kicker text-muted">{t("home.heroEyebrow")}</p>
+      <h1
+        class="mt-5 text-[clamp(36px,5vw,76px)] font-black uppercase leading-[1.05] tracking-[-0.03em] whitespace-pre-line"
+      >
+        {t("home.heroTitle")}
+      </h1>
+      <p class="mt-6 max-w-md text-base leading-relaxed text-muted">
+        {t("home.heroSub")}
+      </p>
+      <div class="mt-9 flex flex-wrap items-center gap-x-8 gap-y-4">
+        <a
+          class="btn rounded-[8px] font-semibold"
+          href={localizePath(locale, "/store")}
+        >
+          {t("home.heroCta")}
+        </a>
+        <a
+          href="#bo-suu-tap"
+          class="border-b border-ink/25 pb-1 text-[13px] font-semibold uppercase tracking-[0.12em] text-ink transition-colors hover:border-ink hover:text-muted"
+        >
+          {t("home.heroCtaSecondary")}
+        </a>
+      </div>
     </div>
 
     <div
-      class="reveal overflow-hidden rounded-xl bg-fog"
+      class="reveal overflow-hidden rounded-lg bg-sand"
       data-reveal
       style="--reveal-delay: 120ms"
     >
@@ -129,8 +157,15 @@ const structuredData: JsonLdNode[] = [
         sizes="(max-width: 809px) 100vw, 50vw"
         format="webp"
         quality={80}
-        class="h-[420px] w-full object-cover tablet:h-[560px] wide:h-[680px]"
+        class="h-[420px] w-full object-contain tablet:h-[560px] wide:h-[680px]"
       />
+      <div
+        class="flex items-center justify-between px-5 pb-4 text-[11px] font-medium uppercase tracking-[0.16em] text-muted"
+        aria-hidden="true"
+      >
+        <span>{t("home.heroImageLabel")}</span>
+        <span>{t("home.heroImageIndex")}</span>
+      </div>
     </div>
   </section>
 
@@ -188,7 +223,8 @@ const structuredData: JsonLdNode[] = [
   {/* -------------------------------------------------- collections */}
   {
     collections.length > 0 && (
-      <section class="section">
+      /* id="bo-suu-tap": in-page anchor target of the hero's secondary CTA */
+      <section class="section scroll-mt-24" id="bo-suu-tap">
         <div class="wrap">
           <div class="reveal mx-auto max-w-2xl text-center" data-reveal>
             <h2 class="type-title">{t("home.collectionsEyebrow")}</h2>

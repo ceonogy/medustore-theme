@@ -20,6 +20,10 @@ interface Props {
   image?: string;
   type?: "website" | "product";
   noindex?: boolean;
+  /* Extra woff2 subsets to preload (e.g. the 900 display weight on the
+     homepage hero). Kept opt-in per page so routes that never render
+     weight-900 text don't download it. */
+  preloadFonts?: string[];
 }
 
 const {
@@ -28,6 +32,7 @@ const {
   image,
   type = "website",
   noindex = false,
+  preloadFonts = [],
 } = Astro.props;
 
 const { locale, countryCode } = Astro.locals;
@@ -93,6 +98,17 @@ const regionId = region?.id || null;
       type="font/woff2"
       crossorigin
     />
+    {
+      preloadFonts.map((href) => (
+        <link
+          rel="preload"
+          href={href}
+          as="font"
+          type="font/woff2"
+          crossorigin
+        />
+      ))
+    }
     <link
       rel="dns-prefetch"
       href="//medusa-public-images.s3.eu-west-1.amazonaws.com"
