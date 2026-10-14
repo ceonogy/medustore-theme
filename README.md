@@ -6,15 +6,15 @@ Server-rendered with edge-cache headers. Interactive where it matters. Zero comp
 
 ## Tech Stack
 
-| Layer      | Technology                                                                               |
-| ---------- | ---------------------------------------------------------------------------------------- |
-| Framework  | [Astro 6](https://astro.build) — server-rendered HTML, islands of interactivity          |
-| UI         | [React 19](https://react.dev) — only where you need it                                   |
-| Styling    | [Tailwind CSS v4](https://tailwindcss.com) — zero-config Vite plugin                     |
-| Backend    | [Medusa v2](https://medusajs.com) — headless commerce engine                             |
-| Payments   | [Stripe](https://stripe.com) — secure checkout                                           |
-| State      | [Nanostores](https://github.com/nanostores/nanostores) — tiny, framework-agnostic stores |
-| Forms      | [React Hook Form](https://react-hook-form.com) + [Zod](https://zod.dev) validation       |
+| Layer      | Technology                                                                                             |
+| ---------- | ------------------------------------------------------------------------------------------------------ |
+| Framework  | [Astro 6](https://astro.build) — server-rendered HTML, islands of interactivity                        |
+| UI         | [React 19](https://react.dev) — only where you need it                                                 |
+| Styling    | [Tailwind CSS v4](https://tailwindcss.com) — zero-config Vite plugin                                   |
+| Backend    | [Medusa v2](https://medusajs.com) — headless commerce engine                                           |
+| Payments   | [Stripe](https://stripe.com) — secure checkout                                                         |
+| State      | [Nanostores](https://github.com/nanostores/nanostores) — tiny, framework-agnostic stores               |
+| Forms      | [React Hook Form](https://react-hook-form.com) + [Zod](https://zod.dev) validation                     |
 | Deployment | [Node adapter](https://docs.astro.build/en/guides/integrations-guide/node/) — PM2 behind OpenLiteSpeed |
 
 ## Architecture
@@ -52,20 +52,20 @@ Server-rendered with edge-cache headers. Interactive where it matters. Zero comp
 
 ## Pages
 
-| Route                          | Description                                     |
-| ------------------------------ | ----------------------------------------------- |
-| `/`                            | Landing page (Vietnamese, default locale)       |
-| `/store`                       | Product catalog (filters, facets, price slider) |
-| `/store/:handle`               | Product detail (2-column, image carousel)       |
-| `/:category`, `/:parent/:child` | Flat category pages (e.g. `/giay-dep`)          |
-| `/bo-suu-tap/:handle`          | Collection pages                                |
-| `/khuyen-mai`                  | Active promotions index                         |
-| `/khuyen-mai/:slug`            | Promotion detail (scoped filters)               |
-| `/cart`                        | Shopping cart                                   |
-| `/checkout`                    | Multi-step checkout (address, shipping, payment) |
-| `/order/confirmed`             | Order confirmation                              |
-| `/privacy`, `/terms`           | Static legal pages                              |
-| `/robots.txt`, `/sitemap.xml`  | SEO endpoints (dynamic routes)                  |
+| Route                           | Description                                      |
+| ------------------------------- | ------------------------------------------------ |
+| `/`                             | Landing page (Vietnamese, default locale)        |
+| `/store`                        | Product catalog (filters, facets, price slider)  |
+| `/store/:handle`                | Product detail (2-column, image carousel)        |
+| `/:category`, `/:parent/:child` | Flat category pages (e.g. `/giay-dep`)           |
+| `/bo-suu-tap/:handle`           | Collection pages                                 |
+| `/khuyen-mai`                   | Active promotions index                          |
+| `/khuyen-mai/:slug`             | Promotion detail (scoped filters)                |
+| `/cart`                         | Shopping cart                                    |
+| `/checkout`                     | Multi-step checkout (address, shipping, payment) |
+| `/order/confirmed`              | Order confirmation                               |
+| `/privacy`, `/terms`            | Static legal pages                               |
+| `/robots.txt`, `/sitemap.xml`   | SEO endpoints (dynamic routes)                   |
 
 The default locale (Vietnamese) is served from the domain root with **no** locale
 prefix. Other locales are prefixed, e.g. `/en/store`. See
@@ -121,6 +121,22 @@ yarn dev        # Start dev server on localhost:3001
 ```bash
 yarn build      # Production build (Node adapter → dist/)
 yarn preview    # Preview the production build locally
+```
+
+### Backups
+
+The PostgreSQL database is the store's only durable state (product
+images are external URLs), so `scripts/db-backup.sh` dumps it nightly
+into `/home/backups/medusa/` — custom format, mode 600, 14-day
+retention, a `.counts` sidecar per dump and a copy of the backend
+`.env` so a dump can land on a fresh host with its secrets.
+`scripts/db-backup-verify.sh` is the drill: it restores the newest dump
+into a throwaway database and diffs row counts table by table. Cron is
+host-level (not in git):
+
+```bash
+45 2 * * *  /home/storefront/scripts/db-backup.sh        >> /home/backups/medusa/backup.log  2>&1
+0  3 * * *  /home/storefront/scripts/db-backup-verify.sh >> /home/backups/medusa/verify.log  2>&1
 ```
 
 ## Project Structure
@@ -187,10 +203,10 @@ i18n: {
   import { localizePath, useTranslations } from "@i18n";
 
   const t = useTranslations(Astro.locals.locale);
-  t("cart.empty");                        // "Giỏ hàng của bạn đang trống"
-  t("nav.cartCount", { count: 3 });       // interpolation
-  localizePath("en", "/store");           // "/en/store"
-  localizePath("vi", "/store");           // "/store"
+  t("cart.empty"); // "Giỏ hàng của bạn đang trống"
+  t("nav.cartCount", { count: 3 }); // interpolation
+  localizePath("en", "/store"); // "/en/store"
+  localizePath("vi", "/store"); // "/store"
   ```
 
 - **`src/middleware.ts`** resolves the locale from the URL, redirects legacy
