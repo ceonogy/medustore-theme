@@ -139,6 +139,13 @@ host-level (not in git):
 0  3 * * *  /home/storefront/scripts/db-backup-verify.sh >> /home/backups/medusa/verify.log  2>&1
 ```
 
+`scripts/watchdog.sh` (every 5 min, same log convention) probes the
+storefront and the Medusa API; after 15 minutes down it restarts the
+affected app via pm2 (hourly cooldown prevents restart storms) and it
+alerts when a dump is missing/stale or the restore drill failed. Healthy
+runs are silent; set `WATCHDOG_ALERT_URL` to pipe alerts into a
+Slack/Discord/ntfy webhook.
+
 ## Project Structure
 
 ```
