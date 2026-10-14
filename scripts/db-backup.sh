@@ -16,6 +16,9 @@
 #   0  3 * * *  scripts/db-backup-verify.sh >> .../verify.log 2>&1
 set -euo pipefail
 
+# Cron's default PATH is just /usr/bin:/bin — pin a known-good one.
+export PATH="/usr/local/bin:/usr/local/sbin:/usr/bin:/sbin:/bin"
+
 BACKEND_ENV="/home/medusa/apps/backend/.env"
 BACKUP_DIR="/home/backups/medusa"
 KEEP=14

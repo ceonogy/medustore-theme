@@ -23,6 +23,11 @@
 #   WATCHDOG_ALERT_URL       webhook for alerts
 set -uo pipefail # deliberately no -e: a failed probe must not abort the run
 
+# Cron's default PATH is just /usr/bin:/bin, but pm2 lives in
+# /usr/local/bin — without this, the self-healing restart silently
+# fails in the only environment that matters (drilled: it did).
+export PATH="/usr/local/bin:/usr/local/sbin:/usr/bin:/sbin:/bin"
+
 STOREFRONT_URL="${WATCHDOG_STOREFRONT_URL:-http://127.0.0.1:3001/}"
 MEDUSA_URL="${WATCHDOG_MEDUSA_URL:-http://127.0.0.1:9000/health}"
 BACKUP_DIR="${WATCHDOG_BACKUP_DIR:-/home/backups/medusa}"
