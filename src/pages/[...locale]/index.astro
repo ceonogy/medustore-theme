@@ -123,7 +123,7 @@ const structuredData: JsonLdNode[] = [
     <div class="flex flex-col items-start">
       <p
         class="hero-fade type-kicker text-muted"
-        style="--hero-delay: 80ms; --hero-dur: 500ms"
+        style="--hero-delay: 150ms; --hero-dur: 500ms"
       >
         {t("home.heroEyebrow")}
       </p>
@@ -135,7 +135,7 @@ const structuredData: JsonLdNode[] = [
             <span class="hero-line">
               <span
                 class="hero-line-in"
-                style={`--hero-delay: ${300 + index * 150}ms`}
+                style={`--hero-delay: ${400 + index * 150}ms`}
               >
                 {line}
               </span>
@@ -145,13 +145,13 @@ const structuredData: JsonLdNode[] = [
       </h1>
       <p
         class="hero-fade mt-6 max-w-md text-base leading-relaxed text-muted"
-        style="--hero-delay: 700ms"
+        style="--hero-delay: 800ms"
       >
         {t("home.heroSub")}
       </p>
       <div
         class="hero-fade mt-9 flex flex-wrap items-center gap-x-8 gap-y-4"
-        style="--hero-delay: 800ms"
+        style="--hero-delay: 900ms"
       >
         <a
           class="btn rounded-[8px] font-semibold active:translate-y-0 active:scale-[0.97] hover:bg-[#1f1f1f]"
@@ -171,7 +171,7 @@ const structuredData: JsonLdNode[] = [
 
     <div
       class="hero-visual group overflow-hidden rounded-lg bg-sand"
-      style="--hero-delay: 180ms"
+      style="--hero-delay: 260ms"
     >
       <div class="hero-visual-in h-[500px] tablet:h-[680px] wide:h-[820px]">
         <Image
@@ -183,13 +183,13 @@ const structuredData: JsonLdNode[] = [
           sizes="(max-width: 809px) 100vw, 50vw"
           format="webp"
           quality={80}
-          class="hero-tee h-full w-full object-contain ease-out group-hover:-translate-y-1 group-hover:scale-[1.025] duration-[420ms] transition-transform"
+          class="hero-tee h-full w-full object-contain transition-transform duration-[500ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform group-hover:-translate-y-[3px] group-hover:scale-[1.02]"
         />
       </div>
       <div
         class="hero-labels flex items-center justify-between px-5 pb-4 text-[11px] font-medium uppercase tracking-[0.16em] text-muted"
         aria-hidden="true"
-        style="--hero-delay: 1250ms; --hero-dur: 600ms"
+        style="--hero-delay: 1450ms; --hero-dur: 600ms"
       >
         <span>{t("home.heroImageLabel")}</span>
         <span>{t("home.heroImageIndex")}</span>
@@ -364,15 +364,19 @@ const structuredData: JsonLdNode[] = [
      Hero entrance + micro-interactions — pure CSS: no JS, no
      animation library. Choreography on first paint:
 
-       eyebrow      fade-up        500ms  @    80ms
-       headline L1  masked rise    950ms  @   300ms
-       headline L2  masked rise    950ms  @   450ms
-       description  fade-up        700ms  @   700ms
-       CTA row      fade-up        700ms  @   800ms
-       tee visual   veil + slide  1100ms  @   120ms
-       labels       fade-up        600ms  @  1250ms
+       eyebrow      fade-up        500ms  @   150ms
+       headline L1  masked rise   1050ms  @   400ms
+       headline L2  masked rise   1050ms  @   550ms
+       description  fade-up        700ms  @   800ms
+       CTA row      fade-up        700ms  @   900ms
+       tee visual   veil + slide  1100ms  @   200ms
+       labels       fade-up        600ms  @  1450ms
 
-     Easing: cubic-bezier(0.16, 1, 0.3, 1). Like the site-wide scroll
+     Easing: cubic-bezier(0.5, 0, 0.15, 1) — a slow-start, long-landing
+     curve. The originally tried expo-out (0.16,1,0.3,1) front-loaded
+     ~98% of every travel into the first frames, so the entrance read
+     as "everything just appeared"; this curve keeps visible motion
+     across the whole duration. Like the site-wide scroll
      reveal, every hidden state is scoped under `.has-reveal` — the
      inline head script that marks JS alive before first paint — so
      with JS disabled the hero simply renders in its final state.
@@ -406,8 +410,11 @@ const structuredData: JsonLdNode[] = [
   }
 
   :global(.has-reveal) .hero-fade {
-    animation: hero-fade-up var(--hero-dur, 700ms) cubic-bezier(0.16, 1, 0.3, 1)
-      var(--hero-delay, 0ms) both;
+    animation-name: hero-fade-up;
+    animation-duration: var(--hero-dur, 700ms);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.15, 1);
+    animation-delay: var(--hero-delay, 0ms);
+    animation-fill-mode: both;
   }
 
   /* Per-line mask for the headline. The mask carries symmetric padding
@@ -424,22 +431,36 @@ const structuredData: JsonLdNode[] = [
 
   :global(.has-reveal) .hero-line-in {
     display: block;
-    animation: hero-line-up 950ms cubic-bezier(0.16, 1, 0.3, 1)
-      var(--hero-delay, 0ms) both;
+    will-change: transform;
+    animation-name: hero-line-up;
+    animation-duration: 1050ms;
+    animation-timing-function: cubic-bezier(0.5, 0, 0.15, 1);
+    animation-delay: var(--hero-delay, 0ms);
+    animation-fill-mode: both;
   }
 
   :global(.has-reveal) .hero-visual {
-    animation: hero-veil 900ms cubic-bezier(0.16, 1, 0.3, 1)
-      var(--hero-delay, 0ms) both;
+    animation-name: hero-veil;
+    animation-duration: 900ms;
+    animation-timing-function: cubic-bezier(0.5, 0, 0.15, 1);
+    animation-delay: var(--hero-delay, 0ms);
+    animation-fill-mode: both;
   }
 
   :global(.has-reveal) .hero-visual-in {
-    animation: hero-tee-in 1100ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+    animation-name: hero-tee-in;
+    animation-duration: 1100ms;
+    animation-timing-function: cubic-bezier(0.5, 0, 0.15, 1);
+    animation-delay: 200ms;
+    animation-fill-mode: both;
   }
 
   :global(.has-reveal) .hero-labels {
-    animation: hero-fade-up var(--hero-dur, 600ms) cubic-bezier(0.16, 1, 0.3, 1)
-      var(--hero-delay, 0ms) both;
+    animation-name: hero-fade-up;
+    animation-duration: var(--hero-dur, 600ms);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.15, 1);
+    animation-delay: var(--hero-delay, 0ms);
+    animation-fill-mode: both;
   }
 
   /* CTA arrow nudges right on hover; the button keeps the design
@@ -486,15 +507,28 @@ const structuredData: JsonLdNode[] = [
       animation: none;
     }
 
-    .hero-tee,
     .hero-cta-arrow,
     .hero-link::after {
       transition: none;
     }
 
-    .group:hover .hero-tee,
     .btn:hover .hero-cta-arrow {
       transform: none;
+    }
+
+    /* Motion-free hover feedback: the tee answers with a short tonal
+       dip (an opacity fade — nothing spatial, so nothing snaps when
+       motion is off) instead of the scale/lift, which would either
+       jump instantly or feel like broken motion. */
+    .hero-tee {
+      will-change: auto;
+      transition: opacity 0.2s linear;
+    }
+
+    .group:hover .hero-tee {
+      scale: 1;
+      translate: none;
+      opacity: 0.9;
     }
   }
 </style>
