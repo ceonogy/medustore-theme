@@ -283,141 +283,6 @@
     }
   }
 
-  /* ================================================================
-     Homepage hero entrance + micro-interactions — pure CSS: no JS and
-     no animation library. It lives in the global sheet (not an Astro
-     page-style block) so it ships inside the main bundled stylesheet —
-     the one asset every browser demonstrably applies — and follows the
-     convention the scroll-reveal block below already set.
-
-     The entrance is gated by pure CSS state, not by a script: CSS
-     animations run without JavaScript, so the rules below apply
-     unconditionally. Two safety nets restore the static state where
-     an animation could not run anyway: `scripting: none` (JS off at
-     the browser level — never hide content from a visitor who can't
-     run scripts) and `@supports not (animation-name: …)` for engines
-     without keyframe support.
-
-       eyebrow      fade-up        500ms  @   150ms
-       headline L1  masked rise   1050ms  @   400ms
-       headline L2  masked rise   1050ms  @   550ms
-       description  fade-up        700ms  @   800ms
-       CTA row      fade-up        700ms  @   900ms
-       tee visual   veil + slide  1100ms  @   200ms
-       labels       fade-up        600ms  @  1450ms
-
-     Easing: cubic-bezier(0.5, 0, 0.15, 1) — a slow-start, long-landing
-     curve. The originally tried expo-out (0.16,1,0.3,1) front-loaded
-     ~98% of every travel into the first frames, so the entrance read
-     as "everything just appeared"; this curve keeps visible motion
-     across the whole duration. Like the site-wide scroll
-     reveal, every hidden state is scoped under `.has-reveal` — the
-     inline head script that marks JS alive before first paint — so
-     with JS disabled the hero simply renders in its final state.
-     Transform and opacity only: no layout involvement, no CLS.
-     ================================================================ */
-
-  @keyframes hero-fade-up {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-  }
-
-  @keyframes hero-line-up {
-    from {
-      transform: translateY(120%);
-    }
-  }
-
-  @keyframes hero-veil {
-    from {
-      opacity: 0;
-      transform: scale(0.99);
-    }
-  }
-
-  @keyframes hero-tee-in {
-    from {
-      transform: translateX(56px) scale(0.96);
-    }
-  }
-
-  .hero-fade {
-    animation-name: hero-fade-up;
-    animation-duration: var(--hero-dur, 700ms);
-    animation-timing-function: cubic-bezier(0.5, 0, 0.15, 1);
-    animation-delay: var(--hero-delay, 0ms);
-    animation-fill-mode: both;
-  }
-
-  /* Per-line mask for the headline. The mask carries symmetric padding
-     so stacked Vietnamese diacritics (Ầ above the caps, Ặ above AND
-     below the baseline) never clip while the line rises; matching
-     negative margins keep the layout box — and the type rhythm —
-     exactly where the static design put it. */
-  .hero-line {
-    display: block;
-    overflow: hidden;
-    padding-block: 0.2em;
-    margin-block: -0.2em;
-  }
-
-  .hero-line-in {
-    display: block;
-    will-change: transform;
-    animation-name: hero-line-up;
-    animation-duration: 1050ms;
-    animation-timing-function: cubic-bezier(0.5, 0, 0.15, 1);
-    animation-delay: var(--hero-delay, 0ms);
-    animation-fill-mode: both;
-  }
-
-  .hero-visual {
-    animation-name: hero-veil;
-    animation-duration: 900ms;
-    animation-timing-function: cubic-bezier(0.5, 0, 0.15, 1);
-    animation-delay: var(--hero-delay, 0ms);
-    animation-fill-mode: both;
-  }
-
-  .hero-visual-in {
-    animation-name: hero-tee-in;
-    animation-duration: 1100ms;
-    animation-timing-function: cubic-bezier(0.5, 0, 0.15, 1);
-    animation-delay: 200ms;
-    animation-fill-mode: both;
-  }
-
-  .hero-labels {
-    animation-name: hero-fade-up;
-    animation-duration: var(--hero-dur, 600ms);
-    animation-timing-function: cubic-bezier(0.5, 0, 0.15, 1);
-    animation-delay: var(--hero-delay, 0ms);
-    animation-fill-mode: both;
-  }
-
-  /* Never hide the hero when an animation could not run anyway. */
-  @media (scripting: none) {
-    .hero-fade,
-    .hero-line-in,
-    .hero-visual,
-    .hero-visual-in,
-    .hero-labels {
-      animation: none;
-    }
-  }
-
-  @supports not (animation-name: hero-probe) {
-    .hero-fade,
-    .hero-line-in,
-    .hero-visual,
-    .hero-visual-in,
-    .hero-labels {
-      animation: none;
-    }
-  }
-
   /* CTA arrow nudges right on hover; the button keeps the design
      system's lift plus the page's darken + press utilities. */
   .hero-cta-arrow {
@@ -451,6 +316,151 @@
   .hero-link:hover::after,
   .hero-link:focus-visible::after {
     transform: scaleX(1);
+  }
+}
+
+/* ================================================================
+   Hero entrance — UNLAYERED on purpose.
+   Keyframes and animation rules live outside every @layer: layered
+   @keyframes have a history of interop bugs (WebKit resolving
+   animation-name against keyframes declared inside a layer), and
+   nothing here needs to compete with utilities — the elements carry
+   no animation utilities of their own. Unlayered also means these
+   rules can never be outranked by something they must not lose to.
+   ================================================================ */
+
+/* ================================================================
+   Homepage hero entrance + micro-interactions — pure CSS: no JS and
+   no animation library. It lives in the global sheet (not an Astro
+   page-style block) so it ships inside the main bundled stylesheet —
+   the one asset every browser demonstrably applies — and follows the
+   convention the scroll-reveal block below already set.
+
+   The entrance is gated by pure CSS state, not by a script: CSS
+   animations run without JavaScript, so the rules below apply
+   unconditionally. Two safety nets restore the static state where
+   an animation could not run anyway: `scripting: none` (JS off at
+   the browser level — never hide content from a visitor who can't
+   run scripts) and `@supports not (animation-name: …)` for engines
+   without keyframe support.
+
+     eyebrow      fade-up        500ms  @   150ms
+     headline L1  masked rise   1050ms  @   400ms
+     headline L2  masked rise   1050ms  @   550ms
+     description  fade-up        700ms  @   800ms
+     CTA row      fade-up        700ms  @   900ms
+     tee visual   veil + slide  1100ms  @   200ms
+     labels       fade-up        600ms  @  1450ms
+
+   Easing: cubic-bezier(0.5, 0, 0.15, 1) — a slow-start, long-landing
+   curve. The originally tried expo-out (0.16,1,0.3,1) front-loaded
+   ~98% of every travel into the first frames, so the entrance read
+   as "everything just appeared"; this curve keeps visible motion
+   across the whole duration. Like the site-wide scroll
+   reveal, every hidden state is scoped under `.has-reveal` — the
+   inline head script that marks JS alive before first paint — so
+   with JS disabled the hero simply renders in its final state.
+   Transform and opacity only: no layout involvement, no CLS.
+   ================================================================ */
+
+@keyframes hero-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+}
+
+@keyframes hero-line-up {
+  from {
+    transform: translateY(120%);
+  }
+}
+
+@keyframes hero-veil {
+  from {
+    opacity: 0;
+    transform: scale(0.99);
+  }
+}
+
+@keyframes hero-tee-in {
+  from {
+    transform: translateX(56px) scale(0.96);
+  }
+}
+
+.hero-fade {
+  animation-name: hero-fade-up;
+  animation-duration: var(--hero-dur, 700ms);
+  animation-timing-function: cubic-bezier(0.5, 0, 0.15, 1);
+  animation-delay: var(--hero-delay, 0ms);
+  animation-fill-mode: both;
+}
+
+/* Per-line mask for the headline. The mask carries symmetric padding
+   so stacked Vietnamese diacritics (Ầ above the caps, Ặ above AND
+   below the baseline) never clip while the line rises; matching
+   negative margins keep the layout box — and the type rhythm —
+   exactly where the static design put it. */
+.hero-line {
+  display: block;
+  overflow: hidden;
+  padding-block: 0.2em;
+  margin-block: -0.2em;
+}
+
+.hero-line-in {
+  display: block;
+  will-change: transform;
+  animation-name: hero-line-up;
+  animation-duration: 1050ms;
+  animation-timing-function: cubic-bezier(0.5, 0, 0.15, 1);
+  animation-delay: var(--hero-delay, 0ms);
+  animation-fill-mode: both;
+}
+
+.hero-visual {
+  animation-name: hero-veil;
+  animation-duration: 900ms;
+  animation-timing-function: cubic-bezier(0.5, 0, 0.15, 1);
+  animation-delay: var(--hero-delay, 0ms);
+  animation-fill-mode: both;
+}
+
+.hero-visual-in {
+  animation-name: hero-tee-in;
+  animation-duration: 1100ms;
+  animation-timing-function: cubic-bezier(0.5, 0, 0.15, 1);
+  animation-delay: 200ms;
+  animation-fill-mode: both;
+}
+
+.hero-labels {
+  animation-name: hero-fade-up;
+  animation-duration: var(--hero-dur, 600ms);
+  animation-timing-function: cubic-bezier(0.5, 0, 0.15, 1);
+  animation-delay: var(--hero-delay, 0ms);
+  animation-fill-mode: both;
+}
+
+/* Never hide the hero when an animation could not run anyway. */
+@media (scripting: none) {
+  .hero-fade,
+  .hero-line-in,
+  .hero-visual,
+  .hero-visual-in,
+  .hero-labels {
+    animation: none;
+  }
+}
+
+@supports not (animation-name: hero-probe) {
+  .hero-fade,
+  .hero-line-in,
+  .hero-visual,
+  .hero-visual-in,
+  .hero-labels {
+    animation: none;
   }
 }
 

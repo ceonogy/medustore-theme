@@ -78,6 +78,50 @@ const regionId = region?.id || null;
       document.documentElement.classList.add("has-reveal");
     </script>
     {
+      /* On-demand motion diagnostic: `?motion=1` renders a small badge
+         reporting the three states that decide whether the hero entrance
+         can play — the keyframes resolving (`animation-name` on the
+         masked headline), the browser's reduced-motion preference, and
+         whether the head script ran. Debugging aid only: invisible
+         unless asked for; a missing badge itself means scripts are off.
+         The scroll-reveal gate above is unrelated to the hero entrance,
+         which is pure CSS. */
+    }
+    <script is:inline>
+      if (new URLSearchParams(location.search).has("motion")) {
+        addEventListener("DOMContentLoaded", () => {
+          const el = document.querySelector(".hero-line-in");
+          const anim = el
+            ? getComputedStyle(el).animationName
+            : "element missing";
+          const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+          const gate =
+            document.documentElement.classList.contains("has-reveal");
+          const cssOk = anim.includes("hero-line-up");
+          const badge = document.createElement("div");
+          badge.style.cssText =
+            "position:fixed;left:12px;bottom:12px;z-index:2147483647;padding:10px 14px;" +
+            "font:600 12px/1.7 ui-monospace,monospace;color:#fff;border-radius:8px;" +
+            "background:" +
+            (cssOk ? "#111" : "#b91c1c") +
+            ";box-shadow:0 6px 24px rgb(0 0 0 / 0.25)";
+          badge.innerHTML =
+            "MOTION DEBUG<br>" +
+            "js: on (this badge needs scripts)<br>" +
+            "css animation-name: " +
+            anim +
+            (cssOk ? " OK" : "  <-- CSS NOT APPLIED") +
+            "<br>" +
+            "prefers-reduced-motion: " +
+            (reduce ? "YES -> entrance skipped by design" : "no") +
+            "<br>" +
+            "head script: " +
+            (gate ? "ran" : "did not run");
+          document.body.append(badge);
+        });
+      }
+    </script>
+    {
       /* Body copy (weight 400) ships in two subsets — Vietnamese mixes
         latin ASCII with latin-ext diacritics — so both woff2s are
         preloaded: first paint shouldn't wait on the CSS → @font-face →
