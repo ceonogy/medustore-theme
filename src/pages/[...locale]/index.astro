@@ -1,6 +1,6 @@
 ---
 import { Image } from "astro:assets";
-import heroImage from "@assets/hero.png";
+import heroImage from "@assets/hero.webp";
 /* Hero display headline ships at weight 900: both subsets are preloaded on
    this page only (Layout takes an opt-in list) so the first paint never
    flashes a fallback face on the largest text of the site. */
@@ -176,10 +176,10 @@ const structuredData: JsonLdNode[] = [
       <div class="hero-visual-in min-h-0 flex-1">
         <Image
           src={heroImage}
-          width={1200}
-          height={1500}
+          width={1076}
+          height={1461}
           alt={t("home.heroImageAlt")}
-          widths={[600, 900, 1200]}
+          widths={[600, 900, 1076]}
           sizes="(max-width: 809px) 100vw, 50vw"
           format="webp"
           quality={80}

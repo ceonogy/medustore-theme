@@ -60,7 +60,7 @@ export const vi = {
   "home.heroCtaSecondary": "XEM BỘ SƯU TẬP",
   "home.heroImageLabel": "EVERYDAY UNIFORM",
   "home.heroImageIndex": "01 / ESSENTIALS",
-  "home.heroImageAlt": "Áo thun đen phom rộng trong bộ sưu tập mới",
+  "home.heroImageAlt": "Người mẫu mặc áo thun trắng phom rộng phối quần màu be",
   "home.newArrivalsEyebrow": "Mặc như một pro",
   "home.newArrivalsTitle": "Hàng mới về",
   "home.newArrivalsSub":
@@ -188,7 +188,8 @@ export const en: typeof vi = {
   "home.heroCtaSecondary": "VIEW COLLECTION",
   "home.heroImageLabel": "EVERYDAY UNIFORM",
   "home.heroImageIndex": "01 / ESSENTIALS",
-  "home.heroImageAlt": "Wide-fit black t-shirt from the new collection",
+  "home.heroImageAlt":
+    "Model wearing an oversized white tee with beige trousers",
   "home.newArrivalsEyebrow": "Wear like a Pro",
   "home.newArrivalsTitle": "New Arrivals",
   "home.newArrivalsSub":

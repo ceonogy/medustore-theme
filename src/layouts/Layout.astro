@@ -1,5 +1,5 @@
 ---
-import heroImage from "@assets/hero.png";
+import heroImage from "@assets/hero.webp";
 import { useTranslations } from "@i18n";
 import { getRegion } from "@lib/data/regions";
 import { CartSidebar } from "@modules/layout/components/CartSidebar";
@@ -97,7 +97,8 @@ const regionId = region?.id || null;
           const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
           const gate =
             document.documentElement.classList.contains("has-reveal");
-          const cssOk = anim.includes("hero-line-up");
+          const cssOk =
+            anim.includes("hero-line-up") || anim.includes("hero-fade-soft");
           const badge = document.createElement("div");
           badge.style.cssText =
             "position:fixed;left:12px;bottom:12px;z-index:2147483647;padding:10px 14px;" +
@@ -113,7 +114,7 @@ const regionId = region?.id || null;
             (cssOk ? " OK" : "  <-- CSS NOT APPLIED") +
             "<br>" +
             "prefers-reduced-motion: " +
-            (reduce ? "YES -> entrance skipped by design" : "no") +
+            (reduce ? "YES -> soft fade entrance plays (no movement)" : "no") +
             "<br>" +
             "head script: " +
             (gate ? "ran" : "did not run");

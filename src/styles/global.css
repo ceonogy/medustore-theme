@@ -389,6 +389,15 @@
   }
 }
 
+/* Reduced-motion variant: the same staged entrance as a pure opacity
+   choreography — zero translation or scale (the compromise macOS
+   itself uses: fades are not motion), still clearly visible. */
+@keyframes hero-fade-soft {
+  from {
+    opacity: 0;
+  }
+}
+
 .hero-fade {
   animation-name: hero-fade-up;
   animation-duration: var(--hero-dur, 700ms);
@@ -470,12 +479,25 @@
    would otherwise keep moving things when the visitor asked for less
    motion. Unlayered CSS beats every layer. */
 @media (prefers-reduced-motion: reduce) {
+  /* The entrance still plays under reduced motion — as a pure
+     opacity choreography with the same stagger: no translation,
+     no scale, nothing spatial. Fades are not motion; the visitor
+     asked for less movement, not for a dead page. */
   .hero-fade,
-  .hero-line-in,
-  .hero-visual,
-  .hero-visual-in,
   .hero-labels {
-    animation: none;
+    animation-name: hero-fade-soft;
+    animation-duration: 450ms;
+  }
+
+  .hero-line-in {
+    animation-name: hero-fade-soft;
+    animation-duration: 550ms;
+  }
+
+  .hero-visual,
+  .hero-visual-in {
+    animation-name: hero-fade-soft;
+    animation-duration: 600ms;
   }
 
   .hero-cta-arrow,
