@@ -118,9 +118,9 @@ const structuredData: JsonLdNode[] = [
   <JsonLd data={structuredData} />
   {/* ------------------------------------------------------------ hero */}
   <section
-    class="wrap grid items-center gap-10 pb-16 pt-10 tablet:grid-cols-[48fr_52fr] tablet:gap-12 tablet:pb-20 tablet:pt-14 wide:gap-16"
+    class="wrap grid h-[calc(100svh_-_65px)] grid-rows-[auto_1fr] items-stretch gap-6 py-5 tablet:grid-cols-[48fr_52fr] tablet:grid-rows-1 tablet:gap-10 tablet:py-8 wide:h-[calc(100svh_-_81px)] wide:gap-16"
   >
-    <div class="flex flex-col items-start">
+    <div class="flex flex-col items-start justify-center">
       <p
         class="hero-fade type-kicker text-muted"
         style="--hero-delay: 150ms; --hero-dur: 500ms"
@@ -170,10 +170,10 @@ const structuredData: JsonLdNode[] = [
     </div>
 
     <div
-      class="hero-visual group overflow-hidden rounded-lg bg-sand"
+      class="hero-visual group flex flex-col overflow-hidden rounded-lg bg-sand"
       style="--hero-delay: 260ms"
     >
-      <div class="hero-visual-in h-[500px] tablet:h-[680px] wide:h-[820px]">
+      <div class="hero-visual-in min-h-0 flex-1">
         <Image
           src={heroImage}
           width={1200}
@@ -187,7 +187,7 @@ const structuredData: JsonLdNode[] = [
         />
       </div>
       <div
-        class="hero-labels flex items-center justify-between px-5 pb-4 text-[11px] font-medium uppercase tracking-[0.16em] text-muted"
+        class="hero-labels flex shrink-0 items-center justify-between px-5 pb-4 text-[11px] font-medium uppercase tracking-[0.16em] text-muted"
         aria-hidden="true"
         style="--hero-delay: 1450ms; --hero-dur: 600ms"
       >

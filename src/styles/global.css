@@ -290,7 +290,13 @@
      the one asset every browser demonstrably applies — and follows the
      convention the scroll-reveal block below already set.
 
-     Choreography on first paint:
+     The entrance is gated by pure CSS state, not by a script: CSS
+     animations run without JavaScript, so the rules below apply
+     unconditionally. Two safety nets restore the static state where
+     an animation could not run anyway: `scripting: none` (JS off at
+     the browser level — never hide content from a visitor who can't
+     run scripts) and `@supports not (animation-name: …)` for engines
+     without keyframe support.
 
        eyebrow      fade-up        500ms  @   150ms
        headline L1  masked rise   1050ms  @   400ms
@@ -337,7 +343,7 @@
     }
   }
 
-  .has-reveal .hero-fade {
+  .hero-fade {
     animation-name: hero-fade-up;
     animation-duration: var(--hero-dur, 700ms);
     animation-timing-function: cubic-bezier(0.5, 0, 0.15, 1);
@@ -357,7 +363,7 @@
     margin-block: -0.2em;
   }
 
-  .has-reveal .hero-line-in {
+  .hero-line-in {
     display: block;
     will-change: transform;
     animation-name: hero-line-up;
@@ -367,7 +373,7 @@
     animation-fill-mode: both;
   }
 
-  .has-reveal .hero-visual {
+  .hero-visual {
     animation-name: hero-veil;
     animation-duration: 900ms;
     animation-timing-function: cubic-bezier(0.5, 0, 0.15, 1);
@@ -375,7 +381,7 @@
     animation-fill-mode: both;
   }
 
-  .has-reveal .hero-visual-in {
+  .hero-visual-in {
     animation-name: hero-tee-in;
     animation-duration: 1100ms;
     animation-timing-function: cubic-bezier(0.5, 0, 0.15, 1);
@@ -383,12 +389,33 @@
     animation-fill-mode: both;
   }
 
-  .has-reveal .hero-labels {
+  .hero-labels {
     animation-name: hero-fade-up;
     animation-duration: var(--hero-dur, 600ms);
     animation-timing-function: cubic-bezier(0.5, 0, 0.15, 1);
     animation-delay: var(--hero-delay, 0ms);
     animation-fill-mode: both;
+  }
+
+  /* Never hide the hero when an animation could not run anyway. */
+  @media (scripting: none) {
+    .hero-fade,
+    .hero-line-in,
+    .hero-visual,
+    .hero-visual-in,
+    .hero-labels {
+      animation: none;
+    }
+  }
+
+  @supports not (animation-name: hero-probe) {
+    .hero-fade,
+    .hero-line-in,
+    .hero-visual,
+    .hero-visual-in,
+    .hero-labels {
+      animation: none;
+    }
   }
 
   /* CTA arrow nudges right on hover; the button keeps the design
@@ -433,11 +460,11 @@
    would otherwise keep moving things when the visitor asked for less
    motion. Unlayered CSS beats every layer. */
 @media (prefers-reduced-motion: reduce) {
-  .has-reveal .hero-fade,
-  .has-reveal .hero-line-in,
-  .has-reveal .hero-visual,
-  .has-reveal .hero-visual-in,
-  .has-reveal .hero-labels {
+  .hero-fade,
+  .hero-line-in,
+  .hero-visual,
+  .hero-visual-in,
+  .hero-labels {
     animation: none;
   }
 
