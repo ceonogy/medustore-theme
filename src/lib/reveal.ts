@@ -20,14 +20,9 @@ function reveal(root: ParentNode = document) {
 
   if (!nodes.length) return;
 
-  // Nothing to animate if the visitor asked for less motion.
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    for (const node of nodes) {
-      node.dataset.revealSeen = "1";
-      node.classList.add("is-in");
-    }
-    return;
-  }
+  // Reduced motion is answered in CSS (global.css): the scroll reveal
+  // keeps a pure opacity fade and drops the translate, so a visitor
+  // who asked for less motion still watches content arrive.
 
   const observer = new IntersectionObserver(
     (entries) => {

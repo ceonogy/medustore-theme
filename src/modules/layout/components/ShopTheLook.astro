@@ -68,7 +68,7 @@ const spots = SPOTS.map((spot) => {
       {/* ------------------------------------------------ image + pins */}
       <div class="reveal reveal-left" data-reveal>
         <div
-          class="hs-frame relative mx-auto aspect-[533/800] w-full max-w-[480px] overflow-hidden rounded-lg bg-sand"
+          class="hs-frame relative mr-auto aspect-[533/800] w-full max-w-[480px] overflow-hidden rounded-lg bg-sand"
         >
           <Image
             src={lookImage}
@@ -144,20 +144,56 @@ const spots = SPOTS.map((spot) => {
           <p class="type-kicker text-muted">{t("home.lookEyebrow")}</p>
         </div>
         <h2
-          class="type-title mt-3 reveal"
+          class="type-title mt-3 text-left reveal"
           data-reveal
           style="--reveal-delay: 80ms"
         >
           {t("home.lookTitle")}
         </h2>
         <p
-          class="type-body mt-4 max-w-md text-muted reveal"
+          class="type-body mt-4 max-w-lg text-muted reveal"
           data-reveal
           style="--reveal-delay: 160ms"
         >
           {t("home.lookSub")}
         </p>
-        <div class="reveal mt-8" data-reveal style="--reveal-delay: 240ms">
+
+        {
+          /* The set, itemized: shoppable rows mirroring the pins, so the
+            column carries content instead of empty space. */
+        }
+        <ul class="mt-8 max-w-lg border-t border-line">
+          {
+            spots.map((spot, index) => (
+              <li
+                class="reveal"
+                data-reveal
+                style={`--reveal-delay: ${240 + index * 70}ms`}
+              >
+                <a
+                  href={localizePath(locale, `/store/${spot.handle}`)}
+                  class="hs-look-row"
+                >
+                  <span class="hs-look-idx" aria-hidden="true">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <span class="hs-look-name">{spot.title}</span>
+                  {spot.price?.price_type === "sale" && (
+                    <s class="hs-look-was">{spot.price.original_price}</s>
+                  )}
+                  <span class="hs-look-price">
+                    {spot.price?.calculated_price ?? "—"}
+                  </span>
+                  <span class="hs-look-arrow" aria-hidden="true">
+                    →
+                  </span>
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+
+        <div class="reveal mt-8" data-reveal style="--reveal-delay: 560ms">
           <a class="btn btn-ghost" href={localizePath(locale, "/store")}>
             {t("home.browseProducts")}
           </a>

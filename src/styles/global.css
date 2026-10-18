@@ -268,12 +268,16 @@
   @media (prefers-reduced-motion: reduce) {
     .has-reveal .reveal,
     .has-reveal .reveal-left,
-    .has-reveal .reveal-nav,
+    .has-reveal .reveal-nav {
+      transform: none;
+      transition: opacity 0.5s ease;
+      transition-delay: var(--reveal-delay, 0s);
+      will-change: auto;
+    }
+
     .has-reveal .reveal.is-in {
       opacity: 1;
       transform: none;
-      transition: none;
-      will-change: auto;
     }
 
     .product-media > img,
@@ -498,6 +502,57 @@
 
 .hs-card-link:hover .hs-card-go {
   translate: 3px 0;
+}
+
+/* Itemized set list under the lookbook copy: numbered editorial rows
+   mirroring the pins, so the text column is content, not air. */
+.hs-look-row {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  padding-block: 13px;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.hs-look-idx {
+  width: 26px;
+  flex: none;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--color-muted);
+}
+
+.hs-look-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+  transition: text-decoration-color 220ms ease;
+}
+
+.hs-look-was {
+  font-size: 12px;
+  color: var(--color-muted);
+  text-decoration: line-through;
+}
+
+.hs-look-price {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.hs-look-arrow {
+  color: var(--color-muted);
+  transition: translate 220ms ease;
+}
+
+.hs-look-row:hover .hs-look-arrow {
+  translate: 4px 0;
+}
+
+.hs-look-row:hover .hs-look-name {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* ================================================================
