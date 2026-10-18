@@ -20,6 +20,7 @@ import { Newsletter } from "@modules/layout/components/Newsletter";
 import BenefitIcon from "@modules/layout/components/BenefitIcon.astro";
 import JsonLd from "@modules/layout/components/JsonLd.astro";
 import ProductPreview from "@modules/products/components/product-preview/ProductPreview.astro";
+import ShopTheLook from "@modules/layout/components/ShopTheLook.astro";
 
 const { locale, countryCode } = Astro.locals;
 const t = useTranslations(locale);
@@ -238,6 +239,9 @@ const structuredData: JsonLdNode[] = [
       </div>
     </div>
   </section>
+
+  {/* ------------------------------------------------ shop the look */}
+  <ShopTheLook products={products} />
 
   {/* -------------------------------------------------- testimonial */}
   <section class="section bg-fog">

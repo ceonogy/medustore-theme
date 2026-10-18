@@ -319,6 +319,187 @@
   }
 }
 
+/* ============================================ shop-the-look hotspots
+   Shoppable pins on the lookbook frame. Each spot owns a dot and a
+   product card; the card flips sides via [data-dir] and lifts with
+   --vshift — both measured by the script against the frame so a card
+   can never hang off the image. The card fades without translating;
+   only the dot's pulse rings move, and reduced motion kills those. */
+/* The spot is only a hover/focus group pairing a dot with its card;
+   it has no box of its own, so both children anchor to the frame
+   (--x/--y inherit) and a docked card can hug the frame edge. */
+.hs-dot {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  translate: -50% -50%;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 9999px;
+  cursor: pointer;
+}
+
+.hs-dot::before,
+.hs-dot::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  border: 1px solid rgb(0 0 0 / 0.45);
+  animation: hs-pulse 2.8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.hs-dot::after {
+  animation-delay: 1.4s;
+}
+
+@keyframes hs-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+
+  70%,
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+.hs-dot-core {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: var(--color-paper);
+  border: 1.5px solid var(--color-ink);
+  box-shadow: 0 1px 6px rgb(0 0 0 / 0.2);
+  transition:
+    background-color 220ms ease,
+    scale 220ms ease;
+}
+
+.hs-dot:hover .hs-dot-core,
+.hs-dot:focus-visible .hs-dot-core,
+.hs-spot.is-open .hs-dot-core {
+  background: var(--color-ink);
+  scale: 1.2;
+}
+
+.hs-dot:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 1px;
+}
+
+.hs-card {
+  position: absolute;
+  top: var(--y);
+  left: calc(var(--x) + 10px);
+  width: 236px;
+  padding: 10px;
+  background: var(--color-paper);
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  box-shadow: 0 14px 34px rgb(0 0 0 / 0.14);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(calc(-50% + var(--vshift, 0px))) translateX(4px);
+  transition:
+    opacity 220ms ease,
+    transform 220ms ease,
+    visibility 0s linear 220ms;
+  z-index: 5;
+}
+
+.hs-spot[data-dir="left"] .hs-card {
+  left: auto;
+  right: calc(100% - var(--x) + 10px);
+  transform: translateY(calc(-50% + var(--vshift, 0px))) translateX(-4px);
+}
+
+.hs-spot.is-open .hs-card {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(calc(-50% + var(--vshift, 0px))) translateX(0);
+  transition-delay: 0s;
+}
+
+/* Phone-width frames: when neither side of the dot clears the card,
+   it docks to the bottom edge of the picture instead — still one card
+   at a time, still fully inside the image. */
+.hs-spot.hs-sheet .hs-card {
+  left: 8px;
+  right: 8px;
+  width: auto;
+  top: auto;
+  bottom: 8px;
+  transform: none;
+}
+
+.hs-card-link {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.hs-card-img {
+  width: 52px;
+  height: 65px;
+  flex: none;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--color-sand);
+}
+
+.hs-card-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.hs-card-title {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.hs-card-prices {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.hs-card-was {
+  font-size: 11px;
+  color: var(--color-muted);
+  text-decoration: line-through;
+}
+
+.hs-card-price {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.hs-card-go {
+  margin-left: auto;
+  font-size: 14px;
+  color: var(--color-muted);
+  transition: translate 220ms ease;
+}
+
+.hs-card-link:hover .hs-card-go {
+  translate: 3px 0;
+}
+
 /* ================================================================
    Hero entrance — UNLAYERED on purpose.
    Keyframes and animation rules live outside every @layer: layered
@@ -522,5 +703,23 @@
     scale: 1;
     translate: none;
     opacity: 0.9;
+  }
+
+  /* Lookbook hotspots: no pulse rings; cards fade in place — the
+     --vshift clamp stays, it is layout, not motion. */
+  .hs-dot::before,
+  .hs-dot::after {
+    animation: none;
+  }
+
+  .hs-card,
+  .hs-spot[data-dir="left"] .hs-card {
+    transition: opacity 0.2s linear;
+    transform: translateY(calc(-50% + var(--vshift, 0px)));
+  }
+
+  .hs-spot.hs-sheet .hs-card {
+    transition: opacity 0.2s linear;
+    transform: none;
   }
 }

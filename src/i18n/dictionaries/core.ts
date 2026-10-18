@@ -61,6 +61,12 @@ export const vi = {
   "home.heroImageLabel": "EVERYDAY UNIFORM",
   "home.heroImageIndex": "01 / ESSENTIALS",
   "home.heroImageAlt": "Người mẫu mặc áo thun trắng phom rộng phối quần màu be",
+  "home.lookEyebrow": "SHOP THE LOOK",
+  "home.lookTitle": "Bốn món cơ bản, một set hoàn chỉnh.",
+  "home.lookSub":
+    "Sơ mi kẻ sọc, quần wash vừa, đồng hồ dây kim loại và giày lười retro — tất cả đều có sẵn trong cửa hàng. Chạm vào từng điểm trên ảnh để xem giá và chi tiết sản phẩm.",
+  "home.lookImageAlt":
+    "Người mẫu mặc áo sơ mi kẻ sọc xanh, quần kaki sáng và giày lười retro",
   "home.newArrivalsEyebrow": "Mặc như một pro",
   "home.newArrivalsTitle": "Hàng mới về",
   "home.newArrivalsSub":
@@ -190,6 +196,12 @@ export const en: typeof vi = {
   "home.heroImageIndex": "01 / ESSENTIALS",
   "home.heroImageAlt":
     "Model wearing an oversized white tee with beige trousers",
+  "home.lookEyebrow": "SHOP THE LOOK",
+  "home.lookTitle": "Four basics, one complete set.",
+  "home.lookSub":
+    "Plaid shirt, mid-wash jeans, classic metal watch and retro sneakers — every piece of this look is in stock. Tap a point on the image for price and details.",
+  "home.lookImageAlt":
+    "Model wearing a blue plaid shirt, light chinos and retro sneakers",
   "home.newArrivalsEyebrow": "Wear like a Pro",
   "home.newArrivalsTitle": "New Arrivals",
   "home.newArrivalsSub":

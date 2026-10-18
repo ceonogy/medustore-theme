@@ -1,0 +1,361 @@
+---
+import { Image } from "astro:assets";
+import type { HttpTypes } from "@medusajs/types";
+import lookImage from "@assets/lookbook.webp";
+import { localizePath, useTranslations } from "@i18n";
+import { getProductPrice } from "@lib/utils/get-product-price";
+
+interface Props {
+  products: HttpTypes.StoreProduct[];
+}
+
+const { products } = Astro.props;
+const locale = Astro.locals.locale;
+const t = useTranslations(locale);
+
+/* Shoppable lookbook: each spot pins a catalog product to the piece the
+   model is wearing. x/y are percentages of the source frame (533x800);
+   `dir` is the side the popup prefers to open on — the script flips it
+   when it would overflow the frame. Spots whose handle left the catalog
+   are skipped, so an admin rename can never ship a dead pin. */
+const SPOTS = [
+  {
+    handle: "ao-so-mi-ke-song-nam-tinh",
+    x: 53.8,
+    y: 31.9,
+    dir: "left",
+  },
+  {
+    handle: "dong-ho-day-kim-loai-co-dien",
+    x: 64.7,
+    y: 43.1,
+    dir: "right",
+  },
+  {
+    handle: "quan-jeans-nam-wash-vua",
+    x: 41.7,
+    y: 56.9,
+    dir: "left",
+  },
+  {
+    handle: "giay-lu-the-thao-retro",
+    x: 60.1,
+    y: 87.8,
+    dir: "right",
+  },
+] as const;
+
+const spots = SPOTS.map((spot) => {
+  const product = products.find((p) => p.handle === spot.handle);
+  if (!product) return null;
+  const { cheapestPrice } = getProductPrice({
+    productVariants: (product.variants ?? []) as never,
+  });
+  return {
+    ...spot,
+    title: product.title,
+    thumbnail: product.thumbnail ?? product.images?.[0]?.url ?? null,
+    price: cheapestPrice,
+  };
+}).filter((spot): spot is NonNullable<typeof spot> => spot !== null);
+---
+
+<section class="section" data-hotspots>
+  <div class="wrap">
+    <div
+      class="grid items-center gap-10 tablet:grid-cols-[46fr_54fr] tablet:gap-14 wide:gap-20"
+    >
+      {/* ------------------------------------------------ image + pins */}
+      <div class="reveal reveal-left" data-reveal>
+        <div
+          class="hs-frame relative mx-auto aspect-[533/800] w-full max-w-[480px] overflow-hidden rounded-lg bg-sand"
+        >
+          <Image
+            src={lookImage}
+            width={533}
+            height={800}
+            widths={[480, 533]}
+            sizes="(max-width: 809px) 100vw, 480px"
+            format="webp"
+            quality={75}
+            loading="lazy"
+            alt={t("home.lookImageAlt")}
+            class="absolute inset-0 h-full w-full object-contain"
+          />
+          {
+            spots.map((spot, index) => (
+              <div
+                class="hs-spot"
+                data-dir={spot.dir}
+                data-intended-dir={spot.dir}
+                style={`--x: ${spot.x}%; --y: ${spot.y}%`}
+              >
+                <button
+                  type="button"
+                  class="hs-dot"
+                  aria-expanded="false"
+                  aria-label={spot.title}
+                  data-hotspot={index}
+                >
+                  <span class="hs-dot-core" aria-hidden="true" />
+                </button>
+                <div class="hs-card" role="group" aria-hidden="true">
+                  <a
+                    href={localizePath(locale, `/store/${spot.handle}`)}
+                    class="hs-card-link"
+                    tabindex={-1}
+                  >
+                    {spot.thumbnail && (
+                      <img
+                        src={spot.thumbnail}
+                        alt=""
+                        width="52"
+                        height="65"
+                        loading="lazy"
+                        decoding="async"
+                        class="hs-card-img"
+                      />
+                    )}
+                    <span class="hs-card-body">
+                      <span class="hs-card-title">{spot.title}</span>
+                      <span class="hs-card-prices">
+                        {spot.price?.price_type === "sale" && (
+                          <s class="hs-card-was">{spot.price.original_price}</s>
+                        )}
+                        <span class="hs-card-price">
+                          {spot.price?.calculated_price ?? "—"}
+                        </span>
+                      </span>
+                    </span>
+                    <span class="hs-card-go" aria-hidden="true">
+                      →
+                    </span>
+                  </a>
+                </div>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+
+      {/* ------------------------------------------------------- copy */}
+      <div>
+        <div class="reveal" data-reveal>
+          <p class="type-kicker text-muted">{t("home.lookEyebrow")}</p>
+        </div>
+        <h2
+          class="type-title mt-3 reveal"
+          data-reveal
+          style="--reveal-delay: 80ms"
+        >
+          {t("home.lookTitle")}
+        </h2>
+        <p
+          class="type-body mt-4 max-w-md text-muted reveal"
+          data-reveal
+          style="--reveal-delay: 160ms"
+        >
+          {t("home.lookSub")}
+        </p>
+        <div class="reveal mt-8" data-reveal style="--reveal-delay: 240ms">
+          <a class="btn btn-ghost" href={localizePath(locale, "/store")}>
+            {t("home.browseProducts")}
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  /* Lookbook hotspots: one card open at a time; a shuffled deck plays
+     through every spot once per cycle (hold 2.6s, gap 1.4s) while the
+     section is on screen. Any pointer or keyboard interaction pins a
+     spot and suspends the cycle for 15s, so the autoplay never fights
+     the visitor. Cards flip side and shift vertically when their
+     preferred spot would overflow the frame. State lives at module
+     scope because Astro's ClientRouter re-runs astro:page-load on the
+     same module instance. */
+
+  const HOLD_MS = 2600;
+  const GAP_MS = 1400;
+  const IDLE_MS = 15000;
+
+  let cycle: ReturnType<typeof setInterval> | undefined;
+  let resume: ReturnType<typeof setTimeout> | undefined;
+
+  const shuffle = (indices: number[]) => {
+    const deck = [...indices];
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    return deck;
+  };
+
+  function initHotspots() {
+    clearInterval(cycle);
+    clearTimeout(resume);
+
+    const root = document.querySelector<HTMLElement>("[data-hotspots]");
+    if (!root) return;
+
+    const frame = root.querySelector<HTMLElement>(".hs-frame");
+    const spots = Array.from(root.querySelectorAll<HTMLElement>(".hs-spot"));
+    if (!frame || !spots.length) return;
+
+    const hoverable = window.matchMedia("(hover: hover)").matches;
+    const indices = spots.map((_, i) => i);
+    let deck: number[] = [];
+    let open: number | null = null;
+    let inView = false;
+
+    const cardOf = (spot: HTMLElement) =>
+      spot.querySelector<HTMLElement>(".hs-card");
+    const dotOf = (spot: HTMLElement) =>
+      spot.querySelector<HTMLButtonElement>(".hs-dot");
+
+    const place = (spot: HTMLElement) => {
+      const card = cardOf(spot);
+      if (!card) return;
+      spot.classList.remove("hs-sheet");
+      spot.dataset.dir = spot.dataset.intendedDir ?? "right";
+      spot.style.setProperty("--vshift", "0px");
+      const frameRect = frame.getBoundingClientRect();
+      const fits = (rect: DOMRect) =>
+        rect.left >= frameRect.left + 8 && rect.right <= frameRect.right - 8;
+
+      if (!fits(card.getBoundingClientRect())) {
+        spot.dataset.dir = spot.dataset.dir === "right" ? "left" : "right";
+      }
+      if (!fits(card.getBoundingClientRect())) {
+        // Phone-width frames: neither side clears a 236px card, so it
+        // docks to the bottom of the picture instead of hanging off it.
+        spot.classList.add("hs-sheet");
+        return;
+      }
+
+      const shifted = card.getBoundingClientRect();
+      let vshift = 0;
+      if (shifted.top < frameRect.top + 8) {
+        vshift = frameRect.top + 8 - shifted.top;
+      } else if (shifted.bottom > frameRect.bottom - 8) {
+        vshift = frameRect.bottom - 8 - shifted.bottom;
+      }
+      spot.style.setProperty("--vshift", `${vshift}px`);
+    };
+
+    const close = (index: number) => {
+      const spot = spots[index];
+      spot.classList.remove("is-open");
+      delete spot.dataset.auto;
+      delete spot.dataset.pinned;
+      dotOf(spot)?.setAttribute("aria-expanded", "false");
+      const card = cardOf(spot);
+      card?.setAttribute("aria-hidden", "true");
+      const link = card?.querySelector<HTMLAnchorElement>("a");
+      if (link) link.tabIndex = -1;
+      if (open === index) open = null;
+    };
+
+    const closeAll = () => {
+      if (open !== null) close(open);
+    };
+
+    const show = (index: number, auto = false) => {
+      if (open !== null && open !== index) close(open);
+      const spot = spots[index];
+      place(spot);
+      spot.classList.add("is-open");
+      if (auto) spot.dataset.auto = "1";
+      else delete spot.dataset.auto;
+      dotOf(spot)?.setAttribute("aria-expanded", "true");
+      const card = cardOf(spot);
+      card?.setAttribute("aria-hidden", "false");
+      // Keyboard path: while the card is open its product link joins the
+      // tab order; closed cards keep it out (the dot carries the name).
+      const link = card?.querySelector<HTMLAnchorElement>("a");
+      if (link) link.tabIndex = 0;
+      open = index;
+    };
+
+    const startCycle = () => {
+      clearInterval(cycle);
+      cycle = setInterval(step, HOLD_MS + GAP_MS);
+    };
+
+    const suspend = () => {
+      clearInterval(cycle);
+      clearTimeout(resume);
+      resume = setTimeout(startCycle, IDLE_MS);
+    };
+
+    function step() {
+      if (document.hidden || !inView || open !== null) return;
+      if (!deck.length) deck = shuffle(indices);
+      const next = deck.pop();
+      if (next === undefined) return;
+      show(next, true);
+      window.setTimeout(() => {
+        const spot = spots[next];
+        if (open === next && spot.dataset.auto === "1") close(next);
+      }, HOLD_MS);
+    }
+
+    spots.forEach((spot, index) => {
+      const dot = dotOf(spot);
+      if (!dot) return;
+
+      // One gesture serves tap, click and keyboard Enter/Space. On
+      // hover-capable pointers the card is already showing by the time
+      // the click lands, so the first click pins it (hover-out must not
+      // snatch a card the visitor just chose) and the next one dismisses.
+      dot.addEventListener("click", (event) => {
+        event.stopPropagation();
+        suspend();
+        if (!hoverable) {
+          if (open === index) close(index);
+          else show(index);
+          return;
+        }
+        if (spot.dataset.pinned === "1") close(index);
+        else {
+          show(index);
+          spot.dataset.pinned = "1";
+        }
+      });
+
+      spot.addEventListener("focusout", (event) => {
+        const next = event.relatedTarget;
+        if (!(next instanceof Node) || !spot.contains(next)) close(index);
+      });
+
+      if (hoverable) {
+        spot.addEventListener("mouseenter", () => {
+          suspend();
+          // Hovering a pinned card must not strip the pin — the visitor
+          // is aiming at it, not leaving it.
+          if (spot.dataset.pinned !== "1") show(index);
+        });
+        spot.addEventListener("mouseleave", () => {
+          if (spot.dataset.pinned !== "1") close(index);
+        });
+      }
+    });
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        inView = entries.some((entry) => entry.isIntersecting);
+        if (!inView) closeAll();
+      },
+      { threshold: 0.25 },
+    );
+    observer.observe(root);
+
+    // The deck only advances while the section is on screen; starting
+    // here means the first auto card lands one interval after scroll-in.
+    startCycle();
+  }
+
+  document.addEventListener("astro:page-load", initHotspots);
+</script>
