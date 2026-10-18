@@ -530,6 +530,31 @@
   transition: text-decoration-color 220ms ease;
 }
 
+.hs-look-meta {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  white-space: nowrap;
+}
+
+/* Narrow panels (phones): the name takes its own line and the price
+   group wraps beneath it, right-aligned — a sale pair must never
+   squeeze the product name into a ribbon. */
+@media (max-width: 639px) {
+  .hs-look-row {
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+
+  .hs-look-name {
+    flex: 0 1 calc(100% - 40px);
+  }
+
+  .hs-look-meta {
+    margin-left: auto;
+  }
+}
+
 .hs-look-was {
   font-size: 12px;
   color: var(--color-muted);

@@ -63,7 +63,7 @@ const spots = SPOTS.map((spot) => {
 <section class="section" data-hotspots>
   <div class="wrap">
     <div
-      class="grid items-center gap-10 tablet:grid-cols-[46fr_54fr] tablet:gap-14 wide:gap-20"
+      class="grid items-stretch gap-10 tablet:grid-cols-[46fr_54fr] tablet:gap-14 wide:gap-20"
     >
       {/* ------------------------------------------------ image + pins */}
       <div class="reveal reveal-left" data-reveal>
@@ -139,7 +139,14 @@ const spots = SPOTS.map((spot) => {
       </div>
 
       {/* ------------------------------------------------------- copy */}
-      <div>
+      {
+        /* The catalogue page: the panel stretches to the image's height
+          and centres its stack, so both columns read as facing pages
+          of a printed lookbook. */
+      }
+      <div
+        class="hs-look-panel flex h-full flex-col justify-center rounded-lg border border-line bg-fog p-7 tablet:p-10 wide:p-12"
+      >
         <div class="reveal" data-reveal>
           <p class="type-kicker text-muted">{t("home.lookEyebrow")}</p>
         </div>
@@ -178,14 +185,16 @@ const spots = SPOTS.map((spot) => {
                     {String(index + 1).padStart(2, "0")}
                   </span>
                   <span class="hs-look-name">{spot.title}</span>
-                  {spot.price?.price_type === "sale" && (
-                    <s class="hs-look-was">{spot.price.original_price}</s>
-                  )}
-                  <span class="hs-look-price">
-                    {spot.price?.calculated_price ?? "—"}
-                  </span>
-                  <span class="hs-look-arrow" aria-hidden="true">
-                    →
+                  <span class="hs-look-meta">
+                    {spot.price?.price_type === "sale" && (
+                      <s class="hs-look-was">{spot.price.original_price}</s>
+                    )}
+                    <span class="hs-look-price">
+                      {spot.price?.calculated_price ?? "—"}
+                    </span>
+                    <span class="hs-look-arrow" aria-hidden="true">
+                      →
+                    </span>
                   </span>
                 </a>
               </li>
