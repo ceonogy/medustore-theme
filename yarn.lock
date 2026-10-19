@@ -1789,6 +1789,7 @@ __metadata:
     react-hook-form: "npm:^7.71.1"
     tailwindcss: "npm:^4.1.18"
     typescript: "npm:^5.9.3"
+    vietnam-address-data: "npm:^1.0.0"
     zod: "npm:^4.3.6"
   languageName: unknown
   linkType: soft
@@ -4954,6 +4955,13 @@ __metadata:
     "@types/unist": "npm:^3.0.0"
     vfile-message: "npm:^4.0.0"
   checksum: 10c0/e5d9eb4810623f23758cfc2205323e33552fb5972e5c2e6587babe08fe4d24859866277404fb9e2a20afb71013860d96ec806cb257536ae463c87d70022ab9ef
+  languageName: node
+  linkType: hard
+
+"vietnam-address-data@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "vietnam-address-data@npm:1.0.0"
+  checksum: 10c0/6a8b9a7adb856c097b7fa7e3602bdd4c60fca3370762ac0a95fc343639d1b4f88855ae311d5ea7a438b65967b20a22ff66031f8976ff7b2b4df87085441f39b8
   languageName: node
   linkType: hard
 

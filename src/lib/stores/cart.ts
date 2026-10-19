@@ -306,8 +306,14 @@ type CartAddress = {
   last_name: string;
   address_1: string;
   company?: string;
-  postal_code: string;
-  city: string;
+  /** Disabled in the checkout UI (2026-10) — kept optional for restore. */
+  postal_code?: string;
+  /**
+   * Vietnamese ward (Phường/Xã). Stored in Medusa's `city` column:
+   * this API version silently drops `district` on cart addresses
+   * (probed directly against POST /store/carts/:id).
+   */
+  city?: string;
   country_code: string;
   province?: string;
   phone?: string;

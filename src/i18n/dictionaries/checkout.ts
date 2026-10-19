@@ -16,14 +16,19 @@ export const vi = {
   // AddressFields
   "checkout.address.firstName": "Họ*",
   "checkout.address.lastName": "Tên*",
+  "checkout.address.fullName": "Họ & Tên*",
   "checkout.address.address": "Địa chỉ*",
   "checkout.address.company": "Công ty",
   "checkout.address.postalCode": "Mã bưu chính*",
   "checkout.address.city": "Thành phố*",
   "checkout.address.country": "Quốc gia",
-  "checkout.address.province": "Tiểu bang / Tỉnh",
+  "checkout.address.province": "Tỉnh / Thành phố*",
+  "checkout.address.ward": "Phường / Xã*",
 
   // Validation messages (ShippingAddressStep)
+  "checkout.validation.fullNameRequired": "Vui lòng nhập họ và tên.",
+  "checkout.validation.provinceRequired": "Vui lòng chọn tỉnh / thành phố.",
+  "checkout.validation.wardRequired": "Vui lòng chọn phường / xã.",
   "checkout.validation.firstNameRequired": "Vui lòng nhập họ.",
   "checkout.validation.lastNameRequired": "Vui lòng nhập tên.",
   "checkout.validation.addressRequired": "Vui lòng nhập địa chỉ.",
@@ -109,14 +114,19 @@ export const en: typeof vi = {
   // AddressFields
   "checkout.address.firstName": "First name*",
   "checkout.address.lastName": "Last name*",
+  "checkout.address.fullName": "Full name*",
   "checkout.address.address": "Address*",
   "checkout.address.company": "Company",
   "checkout.address.postalCode": "Postal code*",
   "checkout.address.city": "City*",
   "checkout.address.country": "Country",
-  "checkout.address.province": "State / Province",
+  "checkout.address.province": "Province / City*",
+  "checkout.address.ward": "Ward / Commune*",
 
   // Validation messages (ShippingAddressStep)
+  "checkout.validation.fullNameRequired": "Full name is required",
+  "checkout.validation.provinceRequired": "Province / city is required",
+  "checkout.validation.wardRequired": "Ward / commune is required",
   "checkout.validation.firstNameRequired": "First name is required",
   "checkout.validation.lastNameRequired": "Last name is required",
   "checkout.validation.addressRequired": "Address is required",
