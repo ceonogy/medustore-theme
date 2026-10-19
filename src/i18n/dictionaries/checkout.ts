@@ -36,6 +36,12 @@ export const vi = {
   "checkout.validation.cityRequired": "Vui lòng nhập thành phố.",
   "checkout.validation.countryRequired": "Vui lòng chọn quốc gia.",
   "checkout.validation.emailRequired": "Vui lòng nhập email.",
+  "checkout.validation.phoneRequired": "Vui lòng nhập số điện thoại.",
+
+  // ShippingAddressStep — step progress row
+  "checkout.stepper.address": "Địa chỉ",
+  "checkout.stepper.delivery": "Giao hàng",
+  "checkout.stepper.payment": "Thanh toán",
   "checkout.validation.emailInvalid": "Vui lòng nhập địa chỉ email hợp lệ.",
 
   // ShippingAddressStep
@@ -134,6 +140,12 @@ export const en: typeof vi = {
   "checkout.validation.cityRequired": "City is required",
   "checkout.validation.countryRequired": "Country is required",
   "checkout.validation.emailRequired": "Email is required",
+  "checkout.validation.phoneRequired": "Phone number is required",
+
+  // ShippingAddressStep — step progress row
+  "checkout.stepper.address": "Address",
+  "checkout.stepper.delivery": "Delivery",
+  "checkout.stepper.payment": "Payment",
   "checkout.validation.emailInvalid": "Enter a valid email address",
 
   // ShippingAddressStep

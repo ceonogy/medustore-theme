@@ -35,7 +35,7 @@ const buildFormSchema = (t: Translator) =>
         (val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val),
         t("checkout.validation.emailInvalid"),
       ),
-    phone: z.string(),
+    phone: z.string().trim().min(1, t("checkout.validation.phoneRequired")),
     shipping: buildAddressSchema(t),
   });
 
@@ -72,9 +72,85 @@ interface ShippingAddressStepProps {
   countries: RegionCountry[];
   countryCode: string;
   mode: "edit" | "read";
+  /** Which checkout step the shopper is on — drives the progress row. */
+  activeStep: "address" | "delivery" | "payment";
   onContinue?: () => void;
   onEdit?: () => void;
 }
+
+/**
+ * The three-step checkout progress ("01 Địa chỉ — 02 Giao hàng — 03 Thanh
+ * toán") shown inside the shipping-address section, so the current stage
+ * and the next step are always visible. Completed steps carry a check,
+ * the active one is ink, upcoming ones muted.
+ */
+const StepProgress = ({
+  locale,
+  activeStep,
+}: {
+  locale: Locale;
+  activeStep: "address" | "delivery" | "payment";
+}) => {
+  const t = useTranslations(locale);
+  const steps = [
+    { key: "address", label: t("checkout.stepper.address") },
+    { key: "delivery", label: t("checkout.stepper.delivery") },
+    { key: "payment", label: t("checkout.stepper.payment") },
+  ];
+  const active = Math.max(
+    0,
+    steps.findIndex((s) => s.key === activeStep),
+  );
+
+  return (
+    <ol className="mb-6 flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] uppercase tracking-[0.16em]">
+      {steps.map((s, i) => {
+        const state = i < active ? "done" : i === active ? "current" : "todo";
+        return (
+          <li
+            key={s.key}
+            className="flex items-center gap-3"
+            aria-current={state === "current" ? "step" : undefined}
+          >
+            <span
+              className={`flex items-center gap-1.5 ${
+                state === "current"
+                  ? "text-ink"
+                  : state === "done"
+                    ? "text-ink/60"
+                    : "text-muted"
+              }`}
+            >
+              <span className="tabular-nums">{`0${i + 1}`}</span>
+              <span className={state === "current" ? "font-medium" : undefined}>
+                {s.label}
+              </span>
+              {state === "done" && (
+                <svg
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  className="h-3 w-3"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M2 6l3 3 5-5"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
+            </span>
+            {i < steps.length - 1 && (
+              <span aria-hidden="true" className="h-px w-6 bg-line" />
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+};
 
 const CheckCircle = () => (
   <span className="inline-flex items-center justify-center w-5 h-5 bg-black rounded-full shrink-0">
@@ -98,10 +174,12 @@ const CheckCircle = () => (
 const ReadOnlyView = ({
   cart,
   locale,
+  activeStep,
   onEdit,
 }: {
   cart: StoreCart;
   locale: Locale;
+  activeStep: "address" | "delivery" | "payment";
   onEdit?: () => void;
 }) => {
   const t = useTranslations(locale);
@@ -117,7 +195,7 @@ const ReadOnlyView = ({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold flex items-center gap-2">
           {t("checkout.shipping.title")}
           <CheckCircle />
@@ -130,6 +208,8 @@ const ReadOnlyView = ({
           {t("checkout.shipping.edit")}
         </button>
       </div>
+
+      <StepProgress locale={locale} activeStep={activeStep} />
 
       {/* Billing editing is temporarily removed, and the read-only
           note ("billing same as shipping") is hidden per spec — billing
@@ -159,6 +239,7 @@ export const ShippingAddressStep = ({
   countries,
   countryCode,
   mode,
+  activeStep,
   onContinue,
   onEdit,
 }: ShippingAddressStepProps) => {
@@ -236,14 +317,23 @@ export const ShippingAddressStep = ({
   };
 
   if (mode === "read" && cart) {
-    return <ReadOnlyView cart={cart} locale={locale} onEdit={onEdit} />;
+    return (
+      <ReadOnlyView
+        cart={cart}
+        locale={locale}
+        activeStep={activeStep}
+        onEdit={onEdit}
+      />
+    );
   }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
-      <h2 className="text-2xl font-bold mb-6">
+      <h2 className="text-2xl font-bold mb-4">
         {t("checkout.shipping.title")}
       </h2>
+
+      <StepProgress locale={locale} activeStep={activeStep} />
 
       <div className="space-y-4">
         <AddressFields
@@ -277,9 +367,13 @@ export const ShippingAddressStep = ({
               type="tel"
               placeholder={t("checkout.shipping.phone")}
               {...register("phone")}
-              className="w-full border border-gray-300 rounded px-4 py-3 text-sm outline-none focus:border-gray-500 transition-colors"
+              className={`w-full border rounded px-4 py-3 text-sm outline-none focus:border-gray-500 transition-colors ${
+                errors.phone ? "border-red-400" : "border-gray-300"
+              }`}
             />
-            <p className="min-h-4 mt-1" />
+            <p className="text-red-500 text-xs mt-1 min-h-4">
+              {errors.phone?.message ?? ""}
+            </p>
           </div>
         </div>
 

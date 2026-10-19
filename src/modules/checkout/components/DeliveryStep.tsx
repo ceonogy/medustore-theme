@@ -272,6 +272,14 @@ export const DeliveryStep = ({
                         className="w-4 h-4 accent-black"
                       />
                       <span className="text-sm font-medium">{option.name}</span>
+                      {isSelected && isSaving && (
+                        <span
+                          className="text-[11px] uppercase tracking-[0.14em] text-muted"
+                          data-testid="shipping-saving"
+                        >
+                          {t("checkout.delivery.saving")}
+                        </span>
+                      )}
                     </div>
                     <span className="text-sm text-gray-700">
                       {option.amount === 0

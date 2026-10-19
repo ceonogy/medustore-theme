@@ -113,6 +113,7 @@ export const CheckoutPage = ({
             countries={countries}
             countryCode={countryCode}
             mode={step === "address" ? "edit" : "read"}
+            activeStep={step}
             onContinue={() => goToStep("delivery")}
             onEdit={() => goToStep("address")}
           />

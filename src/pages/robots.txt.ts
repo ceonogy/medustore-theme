@@ -15,6 +15,11 @@ export const GET: APIRoute = async ({ site }) => {
     "Disallow: /cart",
     "Disallow: /checkout",
     "Disallow: /order",
+    // Faceted /store query strings are duplicate-content crawl traps:
+    // they multiply combinatorially (category × collection × size × sort)
+    // and each one costs a full SSR render. The indexable entry points are
+    // the clean /store, collection and product URLs — all still allowed.
+    "Disallow: /store?",
     "",
     `Sitemap: ${origin}/sitemap.xml`,
     "",
