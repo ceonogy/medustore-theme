@@ -1,4 +1,5 @@
 import { convertToLocale } from "@lib/utils/money";
+import { resolveLineItemMedia } from "@lib/utils/line-item";
 import type { StoreCart } from "@medusajs/types";
 import { useTranslations, type Locale } from "@i18n";
 
@@ -54,13 +55,11 @@ export const OrderSummary = ({ cart, locale }: OrderSummaryProps) => {
 
       <div className="border-t border-gray-200 pt-4 space-y-4">
         {cart.items?.map((item) => {
-          const thumbnailUrl =
-            item.variant?.product?.thumbnail ||
-            item.variant?.product?.images?.[0]?.url;
+          const media = resolveLineItemMedia(item);
+          const thumbnailUrl = media.thumbnailUrl;
           const productTitle =
-            item.variant?.product?.title ||
-            t("checkout.summary.productFallback");
-          const variantTitle = item.variant?.title || "";
+            media.productTitle || t("checkout.summary.productFallback");
+          const variantTitle = media.variantTitle || "";
           const unitPrice = item.unit_price || 0;
           const quantity = item.quantity || 1;
           const lineTotal = unitPrice * quantity;

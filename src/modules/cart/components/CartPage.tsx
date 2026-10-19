@@ -5,6 +5,7 @@ import {
   updateLineItemQuantity,
 } from "@lib/stores/cart";
 import { convertToLocale } from "@lib/utils/money";
+import { resolveLineItemMedia } from "@lib/utils/line-item";
 import { useHydrated } from "@lib/hooks/use-hydrated";
 import { useStore } from "@nanostores/react";
 
@@ -77,12 +78,11 @@ export const CartPage = ({ locale }: CartPageProps) => {
               </div>
 
               {displayedCart?.items?.map((item) => {
-                const thumbnailUrl =
-                  item.variant?.product?.thumbnail ||
-                  item.variant?.product?.images?.[0]?.url;
+                const media = resolveLineItemMedia(item);
+                const thumbnailUrl = media.thumbnailUrl;
                 const productTitle =
-                  item.variant?.product?.title || t("cart.productFallback");
-                const variantTitle = item.variant?.title || "";
+                  media.productTitle || t("cart.productFallback");
+                const variantTitle = media.variantTitle || "";
                 const unitPrice = item.unit_price || 0;
                 const quantity = item.quantity || 1;
                 const lineTotal = unitPrice * quantity;

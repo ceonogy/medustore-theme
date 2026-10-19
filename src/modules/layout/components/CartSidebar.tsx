@@ -6,6 +6,7 @@ import {
   removeFromCart,
 } from "@lib/stores/cart";
 import { convertToLocale } from "@lib/utils/money";
+import { resolveLineItemMedia } from "@lib/utils/line-item";
 import { useStore } from "@nanostores/react";
 import { useEffect, useRef } from "react";
 import { useHydrated } from "@lib/hooks/use-hydrated";
@@ -132,12 +133,11 @@ export const CartSidebar = ({ locale }: CartSidebarProps) => {
             ) : (
               <div className="space-y-6">
                 {displayedCart?.items?.map((item) => {
-                  const thumbnailUrl =
-                    item.variant?.product?.thumbnail ||
-                    item.variant?.product?.images?.[0]?.url;
+                  const media = resolveLineItemMedia(item);
+                  const thumbnailUrl = media.thumbnailUrl;
                   const productTitle =
-                    item.variant?.product?.title || t("cart.productFallback");
-                  const variantTitle = item.variant?.title || "";
+                    media.productTitle || t("cart.productFallback");
+                  const variantTitle = media.variantTitle || "";
                   const unitPrice = item.unit_price || 0;
                   const currencyCode = displayedCart.currency_code || "USD";
 
