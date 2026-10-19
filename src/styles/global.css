@@ -45,6 +45,14 @@
     background-color: var(--color-ink);
     color: var(--color-paper);
   }
+
+  /* Buttons are clickable by default. Browsers leave <button> on the
+     arrow cursor, which reads as dead pixels on every header toggle,
+     drawer close and icon button; only a genuinely disabled control
+     keeps the not-allowed cue. */
+  button:not(:disabled) {
+    cursor: pointer;
+  }
 }
 
 @layer components {
