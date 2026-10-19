@@ -23,6 +23,7 @@ import {
   type PriceRangeValue,
 } from "../../../../lib/utils/price-range";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ThemeSelect } from "@modules/ui/ThemeSelect";
 import { PriceRange } from "./PriceRange";
 
 interface ProductFiltersProps {
@@ -362,18 +363,17 @@ export const ProductFilters = ({
             )}
           </button>
 
-          <select
-            aria-label={t("products.sort.label")}
+          <ThemeSelect
+            ariaLabel={t("products.sort.label")}
+            placeholder={t("products.sort.label")}
             value={sortValue(currentSort)}
-            onChange={(event) => window.location.assign(event.target.value)}
-            className="h-10 rounded-md border border-line bg-paper px-3 text-sm text-ink transition-colors hover:border-ink focus:border-ink focus:outline-none"
-          >
-            {SORT_VALUES.map((sort) => (
-              <option key={sort} value={sortValue(sort)}>
-                {sortLabels[sort]}
-              </option>
-            ))}
-          </select>
+            options={SORT_VALUES.map((sort) => ({
+              value: sortValue(sort),
+              label: sortLabels[sort],
+            }))}
+            onChange={(next) => window.location.assign(next)}
+            testId="sort-select"
+          />
         </div>
       </div>
 

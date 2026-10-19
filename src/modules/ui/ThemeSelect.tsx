@@ -12,6 +12,8 @@ interface ThemeSelectProps {
   onChange: (value: string) => void;
   disabled?: boolean;
   invalid?: boolean;
+  /** Accessible name for the trigger when no visible label is nearby. */
+  ariaLabel?: string;
   /** Stable hook for tests / automation. */
   testId?: string;
 }
@@ -34,6 +36,7 @@ export const ThemeSelect = ({
   onChange,
   disabled,
   invalid,
+  ariaLabel,
   testId,
 }: ThemeSelectProps) => {
   const [open, setOpen] = useState(false);
@@ -125,6 +128,7 @@ export const ThemeSelect = ({
         type="button"
         disabled={disabled}
         data-testid={testId}
+        aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
