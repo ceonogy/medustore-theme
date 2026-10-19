@@ -5,6 +5,7 @@ import type {
   UseFormSetValue,
 } from "react-hook-form";
 import { useTranslations, type Locale } from "@i18n";
+import { ThemeSelect } from "@modules/ui/ThemeSelect";
 import { provinces, wards } from "vietnam-address-data";
 
 // Temporarily hidden fields (checkout simplification, 2026-10): the
@@ -80,6 +81,8 @@ interface AddressFieldsProps {
   setValue: UseFormSetValue<CheckoutFormValues>;
   /** Currently selected province name — drives the ward dropdown. */
   provinceValue: string;
+  /** Currently selected ward name. */
+  wardValue: string;
   errors: FieldErrors<AddressValues>;
   countries?: RegionCountry[];
 }
@@ -90,6 +93,7 @@ export const AddressFields = ({
   register,
   setValue,
   provinceValue,
+  wardValue,
   errors,
   countries,
 }: AddressFieldsProps) => {
@@ -97,7 +101,6 @@ export const AddressFields = ({
   const f = (name: keyof AddressValues) =>
     `${prefix}.${name}` as Path<CheckoutFormValues>;
 
-  const provinceField = register(f("province"));
   const selectedProvince = provinces.find((p) => p.name === provinceValue);
   const wardOptions = selectedProvince
     ? wards.filter((w) => w.provinceId === selectedProvince.id)
@@ -120,41 +123,30 @@ export const AddressFields = ({
           two-level hierarchy) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <select
-            {...provinceField}
-            onChange={(e) => {
-              provinceField.onChange(e);
+          <ThemeSelect
+            testId="province-select"
+            value={provinceValue}
+            placeholder={t("checkout.address.province")}
+            options={provinces.map((p) => ({ value: p.name, label: p.name }))}
+            invalid={Boolean(errors.province)}
+            onChange={(v) => {
+              setValue(f("province"), v, { shouldValidate: true });
               // A new province invalidates the ward chosen under the old one.
               setValue(f("ward"), "", { shouldValidate: true });
             }}
-            className={`${INPUT_BASE} ${errors.province ? "border-red-400" : "border-gray-300"} bg-white`}
-          >
-            <option disabled value="">
-              {t("checkout.address.province")}
-            </option>
-            {provinces.map((p) => (
-              <option key={p.id} value={p.name}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+          />
           <p className={ERROR}>{errors.province?.message ?? ""}</p>
         </div>
         <div>
-          <select
-            {...register(f("ward"))}
+          <ThemeSelect
+            testId="ward-select"
+            value={wardValue}
+            placeholder={t("checkout.address.ward")}
+            options={wardOptions.map((w) => ({ value: w.name, label: w.name }))}
             disabled={!provinceValue}
-            className={`${INPUT_BASE} ${errors.ward ? "border-red-400" : "border-gray-300"} bg-white`}
-          >
-            <option disabled value="">
-              {t("checkout.address.ward")}
-            </option>
-            {wardOptions.map((w) => (
-              <option key={w.id} value={w.name}>
-                {w.name}
-              </option>
-            ))}
-          </select>
+            invalid={Boolean(errors.ward)}
+            onChange={(v) => setValue(f("ward"), v, { shouldValidate: true })}
+          />
           <p className={ERROR}>{errors.ward?.message ?? ""}</p>
         </div>
       </div>

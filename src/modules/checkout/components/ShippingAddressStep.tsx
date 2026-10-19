@@ -131,7 +131,10 @@ const ReadOnlyView = ({
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-8 text-sm">
+      {/* Billing editing is temporarily removed, and the read-only
+          note ("billing same as shipping") is hidden per spec — billing
+          is always saved as a mirror of shipping, just not displayed. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-sm">
         <div>
           <p className="font-medium mb-2">{t("checkout.shipping.title")}</p>
           {shippingLines.map((line, i) => (
@@ -144,15 +147,6 @@ const ReadOnlyView = ({
         <div>
           <p className="font-medium mb-2">{t("checkout.shipping.contact")}</p>
           {cart.email && <p className="text-gray-700">{cart.email}</p>}
-        </div>
-
-        {/* Billing editing is temporarily removed: it always mirrors the
-            shipping address (and is saved that way). */}
-        <div>
-          <p className="font-medium mb-2">
-            {t("checkout.shipping.billingTitle")}
-          </p>
-          <p className="text-gray-700">{t("checkout.shipping.billingSame")}</p>
         </div>
       </div>
     </div>
@@ -207,6 +201,7 @@ export const ShippingAddressStep = ({
   }, [cart, reset, countryCode]);
 
   const provinceValue = watch("shipping.province");
+  const wardValue = watch("shipping.ward");
 
   const onSubmit = async (data: CheckoutFormValues) => {
     setSubmitError("");
@@ -257,6 +252,7 @@ export const ShippingAddressStep = ({
           register={register}
           setValue={setValue}
           provinceValue={provinceValue}
+          wardValue={wardValue}
           errors={errors.shipping ?? {}}
           countries={countries}
         />
@@ -292,7 +288,7 @@ export const ShippingAddressStep = ({
         <button
           type="submit"
           disabled={isSubmitting}
-          className="bg-black text-white py-3 px-8 rounded-md hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="cursor-pointer bg-black text-white py-3 px-8 rounded-md hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSubmitting
             ? t("checkout.shipping.saving")

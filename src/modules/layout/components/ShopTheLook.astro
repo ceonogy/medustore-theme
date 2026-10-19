@@ -60,7 +60,9 @@ const spots = SPOTS.map((spot) => {
 }).filter((spot): spot is NonNullable<typeof spot> => spot !== null);
 ---
 
-<section class="section" data-hotspots>
+<section class="section relative" data-hotspots>
+  {/* Quiet corner texture — paper grain for the catalogue spread. */}
+  <div class="hs-texture" aria-hidden="true"></div>
   <div class="wrap">
     <div
       class="grid items-stretch gap-6 tablet:grid-cols-[46fr_54fr] tablet:gap-12 [@media(min-width:1140px)]:grid-cols-[480px_1fr]"

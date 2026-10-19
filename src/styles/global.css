@@ -149,6 +149,7 @@
     color: var(--color-paper);
     font-size: 15px;
     font-weight: 500;
+    cursor: pointer;
     transition:
       transform 0.3s var(--ease-reveal),
       background-color 0.3s var(--ease-reveal),
@@ -578,6 +579,28 @@
 .hs-look-row:hover .hs-look-name {
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+/* Quiet print-grid texture: a fading ink dot field anchored to the
+   section's top-right corner, kept at 8% opacity so it reads as paper
+   grain of a catalogue spread — never as content (pointer-events off). */
+.hs-texture {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: min(420px, 46vw);
+  aspect-ratio: 1;
+  background-image: radial-gradient(var(--color-ink) 1px, transparent 1.4px);
+  background-size: 16px 16px;
+  opacity: 0.08;
+  pointer-events: none;
+  user-select: none;
+  -webkit-mask-image: radial-gradient(
+    ellipse at top right,
+    #000 12%,
+    transparent 70%
+  );
+  mask-image: radial-gradient(ellipse at top right, #000 12%, transparent 70%);
 }
 
 /* ================================================================
