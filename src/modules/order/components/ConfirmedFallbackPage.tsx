@@ -5,6 +5,7 @@ import {
   type Translator,
 } from "@i18n";
 import { convertToLocale } from "@lib/utils/money";
+import { resolveLineItemMedia } from "@lib/utils/line-item";
 import type { StoreCart } from "@medusajs/types";
 import { useEffect, useState } from "react";
 
@@ -92,9 +93,10 @@ export const ConfirmedFallbackPage = ({
             </h2>
             <div className="divide-y divide-gray-100 border border-gray-200 rounded-md overflow-hidden">
               {cart.items?.map((item) => {
-                const thumbnailUrl =
-                  item.variant?.product?.thumbnail ||
-                  item.variant?.product?.images?.[0]?.url;
+                // The cart API collapses variant.product to { id }, so media
+                // comes from the line-item snapshot fields (shared helper).
+                const media = resolveLineItemMedia(item);
+                const thumbnailUrl = media.thumbnailUrl;
 
                 const lineTotal = (item.unit_price ?? 0) * (item.quantity ?? 1);
                 return (
@@ -102,7 +104,7 @@ export const ConfirmedFallbackPage = ({
                     {thumbnailUrl ? (
                       <img
                         src={thumbnailUrl}
-                        alt={item.title}
+                        alt={media.productTitle ?? item.title}
                         className="w-16 h-16 object-cover rounded border border-gray-200 shrink-0"
                         loading="lazy"
                       />
@@ -111,11 +113,11 @@ export const ConfirmedFallbackPage = ({
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">
-                        {item.title}
+                        {media.productTitle ?? item.title}
                       </p>
-                      {item.variant_title && (
+                      {(media.variantTitle ?? item.variant_title) && (
                         <p className="text-xs text-gray-500 mt-0.5">
-                          {item.variant_title}
+                          {media.variantTitle ?? item.variant_title}
                         </p>
                       )}
                       <div className="flex justify-between mt-2 text-sm">
