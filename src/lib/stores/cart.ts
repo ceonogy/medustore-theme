@@ -48,6 +48,21 @@ function clearCartId(): void {
 }
 
 /**
+ * Attach the current guest cart to the authenticated customer
+ * (POST /store/carts/:id/customer) so the cart survives the session change.
+ * Failures are logged, never thrown: a transfer must not break login.
+ */
+export async function transferCartToCustomer(): Promise<void> {
+  const cartId = getCartId();
+  if (!cartId) return;
+  try {
+    await sdk.store.cart.transferCart(cartId);
+  } catch (error) {
+    console.warn("Failed to transfer cart to customer", error);
+  }
+}
+
+/**
  * Initialize cart - check localStorage for existing cart or create new one
  */
 export async function initCart(): Promise<void> {
