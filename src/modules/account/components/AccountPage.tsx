@@ -1,5 +1,5 @@
 import type { StoreCustomer } from "@medusajs/types";
-import { useTranslations, type Locale } from "@i18n";
+import { localizePath, useTranslations, type Locale } from "@i18n";
 import { logout, me, toAuthError, updateProfile } from "@lib/auth";
 import { useEffect, useState, type FormEvent } from "react";
 
@@ -223,6 +223,15 @@ export const AccountPage = ({ locale, loginPath }: AccountPageProps) => {
             {busy ? t("account.working") : t("account.profile.save")}
           </button>
         </form>
+
+        <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border border-line p-6">
+          <h2 className="text-xl font-bold">
+            {t("account.dashboard.ordersTitle")}
+          </h2>
+          <a href={localizePath(locale, "/tai-khoan/don-hang")} className="btn">
+            {t("account.dashboard.ordersCta")}
+          </a>
+        </div>
 
         <div className="mt-12 border-t border-line pt-8">
           <button type="button" onClick={onLogout} className="btn-ghost btn">

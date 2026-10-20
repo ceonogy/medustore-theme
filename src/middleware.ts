@@ -443,14 +443,14 @@ const handle = async (
   // No trailing slashes outside the homepage, and slugs stay lowercase:
   // both are plain 301s, so `/store/` and `/Giay-Dep` never compete with the
   // canonical form of the page. Medusa ids are the exception — lowercasing a
-  // `prod_…` reference turns it into an id the API cannot find, so those paths
-  // are left exactly as published.
+  // `prod_…` or `order_…` reference turns it into an id the API cannot find,
+  // so those paths are left exactly as published.
   if (pathname.length > 1 && /\/$/.test(pathname)) {
     return redirectTo(pathname.replace(/\/+$/, ""));
   }
   if (
     pathname !== pathname.toLowerCase() &&
-    !/\/prod_[A-Za-z0-9]/i.test(pathname)
+    !/\/(?:prod|order)_[A-Za-z0-9]/i.test(pathname)
   ) {
     return redirectTo(pathname.toLowerCase());
   }
@@ -520,8 +520,19 @@ const handle = async (
   }
 
   // Deeper-than-supported paths must 404 rather than fall through to the
-  // catch-all landing route (a soft 404 would be worse than no page).
-  if (appSegments.length > 2 && ROUTE_ROOTS.has(appSegments[0] ?? "")) {
+  // catch-all landing route (a soft 404 would be worse than no page). The
+  // one supported 3-deep account path is an order detail
+  // (`tai-khoan/don-hang/order_…`) — its id is Medusa-cased, hence the exact
+  // segment checks instead of a prefix match.
+  const isOrderDetailPath =
+    appSegments.length === 3 &&
+    appSegments[0] === "tai-khoan" &&
+    appSegments[1] === "don-hang";
+  if (
+    appSegments.length > 2 &&
+    !isOrderDetailPath &&
+    ROUTE_ROOTS.has(appSegments[0] ?? "")
+  ) {
     return notFound();
   }
 
