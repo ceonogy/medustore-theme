@@ -35,6 +35,7 @@ export const vi = {
   "account.field.passwordHint": "Tối thiểu 8 ký tự",
   "account.field.firstName": "Họ",
   "account.field.lastName": "Tên",
+  "account.field.fullName": "Họ & Tên",
 
   "account.working": "Đang xử lý...",
 
@@ -55,9 +56,6 @@ export const vi = {
   "account.profile.saveFailed": "Không thể lưu, vui lòng thử lại",
 
   "account.logout": "Đăng xuất",
-
-  "account.dashboard.ordersTitle": "Đơn hàng của bạn",
-  "account.dashboard.ordersCta": "Xem đơn hàng",
 
   "account.orders.pageTitle": "Đơn hàng của tôi",
   "account.orders.pageDescription":
@@ -134,6 +132,7 @@ export const en: typeof vi = {
   "account.field.passwordHint": "At least 8 characters",
   "account.field.firstName": "First name",
   "account.field.lastName": "Last name",
+  "account.field.fullName": "Full name",
 
   "account.working": "Working...",
 
@@ -154,9 +153,6 @@ export const en: typeof vi = {
   "account.profile.saveFailed": "Could not save, please try again",
 
   "account.logout": "Sign out",
-
-  "account.dashboard.ordersTitle": "Your orders",
-  "account.dashboard.ordersCta": "View orders",
 
   "account.orders.pageTitle": "My orders",
   "account.orders.pageDescription": "Track the orders you placed at Demostore.",

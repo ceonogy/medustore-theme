@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { fetchCheckoutPrefill } from "@lib/checkout-prefill";
 import { updateCartAddress } from "@lib/stores/cart";
 import type { StoreCart } from "@medusajs/types";
 import { useEffect, useRef, useState } from "react";
@@ -253,6 +254,7 @@ export const ShippingAddressStep = ({
     watch,
     setValue,
     reset,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<CheckoutFormValues>({
     resolver: zodResolver(buildFormSchema(t)),
@@ -263,23 +265,53 @@ export const ShippingAddressStep = ({
     },
   });
 
-  // Populate form from saved cart address on first load / after refresh
+  // Populate the form on first load / after refresh. A saved cart address
+  // wins (the shopper entered it); otherwise prefill from the signed-in
+  // account — email + name from the customer, address and phone (when the
+  // profile has none) from their most recent order.
   useEffect(() => {
     if (!cart || cartInitialized.current) return;
     cartInitialized.current = true;
 
     const shipping = cart.shipping_address;
-    if (!shipping?.first_name) return; // No saved address yet, keep empty defaults
+    if (shipping?.first_name) {
+      reset({
+        email: cart.email ?? "",
+        phone: shipping.phone ?? "",
+        shipping: {
+          ...mapAddress(shipping),
+          country: shipping.country_code || countryCode,
+        },
+      });
+      return;
+    }
 
-    reset({
-      email: cart.email ?? "",
-      phone: shipping.phone ?? "",
-      shipping: {
-        ...mapAddress(shipping),
-        country: shipping.country_code || countryCode,
-      },
-    });
-  }, [cart, reset, countryCode]);
+    void (async () => {
+      const prefill = await fetchCheckoutPrefill();
+      if (!prefill) return;
+      // Never clobber anything typed while the account data was in flight.
+      const current = getValues();
+      if (
+        current.email ||
+        current.shipping.fullName ||
+        current.shipping.address
+      ) {
+        return;
+      }
+      reset({
+        email: cart.email || prefill.email,
+        phone: prefill.phone,
+        shipping: {
+          ...EMPTY_ADDRESS,
+          fullName: prefill.fullName,
+          address: prefill.address,
+          province: prefill.province,
+          ward: prefill.ward,
+          country: prefill.country || countryCode,
+        },
+      });
+    })();
+  }, [cart, reset, countryCode, getValues]);
 
   const provinceValue = watch("shipping.province");
   const wardValue = watch("shipping.ward");

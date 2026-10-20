@@ -14,7 +14,9 @@ export interface AccountOrderAddress {
   first_name?: string | null;
   last_name?: string | null;
   city?: string | null;
+  province?: string | null;
   address_1?: string | null;
+  country_code?: string | null;
   phone?: string | null;
 }
 

@@ -6,6 +6,7 @@ import {
 } from "@lib/account-orders";
 import { convertToLocale } from "@lib/utils/money";
 import { useEffect, useState } from "react";
+import { AccountShell } from "./AccountShell";
 import { OrderStatus } from "./OrderStatus";
 
 interface OrderListProps {
@@ -62,9 +63,11 @@ export const OrderList = ({ locale, loginPath }: OrderListProps) => {
   }
 
   return (
-    <section className="wrap py-16 wide:py-24">
-      <h1 className="type-title">{t("account.orders.title")}</h1>
-
+    <AccountShell
+      locale={locale}
+      heading={t("account.orders.title")}
+      active="orders"
+    >
       {failed && (
         <p
           role="alert"
@@ -133,6 +136,6 @@ export const OrderList = ({ locale, loginPath }: OrderListProps) => {
           })}
         </ul>
       )}
-    </section>
+    </AccountShell>
   );
 };

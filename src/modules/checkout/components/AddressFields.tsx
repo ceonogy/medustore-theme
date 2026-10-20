@@ -42,23 +42,10 @@ export interface CheckoutFormValues {
   shipping: AddressValues;
 }
 
-/**
- * Split a Vietnamese full name for Medusa: the last word is the given
- * name (`first_name`), everything before it the family name
- * (`last_name`) — "Nguyễn Văn An" -> first "An", last "Nguyễn Văn".
- */
-export function splitFullName(full: string): {
-  first_name: string;
-  last_name: string;
-} {
-  const parts = full.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return { first_name: "", last_name: "" };
-  if (parts.length === 1) return { first_name: parts[0], last_name: "" };
-  return {
-    first_name: parts[parts.length - 1],
-    last_name: parts.slice(0, -1).join(" "),
-  };
-}
+// One shared implementation with the account CP (single "Họ & Tên" field on
+// both sides) — re-exported here so checkout importers keep their path.
+export { splitFullName } from "@lib/utils/name";
+import { joinFullName as joinStoredName } from "@lib/utils/name";
 
 /** Recombine a stored name for the form (Vietnamese display order). */
 export function joinFullName(
@@ -67,7 +54,7 @@ export function joinFullName(
     last_name?: string | null;
   } | null,
 ): string {
-  return [addr?.last_name, addr?.first_name].filter(Boolean).join(" ");
+  return addr ? joinStoredName(addr) : "";
 }
 
 const INPUT_BASE =
