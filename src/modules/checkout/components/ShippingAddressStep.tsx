@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { fetchCheckoutPrefill } from "@lib/checkout-prefill";
 import { updateCartAddress } from "@lib/stores/cart";
+import { isValidVietnamPhone } from "@lib/utils/phone";
 import type { StoreCart } from "@medusajs/types";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -36,7 +37,14 @@ const buildFormSchema = (t: Translator) =>
         (val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val),
         t("checkout.validation.emailInvalid"),
       ),
-    phone: z.string().trim().min(1, t("checkout.validation.phoneRequired")),
+    phone: z
+      .string()
+      .trim()
+      .min(1, t("checkout.validation.phoneRequired"))
+      .refine(
+        (val) => isValidVietnamPhone(val),
+        t("checkout.validation.phoneInvalid"),
+      ),
     shipping: buildAddressSchema(t),
   });
 

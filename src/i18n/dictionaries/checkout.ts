@@ -37,6 +37,8 @@ export const vi = {
   "checkout.validation.countryRequired": "Vui lòng chọn quốc gia.",
   "checkout.validation.emailRequired": "Vui lòng nhập email.",
   "checkout.validation.phoneRequired": "Vui lòng nhập số điện thoại.",
+  "checkout.validation.phoneInvalid":
+    "Số điện thoại không hợp lệ (VD: 0912 345 678).",
 
   // ShippingAddressStep — step progress row
   "checkout.stepper.address": "Địa chỉ",
@@ -141,6 +143,8 @@ export const en: typeof vi = {
   "checkout.validation.countryRequired": "Country is required",
   "checkout.validation.emailRequired": "Email is required",
   "checkout.validation.phoneRequired": "Phone number is required",
+  "checkout.validation.phoneInvalid":
+    "Enter a valid Vietnamese phone number (e.g. 0912 345 678)",
 
   // ShippingAddressStep — step progress row
   "checkout.stepper.address": "Address",

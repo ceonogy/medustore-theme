@@ -232,13 +232,6 @@ export const ConfirmedFallbackPage = ({
                     <br />
                     {cart.shipping_address.postal_code},{" "}
                     {cart.shipping_address.city}
-                    <br />
-                    {(
-                      cart.shipping_address as {
-                        country?: { display_name?: string };
-                      }
-                    ).country?.display_name ??
-                      cart.shipping_address.country_code?.toUpperCase()}
                   </address>
                 </div>
               )}

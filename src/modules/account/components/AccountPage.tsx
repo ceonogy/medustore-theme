@@ -1,6 +1,7 @@
 import type { StoreCustomer } from "@medusajs/types";
 import { useTranslations, type Locale } from "@i18n";
 import { me, toAuthError, updateProfile } from "@lib/auth";
+import { isValidVietnamPhone } from "@lib/utils/phone";
 import { joinFullName, splitFullName } from "@lib/utils/name";
 import { useEffect, useState, type FormEvent } from "react";
 import { AccountShell } from "./AccountShell";
@@ -15,7 +16,6 @@ const INPUT_BASE =
   "w-full border rounded px-4 py-3 text-sm outline-none focus:border-gray-500 transition-colors";
 const LABEL = "type-label block mb-2";
 const ERROR = "text-red-500 text-xs mt-1 min-h-4";
-const PHONE_PATTERN = /^(\+?84|0)\d{8,10}$/;
 
 /**
  * Customer dashboard: greeting + editable profile. One "Họ & Tên" field,
@@ -71,7 +71,7 @@ export const AccountPage = ({ locale, loginPath }: AccountPageProps) => {
       return;
     }
     const phoneValue = phone.trim();
-    if (phoneValue && !PHONE_PATTERN.test(phoneValue)) {
+    if (phoneValue && !isValidVietnamPhone(phoneValue)) {
       setFieldError(t("account.profile.phoneInvalid"));
       return;
     }
