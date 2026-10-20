@@ -7,6 +7,7 @@ import {
   type Locale,
 } from "./config";
 import * as core from "./dictionaries/core";
+import * as account from "./dictionaries/account";
 import * as cart from "./dictionaries/cart";
 import * as checkout from "./dictionaries/checkout";
 import * as order from "./dictionaries/order";
@@ -24,6 +25,7 @@ const merge = (...dicts: Dict[]): Dict => Object.assign({}, ...dicts);
 const UI: Record<Locale, Dict> = {
   vi: merge(
     core.vi,
+    account.vi,
     cart.vi,
     checkout.vi,
     order.vi,
@@ -32,6 +34,7 @@ const UI: Record<Locale, Dict> = {
   ),
   en: merge(
     core.en,
+    account.en,
     cart.en,
     checkout.en,
     order.en,

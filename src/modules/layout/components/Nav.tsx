@@ -44,11 +44,15 @@ export const Nav = ({ locale, regionId, currentPath = "/" }: NavProps) => {
 
   const links = [
     { href: localizePath(locale, "/store"), label: t("nav.products") },
+    {
+      href: localizePath(locale, "/tai-khoan/dang-nhap"),
+      label: t("account.navLink"),
+    },
     { href: localizePath(locale, "/cart"), label: t("footer.cart") },
     { href: localizePath(locale, "/privacy"), label: t("footer.privacy") },
     { href: localizePath(locale, "/terms"), label: t("footer.terms") },
   ];
-  const desktopLinks = links.slice(0, 2);
+  const desktopLinks = links.slice(0, 3);
 
   return (
     <header
