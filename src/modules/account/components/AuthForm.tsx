@@ -57,7 +57,7 @@ export const AuthForm = ({ locale, mode }: AuthFormProps) => {
   const destination = () =>
     sanitizeNextPath(
       new URLSearchParams(window.location.search).get("next"),
-      "/",
+      "/tai-khoan",
     );
 
   const validate = (): FieldErrors => {

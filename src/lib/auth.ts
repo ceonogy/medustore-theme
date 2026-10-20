@@ -1,4 +1,4 @@
-import type { StoreCustomer } from "@medusajs/types";
+import type { StoreCustomer, StoreUpdateCustomer } from "@medusajs/types";
 import { transferCartToCustomer } from "@lib/stores/cart";
 import { sdk } from "@lib/sdk";
 import {
@@ -64,6 +64,10 @@ export async function register(input: RegisterInput): Promise<StoreCustomer> {
       ...(input.first_name ? { first_name: input.first_name } : {}),
       ...(input.last_name ? { last_name: input.last_name } : {}),
     });
+    // The login token predates the customer link (actor_id still empty):
+    // refresh it so the stored JWT carries the new actor and
+    // GET /store/customers/me resolves on the dashboard right away.
+    await sdk.auth.refresh();
     void transferCartToCustomer();
     return customer as StoreCustomer;
   } catch (error) {
@@ -138,6 +142,27 @@ export async function logout(): Promise<void> {
     await sdk.auth.logout();
   } catch {
     await clearSession();
+  }
+}
+
+/**
+ * Update the signed-in customer's profile (POST /store/customers/me).
+ * A `null` phone clears the stored value.
+ */
+export async function updateProfile(input: {
+  first_name?: string;
+  last_name?: string;
+  phone?: string | null;
+}): Promise<StoreCustomer> {
+  try {
+    // The API accepts and stores `phone: null` to clear the value (verified
+    // live), but the SDK's StoreUpdateCustomer type only declares string.
+    const { customer } = await sdk.store.customer.update(
+      input as unknown as StoreUpdateCustomer,
+    );
+    return customer as StoreCustomer;
+  } catch (error) {
+    throw toAuthError(error);
   }
 }
 

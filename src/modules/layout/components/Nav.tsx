@@ -11,6 +11,7 @@ import {
   initCart,
   toggleCartSidebar,
 } from "@lib/stores/cart";
+import { hasSessionToken } from "@lib/auth";
 import { useStore } from "@nanostores/react";
 import { useEffect, useState } from "react";
 import { useHydrated } from "@lib/hooks/use-hydrated";
@@ -31,6 +32,23 @@ export const Nav = ({ locale, regionId, currentPath = "/" }: NavProps) => {
   const displayedItemCount = hydrated ? cartItemCount : 0;
   const t = useTranslations(locale);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Guests see "Tài khoản" as the login page; signed-in customers get the
+  // dashboard. SSR always renders the guest href (no session server-side).
+  const [accountHref, setAccountHref] = useState(
+    localizePath(locale, "/tai-khoan/dang-nhap"),
+  );
+
+  useEffect(() => {
+    let active = true;
+    hasSessionToken().then((hasToken) => {
+      if (active && hasToken) {
+        setAccountHref(localizePath(locale, "/tai-khoan"));
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [locale]);
 
   useEffect(() => {
     if (regionId) {
@@ -44,10 +62,7 @@ export const Nav = ({ locale, regionId, currentPath = "/" }: NavProps) => {
 
   const links = [
     { href: localizePath(locale, "/store"), label: t("nav.products") },
-    {
-      href: localizePath(locale, "/tai-khoan/dang-nhap"),
-      label: t("account.navLink"),
-    },
+    { href: accountHref, label: t("account.navLink") },
     { href: localizePath(locale, "/cart"), label: t("footer.cart") },
     { href: localizePath(locale, "/privacy"), label: t("footer.privacy") },
     { href: localizePath(locale, "/terms"), label: t("footer.terms") },

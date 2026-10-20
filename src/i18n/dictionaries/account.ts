@@ -38,6 +38,24 @@ export const vi = {
 
   "account.working": "Đang xử lý...",
 
+  "account.dashboard.pageTitle": "Tài khoản của tôi",
+  "account.dashboard.pageDescription":
+    "Quản lý thông tin cá nhân tại tài khoản Demostore.",
+  "account.dashboard.title": "Tài khoản",
+  "account.dashboard.greeting": "Xin chào, {{name}}",
+  "account.dashboard.loading": "Đang tải...",
+
+  "account.profile.title": "Thông tin cá nhân",
+  "account.profile.emailReadonly": "Email (không thể thay đổi)",
+  "account.profile.phone": "Số điện thoại",
+  "account.profile.phoneHint": "Tùy chọn",
+  "account.profile.phoneInvalid": "Số điện thoại không hợp lệ",
+  "account.profile.save": "Lưu thay đổi",
+  "account.profile.saved": "Đã lưu thông tin của bạn",
+  "account.profile.saveFailed": "Không thể lưu, vui lòng thử lại",
+
+  "account.logout": "Đăng xuất",
+
   "account.error.emailRequired": "Vui lòng nhập email",
   "account.error.emailInvalid": "Email không hợp lệ",
   "account.error.passwordRequired": "Vui lòng nhập mật khẩu",
@@ -85,6 +103,24 @@ export const en: typeof vi = {
   "account.field.lastName": "Last name",
 
   "account.working": "Working...",
+
+  "account.dashboard.pageTitle": "My account",
+  "account.dashboard.pageDescription":
+    "Manage your details at your Demostore account.",
+  "account.dashboard.title": "Account",
+  "account.dashboard.greeting": "Hello, {{name}}",
+  "account.dashboard.loading": "Loading...",
+
+  "account.profile.title": "Personal information",
+  "account.profile.emailReadonly": "Email (cannot be changed)",
+  "account.profile.phone": "Phone number",
+  "account.profile.phoneHint": "Optional",
+  "account.profile.phoneInvalid": "Invalid phone number",
+  "account.profile.save": "Save changes",
+  "account.profile.saved": "Your details have been saved",
+  "account.profile.saveFailed": "Could not save, please try again",
+
+  "account.logout": "Sign out",
 
   "account.error.emailRequired": "Please enter your email",
   "account.error.emailInvalid": "Invalid email address",
