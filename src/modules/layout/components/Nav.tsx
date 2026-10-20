@@ -60,14 +60,14 @@ export const Nav = ({ locale, regionId, currentPath = "/" }: NavProps) => {
   // The ClientRouter swaps the document on navigation — close the sheet.
   useEffect(() => setMenuOpen(false), [currentPath]);
 
+  // The cart lives in its own header button (count badge) — no menu entry.
   const links = [
     { href: localizePath(locale, "/store"), label: t("nav.products") },
     { href: accountHref, label: t("account.navLink") },
-    { href: localizePath(locale, "/cart"), label: t("footer.cart") },
     { href: localizePath(locale, "/privacy"), label: t("footer.privacy") },
     { href: localizePath(locale, "/terms"), label: t("footer.terms") },
   ];
-  const desktopLinks = links.slice(0, 3);
+  const desktopLinks = links;
 
   return (
     <header

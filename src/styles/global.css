@@ -30,6 +30,12 @@
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+    /* Reserve the classic-scrollbar gutter on every page. Short pages (e.g.
+       /cart) are not scrollable while long ones are, so on Windows/Linux the
+       ~15px scrollbar appears and disappears between navigations and the
+       centered 1440px wrap (brand included) shifts in/out by half of it.
+       Overlay scrollbars (macOS/mobile) ignore this property — no effect. */
+    scrollbar-gutter: stable;
   }
 
   body {
