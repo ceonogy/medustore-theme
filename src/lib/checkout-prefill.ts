@@ -26,7 +26,7 @@ export async function fetchCheckoutPrefill(): Promise<CheckoutPrefill | null> {
 
     let latestOrder;
     try {
-      latestOrder = (await listOrders())[0];
+      latestOrder = (await listOrders({ take: 1 })).orders[0];
     } catch {
       latestOrder = undefined;
     }

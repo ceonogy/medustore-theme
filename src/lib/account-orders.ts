@@ -36,12 +36,28 @@ export interface AccountOrder {
   billing_address: AccountOrderAddress | null;
 }
 
-/** Orders of the signed-in customer (GET /store/account/orders). */
-export async function listOrders(): Promise<AccountOrder[]> {
-  const { orders } = await sdk.client.fetch<{ orders: AccountOrder[] }>(
-    "/store/account/orders",
+/** One page of the signed-in customer's orders (GET /store/account/orders). */
+export interface AccountOrderPage {
+  orders: AccountOrder[];
+  /** Customer's total order count — whether more pages exist. */
+  count: number;
+}
+
+/**
+ * Orders of the signed-in customer, newest first. Paginated (30/page by
+ * default); pass `skip` to fetch the next page when `count > orders.length`.
+ */
+export async function listOrders(params?: {
+  take?: number;
+  skip?: number;
+}): Promise<AccountOrderPage> {
+  const search = new URLSearchParams();
+  if (params?.take) search.set("take", String(params.take));
+  if (params?.skip) search.set("skip", String(params.skip));
+  const qs = search.toString();
+  return sdk.client.fetch<AccountOrderPage>(
+    `/store/account/orders${qs ? `?${qs}` : ""}`,
   );
-  return orders;
 }
 
 /** One owned order (GET /store/account/orders/:id) — 404 for other customers. */

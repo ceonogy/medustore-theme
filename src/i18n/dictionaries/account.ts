@@ -63,6 +63,10 @@ export const vi = {
   "account.orders.title": "Đơn hàng",
   "account.orders.loading": "Đang tải...",
   "account.orders.loadFailed": "Không thể tải đơn hàng, vui lòng thử lại",
+  "account.orders.loadMore": "Xem thêm đơn hàng",
+  "account.orders.loadMoreFailed":
+    "Không thể tải thêm đơn hàng, vui lòng thử lại",
+  "account.orders.allLoaded": "Đã hiển thị tất cả {{count}} đơn hàng",
   "account.orders.empty": "Bạn chưa có đơn hàng nào",
   "account.orders.shopCta": "Mua sắm ngay",
   "account.orders.orderNo": "Đơn hàng #{{id}}",
@@ -159,6 +163,10 @@ export const en: typeof vi = {
   "account.orders.title": "Orders",
   "account.orders.loading": "Loading...",
   "account.orders.loadFailed": "Could not load orders, please try again",
+  "account.orders.loadMore": "Load more orders",
+  "account.orders.loadMoreFailed":
+    "Could not load more orders, please try again",
+  "account.orders.allLoaded": "Showing all {{count}} orders",
   "account.orders.empty": "You have no orders yet",
   "account.orders.shopCta": "Start shopping",
   "account.orders.orderNo": "Order #{{id}}",
