@@ -109,9 +109,7 @@ export const OrderList = ({ locale, loginPath }: OrderListProps) => {
       return Array.from({ length: Math.max(0, end - start) }, (_, i) => {
         const abs = start + i;
         const source = base[abs % base.length];
-        return abs < base.length
-          ? source
-          : { ...source, display_id: abs + 4 };
+        return abs < base.length ? source : { ...source, display_id: abs + 4 };
       });
     };
 
