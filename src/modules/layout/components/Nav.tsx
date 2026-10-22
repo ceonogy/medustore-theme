@@ -60,10 +60,11 @@ export const Nav = ({ locale, regionId, currentPath = "/" }: NavProps) => {
   // The ClientRouter swaps the document on navigation — close the sheet.
   useEffect(() => setMenuOpen(false), [currentPath]);
 
-  // The cart lives in its own header button (count badge) — no menu entry.
+  // The account (user icon) and cart (icon + count badge) live in the
+  // top-right icon cluster — no text entries in the menu.
+  const isAccountPage = currentPath.startsWith("/tai-khoan");
   const links = [
     { href: localizePath(locale, "/store"), label: t("nav.products") },
-    { href: accountHref, label: t("account.navLink") },
     { href: localizePath(locale, "/privacy"), label: t("footer.privacy") },
     { href: localizePath(locale, "/terms"), label: t("footer.terms") },
   ];
@@ -127,15 +128,78 @@ export const Nav = ({ locale, regionId, currentPath = "/" }: NavProps) => {
             </nav>
           )}
 
+          <a
+            href={accountHref}
+            aria-label={t("account.navLink")}
+            aria-current={isAccountPage ? "page" : undefined}
+            className="flex h-10 w-10 items-center justify-center text-ink/70 transition-colors hover:text-ink aria-[current=page]:text-ink"
+          >
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 22 22"
+              fill="none"
+              aria-hidden="true"
+            >
+              <circle
+                cx="11"
+                cy="7.5"
+                r="3.75"
+                stroke="currentColor"
+                strokeWidth="1.6"
+              />
+              <path
+                d="M3.75 19.25a7.25 7.25 0 0 1 14.5 0"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+              />
+            </svg>
+          </a>
+
           <button
             type="button"
             onClick={() => toggleCartSidebar()}
-            className="type-body relative font-medium hover:underline"
+            className="relative flex h-10 w-10 items-center justify-center text-ink/70 transition-colors hover:text-ink"
             aria-label={t("nav.cartAria", { count: displayedItemCount })}
           >
-            <span aria-live="polite" aria-atomic="true">
+            <span aria-live="polite" aria-atomic="true" className="sr-only">
               {t("nav.cartCount", { count: displayedItemCount })}
             </span>
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 22 22"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M2.5 3.25h2.1l2.05 9.9a1.6 1.6 0 0 0 1.57 1.29h7.55a1.6 1.6 0 0 0 1.56-1.25l1.32-5.65H5.4"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <circle
+                cx="8.75"
+                cy="18.25"
+                r="1.35"
+                stroke="currentColor"
+                strokeWidth="1.6"
+              />
+              <circle
+                cx="15.75"
+                cy="18.25"
+                r="1.35"
+                stroke="currentColor"
+                strokeWidth="1.6"
+              />
+            </svg>
+            {displayedItemCount > 0 && (
+              <span className="absolute -top-0.5 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-ink px-1 text-[10px] leading-none font-semibold text-paper">
+                {displayedItemCount > 99 ? "99+" : displayedItemCount}
+              </span>
+            )}
           </button>
 
           <button
