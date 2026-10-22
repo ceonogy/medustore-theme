@@ -842,37 +842,72 @@
 }
 
 /* ================================================================
-   Header mega menu — UNLAYERED, CSS-driven open state.
-   Visibility must never depend on hydration: the panel opens on
-   :hover / :focus-visible of the "Khám phá" trigger even when the
-   island's JS is blocked, mid-restart, or still loading — without
-   JS the trigger used to stay a plain link to /store. React only
-   owns aria-expanded and the Escape lock (data-mega-locked, cleared
-   on the next mouseenter). `:has()` sits inside the baseline this
-   Tailwind v4 theme already requires.
+   Header dropdowns — UNLAYERED, CSS-driven open state. Two panels:
+   #mega-featured ("Nổi Bật" menu) and #mega-collections ("Bộ sưu
+   tập"). Visibility must never depend on hydration: a panel opens on
+   :hover / :focus-visible of its own trigger even when the island's
+   JS is blocked, mid-restart, or still loading. React only owns
+   aria-expanded and the Escape lock (data-mega-locked, cleared on
+   the next trigger mouseenter). `:has()` sits inside the baseline
+   this Tailwind v4 theme already requires.
    ================================================================ */
+#mega-featured,
 #mega-collections {
   opacity: 0;
   visibility: hidden;
   translate: 0 -6px;
-  /* Close is delayed 140ms (grace) so a cursor crossing the header's
-     bottom edge into the panel never blinks it shut; open is instant. */
+  /* Close is delayed 180ms (grace) so a cursor that briefly leaves
+     the menu can come back; open is instant. */
   transition:
-    opacity 0.22s ease 0.14s,
-    translate 0.22s ease 0.14s,
-    visibility 0s linear 0.36s;
+    opacity 0.22s ease 0.18s,
+    translate 0.22s ease 0.18s,
+    visibility 0s linear 0.4s;
 }
 
-header:not([data-mega-locked]):has([data-mega-trigger]:hover) #mega-collections,
-header:not([data-mega-locked]):has([data-mega-trigger]:focus-visible)
+header:not([data-mega-locked]):has([data-mega-trigger="featured"]:hover)
+  #mega-featured,
+header:not([data-mega-locked]):has([data-mega-trigger="featured"]:focus-visible)
+  #mega-featured,
+header:not([data-mega-locked]) #mega-featured:hover,
+header:not([data-mega-locked]) #mega-featured:focus-within,
+header:not([data-mega-locked])[data-mega-open="featured"] #mega-featured,
+header:not([data-mega-locked]):has([data-mega-trigger="collections"]:hover)
+  #mega-collections,
+header:not([data-mega-locked]):has(
+    [data-mega-trigger="collections"]:focus-visible
+  )
   #mega-collections,
 header:not([data-mega-locked]) #mega-collections:hover,
 header:not([data-mega-locked]) #mega-collections:focus-within,
-header:not([data-mega-locked])[data-mega-open="true"] #mega-collections {
+header:not([data-mega-locked])[data-mega-open="collections"] #mega-collections {
   opacity: 1;
   visibility: visible;
   translate: 0 0;
   transition-delay: 0s;
+}
+
+/* Hover bridge: a transparent extension below each trigger so the
+   cursor crossing the header's bottom edge (trigger → panel) never
+   stops matching :hover — the crossing cannot blink the panel shut
+   at any cursor speed, including under prefers-reduced-motion where
+   `transition: none` used to hide it instantly (reproduced by
+   /tmp/opencode/qa/probe-hover-gap). The pseudo exists only while
+   the trigger is hovered (and only on hover-capable pointers), so
+   it never blocks page content when the menu is closed. The 40px
+   height covers the widest trigger→header-edge gap (h-20); the
+   overlap with the panel's top is harmless — the panel paints above
+   it and keeps :hover itself. */
+@media (hover: hover) {
+  [data-mega-trigger] {
+    position: relative;
+  }
+  [data-mega-trigger]:hover::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: 100%;
+    height: 2.5rem;
+  }
 }
 
 @keyframes mega-in {
@@ -892,8 +927,14 @@ header:not([data-mega-locked])[data-mega-open="true"] #mega-collections {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* No animation, but keep the hoverable grace window: with a flat
+     `transition: none` the panel vanished the instant the cursor
+     left the title — impossible to reach by hover. The opacity/
+     translate flips are dropped (instant), visibility keeps its
+     grace so the panel can still be hovered back open. */
+  #mega-featured,
   #mega-collections {
-    transition: none;
+    transition: visibility 0s linear 0.4s;
   }
   .mega-in {
     animation: none;

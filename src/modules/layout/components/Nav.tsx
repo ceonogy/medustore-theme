@@ -13,7 +13,7 @@ import {
 } from "@lib/stores/cart";
 import { hasSessionToken } from "@lib/auth";
 import { useStore } from "@nanostores/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FocusEvent } from "react";
 import { useHydrated } from "@lib/hooks/use-hydrated";
 
 interface NavCollection {
@@ -48,8 +48,13 @@ export const Nav = ({
   const displayedItemCount = hydrated ? cartItemCount : 0;
   const t = useTranslations(locale);
   const [menuOpen, setMenuOpen] = useState(false);
-  // Desktop mega panel (hover/focus on "Khám phá") + mobile accordion.
-  const [megaOpen, setMegaOpen] = useState(false);
+  // Desktop menus: which dropdown is open ("featured" | "collections").
+  // Drives data-mega-open + aria; the visual open state is pure CSS.
+  const [megaOpen, setMegaOpen] = useState<"featured" | "collections" | null>(
+    null,
+  );
+  // Mobile accordions: "Nổi bật" and "Bộ sưu tập" are separate entries.
+  const [featuredOpen, setFeaturedOpen] = useState(false);
   const [exploreOpen, setExploreOpen] = useState(false);
   // Guests see "Tài khoản" as the login page; signed-in customers get the
   // dashboard. SSR always renders the guest href (no session server-side).
@@ -78,34 +83,80 @@ export const Nav = ({
 
   // The ClientRouter swaps the document on navigation — close every panel.
   useEffect(() => {
+    cancelMegaClose();
     setMenuOpen(false);
-    setMegaOpen(false);
+    setMegaOpen(null);
+    setFeaturedOpen(false);
     setExploreOpen(false);
   }, [currentPath]);
 
-  // Desktop mega menu: visibility is pure CSS (`:has()` on the header —
-  // see global.css) so the panel opens on hover even when this island has
+  // Drop any pending close timer on unmount.
+  useEffect(() => () => cancelMegaClose(), []);
+
+  // Desktop dropdowns: visibility is pure CSS (`:has()` on the header —
+  // see global.css) so a panel opens on hover even when this island has
   // not hydrated. React only mirrors aria-expanded and applies the Escape
-  // lock: after Escape the panel stays shut under the cursor until the
+  // lock: after Escape the panels stay shut under the cursor until the
   // pointer leaves and re-enters the trigger.
   const headerRef = useRef<HTMLElement>(null);
 
   // The account (user icon) and cart (icon + count badge) live in the
-  // top-right icon cluster — no text entries in the menu. Desktop shows two
-  // entries: "Khám phá" is a plain link to the store, "Bộ sưu tập" opens the
-  // mega panel (collections + featured) on hover — privacy/terms live in the
-  // footer only.
+  // top-right icon cluster — no text entries in the menu. Desktop shows
+  // three entries: "Khám phá" is a plain link to the store, "Nổi Bật" opens
+  // its own featured-products dropdown, "Bộ sưu tập" opens the collections
+  // mega — privacy/terms live in the footer only.
   const isAccountPage = currentPath.startsWith("/tai-khoan");
   const storeHref = localizePath(locale, "/store");
-  const hasMega = collections.length > 0 || featured.length > 0;
+  const hasFeatured = featured.length > 0;
+  const hasCollections = collections.length > 0;
 
-  // Mirror the open state onto the header as data-mega-open so the CSS
-  // `:has()` rules also open the panel for a click/tap at desktop width
-  // (no hover on touch devices). A pointerdown outside the header closes it.
+  // Trigger + panel handlers shared by both dropdowns. Mouse leave does
+  // NOT drop the open id immediately: the cursor travelling from the title
+  // into the panel passes a dead zone, and an instant drop could blink the
+  // panel shut before the pointer arrives (seen with slow pointers and
+  // under prefers-reduced-motion). Hold data-mega-open for a 200ms beat —
+  // entering either the panel or the trigger again cancels the pending
+  // close. The CSS hover bridge in global.css covers the same crossing
+  // for the no-JS case. 350ms also covers a cursor that crawls the gap
+  // at ~80px/s; abandoning the menu still fades it within ~750ms.
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelMegaClose = () => {
+    if (closeTimer.current !== null) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  };
+  const enterMega = (id: "featured" | "collections") => () => {
+    cancelMegaClose();
+    headerRef.current?.removeAttribute("data-mega-locked");
+    setMegaOpen(id);
+  };
+  const enterPanel = (id: "featured" | "collections") => () => {
+    cancelMegaClose();
+    setMegaOpen(id);
+  };
+  const scheduleMegaClose = (id: "featured" | "collections") => () => {
+    cancelMegaClose();
+    closeTimer.current = setTimeout(() => {
+      closeTimer.current = null;
+      setMegaOpen((open) => (open === id ? null : open));
+    }, 350);
+  };
+  const focusMega =
+    (id: "featured" | "collections") =>
+    (event: FocusEvent<HTMLButtonElement>) => {
+      // Mouse click focuses too — only keyboard focus opens.
+      if (event.currentTarget.matches(":focus-visible")) setMegaOpen(id);
+    };
+
+  // Mirror the open state onto the header as data-mega-open="featured" |
+  // "collections" so the CSS `:has()` rules also open the right panel for a
+  // click/tap at desktop width (no hover on touch devices). A pointerdown
+  // outside the header closes it.
   useEffect(() => {
     const header = headerRef.current;
     if (!header) return;
-    if (megaOpen) header.setAttribute("data-mega-open", "true");
+    if (megaOpen) header.setAttribute("data-mega-open", megaOpen);
     else header.removeAttribute("data-mega-open");
   }, [megaOpen]);
 
@@ -114,7 +165,7 @@ export const Nav = ({
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target;
       const inside = target instanceof Element && target.closest("header");
-      if (!inside) setMegaOpen(false);
+      if (!inside) setMegaOpen(null);
     };
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
@@ -127,21 +178,24 @@ export const Nav = ({
       data-reveal
       onKeyDown={(event) => {
         if (event.key !== "Escape") return;
-        setMegaOpen(false);
+        cancelMegaClose();
+        setMegaOpen(null);
         setMenuOpen(false);
+        setFeaturedOpen(false);
         setExploreOpen(false);
         headerRef.current?.setAttribute("data-mega-locked", "true");
       }}
       onBlur={(event) => {
-        // Focus left both the trigger and the panel — collapse the mega.
+        // Focus left every trigger and both panels — collapse the dropdown.
         const next = event.relatedTarget;
         if (
           megaOpen &&
           (!next ||
             (!next.closest("#mega-collections") &&
+              !next.closest("#mega-featured") &&
               !next.closest("[data-mega-trigger]")))
         ) {
-          setMegaOpen(false);
+          setMegaOpen(null);
         }
       }}
     >
@@ -169,24 +223,31 @@ export const Nav = ({
           >
             {t("nav.explore")}
           </a>
-          {hasMega && (
+          {hasFeatured && (
             <button
               type="button"
-              data-mega-trigger
-              aria-expanded={megaOpen}
+              data-mega-trigger="featured"
+              aria-expanded={megaOpen === "featured"}
+              aria-controls="mega-featured"
+              onMouseEnter={enterMega("featured")}
+              onMouseLeave={scheduleMegaClose("featured")}
+              onFocus={focusMega("featured")}
+              onClick={() => setMegaOpen("featured")}
+              className="text-ink/70 transition-colors hover:text-ink aria-[expanded=true]:font-medium aria-[expanded=true]:text-ink"
+            >
+              {t("nav.megaFeatured")}
+            </button>
+          )}
+          {hasCollections && (
+            <button
+              type="button"
+              data-mega-trigger="collections"
+              aria-expanded={megaOpen === "collections"}
               aria-controls="mega-collections"
-              onMouseEnter={() => {
-                headerRef.current?.removeAttribute("data-mega-locked");
-                setMegaOpen(true);
-              }}
-              onMouseLeave={() => setMegaOpen(false)}
-              onFocus={(event) => {
-                // Mouse click focuses too — only keyboard focus opens.
-                if (event.currentTarget.matches(":focus-visible")) {
-                  setMegaOpen(true);
-                }
-              }}
-              onClick={() => setMegaOpen(true)}
+              onMouseEnter={enterMega("collections")}
+              onMouseLeave={scheduleMegaClose("collections")}
+              onFocus={focusMega("collections")}
+              onClick={() => setMegaOpen("collections")}
               className="text-ink/70 transition-colors hover:text-ink aria-[expanded=true]:font-medium aria-[expanded=true]:text-ink"
             >
               {t("nav.megaCollections")}
@@ -329,94 +390,100 @@ export const Nav = ({
         </div>
       </div>
 
-      {hasMega && (
+      {hasFeatured && (
         <div
-          id="mega-collections"
+          id="mega-featured"
+          onMouseEnter={enterPanel("featured")}
+          onMouseLeave={scheduleMegaClose("featured")}
           className="absolute inset-x-0 top-full hidden border-t border-line bg-paper tablet:block"
         >
-          {/* Two sections: featured products (admin metadata.featured, max 5)
-              and the collections grid. Side by side on wide screens, stacked
-              below; the panel scrolls internally on short viewports so every
-              card stays reachable. */}
+          {/* Its own dropdown for "Nổi Bật": the products flagged
+              metadata.featured in the Medusa admin (max 5, newest first).
+              Scrolls internally on short viewports. */}
           <div className="wrap max-h-[calc(100dvh-5rem)] overflow-y-auto py-6">
-            <div className="flex flex-col gap-8 wide:flex-row wide:items-start wide:gap-14">
-              {featured.length > 0 && (
-                <div className="min-w-0 flex-1">
-                  <p className="type-label">{t("nav.megaFeatured")}</p>
-                  <ul className="mt-5 grid grid-cols-5 gap-4">
-                    {featured.map((product) => (
-                      <li key={product.href}>
-                        <a href={product.href} className="group block">
-                          <div className="aspect-[3/4] overflow-hidden border border-line bg-fog">
-                            {product.image && (
-                              <img
-                                src={product.image}
-                                alt=""
-                                loading="lazy"
-                                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transition-none"
-                              />
-                            )}
-                          </div>
-                          <p className="mt-2 line-clamp-2 text-[13px] font-medium leading-snug underline-offset-4 group-hover:underline">
-                            {product.label}
-                          </p>
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {collections.length > 0 && (
-                <div className="min-w-0 wide:flex-none">
-                  <p className="type-label">{t("nav.megaCollections")}</p>
-                  <ul className="mt-5 grid max-w-3xl grid-cols-4 gap-5">
-                    <li>
-                      <a href={storeHref} className="group/all block">
-                        <div className="flex aspect-[3/4] items-center justify-center border border-line bg-fog text-ink/50 transition-colors group-hover/all:text-ink">
-                          <svg
-                            width="26"
-                            height="26"
-                            viewBox="0 0 26 26"
-                            fill="none"
-                            aria-hidden="true"
-                          >
-                            <path
-                              d="M8 18L18 8M18 8H10.5M18 8v7.5"
-                              stroke="currentColor"
-                              strokeWidth="1.6"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </div>
-                        <p className="mt-2.5 text-sm font-medium underline-offset-4 group-hover/all:underline">
-                          {t("nav.megaAll")}
-                        </p>
-                      </a>
-                    </li>
-                    {collections.map((collection) => (
-                      <li key={collection.href}>
-                        <a href={collection.href} className="group block">
-                          <div className="aspect-[3/4] overflow-hidden border border-line bg-fog">
-                            {collection.image && (
-                              <img
-                                src={collection.image}
-                                alt=""
-                                loading="lazy"
-                                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transition-none"
-                              />
-                            )}
-                          </div>
-                          <p className="mt-2.5 text-sm font-medium underline-offset-4 group-hover:underline">
-                            {collection.label}
-                          </p>
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
+            <p className="type-label">{t("nav.megaFeatured")}</p>
+            <ul className="mt-5 grid max-w-3xl grid-cols-5 gap-5">
+              {featured.map((product) => (
+                <li key={product.href}>
+                  <a href={product.href} className="group block">
+                    <div className="aspect-[3/4] overflow-hidden border border-line bg-fog">
+                      {product.image && (
+                        <img
+                          src={product.image}
+                          alt=""
+                          loading="lazy"
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transition-none"
+                        />
+                      )}
+                    </div>
+                    <p className="mt-2 line-clamp-2 text-[13px] font-medium leading-snug underline-offset-4 group-hover:underline">
+                      {product.label}
+                    </p>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {hasCollections && (
+        <div
+          id="mega-collections"
+          onMouseEnter={enterPanel("collections")}
+          onMouseLeave={scheduleMegaClose("collections")}
+          className="absolute inset-x-0 top-full hidden border-t border-line bg-paper tablet:block"
+        >
+          {/* Collections only — "Nổi Bật" lives in its own dropdown. The
+              panel scrolls internally on short viewports so every card
+              stays reachable. */}
+          <div className="wrap max-h-[calc(100dvh-5rem)] overflow-y-auto py-6">
+            <p className="type-label">{t("nav.megaCollections")}</p>
+            <ul className="mt-5 grid max-w-3xl grid-cols-4 gap-5">
+              <li>
+                <a href={storeHref} className="group/all block">
+                  <div className="flex aspect-[3/4] items-center justify-center border border-line bg-fog text-ink/50 transition-colors group-hover/all:text-ink">
+                    <svg
+                      width="26"
+                      height="26"
+                      viewBox="0 0 26 26"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M8 18L18 8M18 8H10.5M18 8v7.5"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
+                  <p className="mt-2.5 text-sm font-medium underline-offset-4 group-hover/all:underline">
+                    {t("nav.megaAll")}
+                  </p>
+                </a>
+              </li>
+              {collections.map((collection) => (
+                <li key={collection.href}>
+                  <a href={collection.href} className="group block">
+                    <div className="aspect-[3/4] overflow-hidden border border-line bg-fog">
+                      {collection.image && (
+                        <img
+                          src={collection.image}
+                          alt=""
+                          loading="lazy"
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transition-none"
+                        />
+                      )}
+                    </div>
+                    <p className="mt-2.5 text-sm font-medium underline-offset-4 group-hover:underline">
+                      {collection.label}
+                    </p>
+                  </a>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       )}
@@ -430,7 +497,54 @@ export const Nav = ({
             <a href={storeHref} className="type-label font-normal">
               {t("nav.explore")}
             </a>
-            {hasMega && (
+            {hasFeatured && (
+              <>
+                <button
+                  type="button"
+                  aria-expanded={featuredOpen}
+                  aria-controls="featured-sheet"
+                  onClick={() => setFeaturedOpen((open) => !open)}
+                  className="flex items-center justify-between type-label font-normal"
+                >
+                  {t("nav.megaFeatured")}
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 14 14"
+                    fill="none"
+                    aria-hidden="true"
+                    className={`transition-transform motion-reduce:transition-none ${
+                      featuredOpen ? "rotate-180" : ""
+                    }`}
+                  >
+                    <path
+                      d="M3 5l4 4 4-4"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+                {featuredOpen && (
+                  <div
+                    id="featured-sheet"
+                    className="mega-in flex flex-col gap-3 pl-1"
+                  >
+                    {featured.map((product) => (
+                      <a
+                        key={product.href}
+                        href={product.href}
+                        className="text-sm text-ink/70"
+                      >
+                        {product.label}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+            {hasCollections && (
               <>
                 <button
                   type="button"
@@ -474,20 +588,6 @@ export const Nav = ({
                         className="text-sm text-ink/70"
                       >
                         {collection.label}
-                      </a>
-                    ))}
-                    {featured.length > 0 && (
-                      <p className="mt-1 text-xs uppercase tracking-wide text-ink/45">
-                        {t("nav.megaFeatured")}
-                      </p>
-                    )}
-                    {featured.map((product) => (
-                      <a
-                        key={product.href}
-                        href={product.href}
-                        className="text-sm text-ink/70"
-                      >
-                        {product.label}
                       </a>
                     ))}
                   </div>
