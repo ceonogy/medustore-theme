@@ -249,15 +249,14 @@ export const ProductFilters = ({
 
   const shownCount = draftIsApplied ? totalCount : (draftCount ?? totalCount);
 
-  // Drawer focus management: move focus in, trap Tab, lock the page scroll
-  // without letting the disappearing scrollbar resize the layout (CLS), and
-  // return focus to the trigger on close.
+  // Drawer focus management: move focus in, trap Tab, lock the page scroll,
+  // and return focus to the trigger on close. The scroll lock needs no gutter
+  // compensation: `html { scrollbar-gutter: stable }` keeps the ~15px reserved
+  // when the scrollbar disappears, so padding here would shift the page.
   useEffect(() => {
     if (!isDrawerOpen) return;
     const previouslyFocused = document.activeElement as HTMLElement | null;
-    const gutter = window.innerWidth - document.documentElement.clientWidth;
     document.body.style.overflow = "hidden";
-    if (gutter > 0) document.body.style.paddingRight = `${gutter}px`;
     panelRef.current
       ?.querySelector<HTMLElement>("[data-drawer-close]")
       ?.focus();

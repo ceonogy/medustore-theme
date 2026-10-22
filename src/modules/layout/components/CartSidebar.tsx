@@ -38,12 +38,11 @@ export const CartSidebar = ({ locale }: CartSidebarProps) => {
 
     if (isOpen) {
       document.addEventListener("keydown", handleEscape);
-      // Removing the page scrollbar would widen the layout (CLS): lock the
-      // scroll and compensate with the exact gutter width just lost — same
-      // as the filter drawer.
-      const gutter = window.innerWidth - document.documentElement.clientWidth;
+      // Scroll lock only — no gutter compensation. `html` already carries
+      // `scrollbar-gutter: stable`, so losing the page scrollbar here does
+      // NOT widen the layout; padding on top of the reserved gutter would
+      // shrink the content box and shift the whole page instead.
       document.body.style.overflow = "hidden";
-      if (gutter > 0) document.body.style.paddingRight = `${gutter}px`;
     } else {
       document.body.style.overflow = "";
       document.body.style.paddingRight = "";
