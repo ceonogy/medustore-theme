@@ -80,20 +80,12 @@ export const Nav = ({
     setExploreOpen(false);
   }, [currentPath]);
 
-  // Desktop mega menu: hover intent with a short grace period so a cursor
-  // travelling from the trigger into the panel never blinks it shut.
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cancelClose = () => {
-    if (closeTimer.current) {
-      clearTimeout(closeTimer.current);
-      closeTimer.current = null;
-    }
-  };
-  const scheduleClose = () => {
-    cancelClose();
-    closeTimer.current = setTimeout(() => setMegaOpen(false), 140);
-  };
-  useEffect(() => () => cancelClose(), []);
+  // Desktop mega menu: visibility is pure CSS (`:has()` on the header —
+  // see global.css) so the panel opens on hover even when this island has
+  // not hydrated. React only mirrors aria-expanded and applies the Escape
+  // lock: after Escape the panel stays shut under the cursor until the
+  // pointer leaves and re-enters the trigger.
+  const headerRef = useRef<HTMLElement>(null);
 
   // The account (user icon) and cart (icon + count badge) live in the
   // top-right icon cluster — no text entries in the menu. "Khám phá" is the
@@ -105,6 +97,7 @@ export const Nav = ({
 
   return (
     <header
+      ref={headerRef}
       className="reveal reveal-nav sticky top-0 z-40 w-full border-b border-line/70 bg-paper/90 backdrop-blur-md"
       data-reveal
       onKeyDown={(event) => {
@@ -112,6 +105,7 @@ export const Nav = ({
         setMegaOpen(false);
         setMenuOpen(false);
         setExploreOpen(false);
+        headerRef.current?.setAttribute("data-mega-locked", "true");
       }}
       onBlur={(event) => {
         // Focus left both the trigger and the panel — collapse the mega.
@@ -150,11 +144,16 @@ export const Nav = ({
                 : undefined
             }
             onMouseEnter={() => {
-              cancelClose();
-              if (hasMega) setMegaOpen(true);
+              headerRef.current?.removeAttribute("data-mega-locked");
+              setMegaOpen(true);
             }}
-            onMouseLeave={scheduleClose}
-            onFocus={() => hasMega && setMegaOpen(true)}
+            onMouseLeave={() => setMegaOpen(false)}
+            onFocus={(event) => {
+              // Mouse click focuses too — only keyboard focus opens.
+              if (event.currentTarget.matches(":focus-visible")) {
+                setMegaOpen(true);
+              }
+            }}
             className="text-ink/70 transition-colors hover:text-ink aria-[current=page]:font-medium aria-[current=page]:text-ink"
           >
             {t("nav.explore")}
@@ -299,27 +298,39 @@ export const Nav = ({
       {hasMega && (
         <div
           id="mega-collections"
-          onMouseEnter={cancelClose}
-          onMouseLeave={scheduleClose}
-          className={`absolute inset-x-0 top-full hidden border-t border-line bg-paper transition-[opacity,visibility] duration-200 tablet:block motion-reduce:transition-none ${
-            megaOpen ? "visible opacity-100" : "invisible opacity-0"
-          }`}
+          className="absolute inset-x-0 top-full hidden border-t border-line bg-paper tablet:block"
         >
-          <div className="wrap py-8">
-            <div className="flex items-baseline justify-between">
-              <p className="type-label">{t("nav.megaCollections")}</p>
-              <a
-                href={storeHref}
-                className="text-sm text-ink/70 underline-offset-4 transition-colors hover:text-ink hover:underline"
-              >
-                {t("nav.megaAll")} →
-              </a>
-            </div>
-            <ul className="mt-6 grid grid-cols-2 gap-x-6 gap-y-8 tablet:grid-cols-4">
+          <div className="wrap py-6">
+            <p className="type-label">{t("nav.megaCollections")}</p>
+            <ul className="mt-5 grid max-w-3xl grid-cols-4 gap-5">
+              <li>
+                <a href={storeHref} className="group/all block">
+                  <div className="flex aspect-[3/4] items-center justify-center border border-line bg-fog text-ink/50 transition-colors group-hover/all:text-ink">
+                    <svg
+                      width="26"
+                      height="26"
+                      viewBox="0 0 26 26"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M8 18L18 8M18 8H10.5M18 8v7.5"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
+                  <p className="mt-2.5 text-sm font-medium underline-offset-4 group-hover/all:underline">
+                    {t("nav.megaAll")}
+                  </p>
+                </a>
+              </li>
               {collections.map((collection) => (
                 <li key={collection.href}>
                   <a href={collection.href} className="group block">
-                    <div className="aspect-[4/5] overflow-hidden border border-line bg-fog">
+                    <div className="aspect-[3/4] overflow-hidden border border-line bg-fog">
                       {collection.image && (
                         <img
                           src={collection.image}
@@ -329,7 +340,7 @@ export const Nav = ({
                         />
                       )}
                     </div>
-                    <p className="mt-3 text-sm font-medium underline-offset-4 group-hover:underline">
+                    <p className="mt-2.5 text-sm font-medium underline-offset-4 group-hover:underline">
                       {collection.label}
                     </p>
                   </a>
@@ -376,7 +387,10 @@ export const Nav = ({
                   </svg>
                 </button>
                 {exploreOpen && (
-                  <div id="explore-sheet" className="flex flex-col gap-3 pl-1">
+                  <div
+                    id="explore-sheet"
+                    className="mega-in flex flex-col gap-3 pl-1"
+                  >
                     <a href={storeHref} className="text-sm text-ink/70">
                       {t("nav.megaAll")}
                     </a>

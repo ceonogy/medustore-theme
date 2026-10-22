@@ -840,3 +840,61 @@
     transform: none;
   }
 }
+
+/* ================================================================
+   Header mega menu — UNLAYERED, CSS-driven open state.
+   Visibility must never depend on hydration: the panel opens on
+   :hover / :focus-visible of the "Khám phá" trigger even when the
+   island's JS is blocked, mid-restart, or still loading — without
+   JS the trigger used to stay a plain link to /store. React only
+   owns aria-expanded and the Escape lock (data-mega-locked, cleared
+   on the next mouseenter). `:has()` sits inside the baseline this
+   Tailwind v4 theme already requires.
+   ================================================================ */
+#mega-collections {
+  opacity: 0;
+  visibility: hidden;
+  translate: 0 -6px;
+  /* Close is delayed 140ms (grace) so a cursor crossing the header's
+     bottom edge into the panel never blinks it shut; open is instant. */
+  transition:
+    opacity 0.22s ease 0.14s,
+    translate 0.22s ease 0.14s,
+    visibility 0s linear 0.36s;
+}
+
+header:not([data-mega-locked]):has([data-mega-trigger]:hover) #mega-collections,
+header:not([data-mega-locked]):has([data-mega-trigger]:focus-visible)
+  #mega-collections,
+header:not([data-mega-locked]) #mega-collections:hover,
+header:not([data-mega-locked]) #mega-collections:focus-within {
+  opacity: 1;
+  visibility: visible;
+  translate: 0 0;
+  transition-delay: 0s;
+}
+
+@keyframes mega-in {
+  from {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+/* Mobile accordion content, mounted on tap. */
+.mega-in {
+  animation: mega-in 0.2s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #mega-collections {
+    transition: none;
+  }
+  .mega-in {
+    animation: none;
+  }
+}
