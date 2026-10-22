@@ -45,6 +45,9 @@ export type Taxonomy = {
   collectionHandleById: Map<string, string>;
   /** Collections that currently carry at least one product. */
   collectionIdsWithProducts: Set<string>;
+  /** First product thumbnail per collection — the mega-menu card image when
+   *  the collection itself carries no `metadata.image`. */
+  collectionThumbnails: Map<string, string>;
   productHandleById: Map<string, string>;
   /** Every size the catalogue offers (lowercase — the canonical URL form). */
   sizeValues: Set<string>;
@@ -163,6 +166,7 @@ type LightProduct = {
   id: string;
   handle: string;
   collection_id: string | null;
+  thumbnail?: string | null;
   origin_country?: string | null;
   options?: { id: string; title?: string | null }[] | null;
   variants?: ProductVariant[] | null;
@@ -177,7 +181,7 @@ const listLightProducts = async (): Promise<LightProduct[]> => {
   for (;;) {
     const { products, count } = await sdk.store.product.list({
       fields:
-        "id,handle,collection_id,*collection,origin_country,*options,*variants.options",
+        "id,handle,collection_id,thumbnail,*collection,origin_country,*options,*variants.options",
       limit: PAGE_SIZE,
       offset,
     });
@@ -187,6 +191,7 @@ const listLightProducts = async (): Promise<LightProduct[]> => {
           id: string;
           handle?: string | null;
           collection_id?: string | null;
+          thumbnail?: string | null;
           origin_country?: string | null;
           options?: { id: string; title?: string | null }[] | null;
           variants?: ProductVariant[] | null;
@@ -198,6 +203,7 @@ const listLightProducts = async (): Promise<LightProduct[]> => {
             (product as { collection?: { id?: string } | null }).collection
               ?.id ??
             null,
+          thumbnail: product.thumbnail ?? null,
           origin_country: product.origin_country ?? null,
           options: product.options ?? null,
           variants: product.variants ?? null,
@@ -278,12 +284,18 @@ const loadTaxonomy = async (): Promise<Taxonomy> => {
 
   const productHandleById = new Map<string, string>();
   const collectionIdsWithProducts = new Set<string>();
+  const collectionThumbnails = new Map<string, string>();
   const sizeValues = new Set<string>();
   const originValues = new Set<string>();
   lightProducts.forEach((product) => {
     if (product.handle) productHandleById.set(product.id, product.handle);
-    if (product.collection_id)
+    if (product.collection_id) {
       collectionIdsWithProducts.add(product.collection_id);
+      // First product in listing order wins — same rule the homepage uses
+      // when a collection has no image of its own.
+      if (product.thumbnail && !collectionThumbnails.has(product.collection_id))
+        collectionThumbnails.set(product.collection_id, product.thumbnail);
+    }
     // The filter vocabulary — every size/origin a `?size=`/`?origin=` value
     // may name, harvested during the pass that already reads all products.
     sizeValuesOf(product).forEach((value) => sizeValues.add(value));
@@ -307,6 +319,7 @@ const loadTaxonomy = async (): Promise<Taxonomy> => {
     collectionByHandle,
     collectionHandleById,
     collectionIdsWithProducts,
+    collectionThumbnails,
     productHandleById,
     sizeValues,
     originValues,

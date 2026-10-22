@@ -17,7 +17,9 @@ export const vi = {
   "common.serviceUnavailable":
     "Một lỗi tạm thời đã xảy ra. Vui lòng thử lại sau.",
 
-  "nav.products": "Sản phẩm",
+  "nav.explore": "Khám phá",
+  "nav.megaCollections": "Bộ sưu tập",
+  "nav.megaAll": "Tất cả sản phẩm",
   "nav.cart": "Giỏ hàng",
   "nav.cartCount": "Giỏ hàng ({{count}})",
   "nav.cartAria": "Giỏ hàng, {{count}} sản phẩm",
@@ -151,7 +153,9 @@ export const en: typeof vi = {
   "common.serviceUnavailable":
     "Something went wrong temporarily. Please try again shortly.",
 
-  "nav.products": "Products",
+  "nav.explore": "Explore",
+  "nav.megaCollections": "Collections",
+  "nav.megaAll": "All products",
   "nav.cart": "Cart",
   "nav.cartCount": "Cart ({{count}})",
   "nav.cartAria": "Shopping cart with {{count}} item",

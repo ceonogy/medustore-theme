@@ -13,17 +13,30 @@ import {
 } from "@lib/stores/cart";
 import { hasSessionToken } from "@lib/auth";
 import { useStore } from "@nanostores/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useHydrated } from "@lib/hooks/use-hydrated";
+
+interface NavCollection {
+  label: string;
+  href: string;
+  image?: string;
+}
 
 interface NavProps {
   locale: Locale;
   regionId: string | null;
   /** Full current pathname, used to build the language switcher links. */
   currentPath?: string;
+  /** Collections with products — the mega menu content (server-computed). */
+  collections?: NavCollection[];
 }
 
-export const Nav = ({ locale, regionId, currentPath = "/" }: NavProps) => {
+export const Nav = ({
+  locale,
+  regionId,
+  currentPath = "/",
+  collections = [],
+}: NavProps) => {
   const cartItemCount = useStore($cartItemCount);
   // Hydration gate: show the SSR value (0) on the first client render so a
   // cart left in the store by a previous ClientRouter navigation cannot
@@ -32,6 +45,9 @@ export const Nav = ({ locale, regionId, currentPath = "/" }: NavProps) => {
   const displayedItemCount = hydrated ? cartItemCount : 0;
   const t = useTranslations(locale);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Desktop mega panel (hover/focus on "Khám phá") + mobile accordion.
+  const [megaOpen, setMegaOpen] = useState(false);
+  const [exploreOpen, setExploreOpen] = useState(false);
   // Guests see "Tài khoản" as the login page; signed-in customers get the
   // dashboard. SSR always renders the guest href (no session server-side).
   const [accountHref, setAccountHref] = useState(
@@ -57,23 +73,58 @@ export const Nav = ({ locale, regionId, currentPath = "/" }: NavProps) => {
     }
   }, [regionId]);
 
-  // The ClientRouter swaps the document on navigation — close the sheet.
-  useEffect(() => setMenuOpen(false), [currentPath]);
+  // The ClientRouter swaps the document on navigation — close every panel.
+  useEffect(() => {
+    setMenuOpen(false);
+    setMegaOpen(false);
+    setExploreOpen(false);
+  }, [currentPath]);
+
+  // Desktop mega menu: hover intent with a short grace period so a cursor
+  // travelling from the trigger into the panel never blinks it shut.
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelClose = () => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  };
+  const scheduleClose = () => {
+    cancelClose();
+    closeTimer.current = setTimeout(() => setMegaOpen(false), 140);
+  };
+  useEffect(() => () => cancelClose(), []);
 
   // The account (user icon) and cart (icon + count badge) live in the
-  // top-right icon cluster — no text entries in the menu.
+  // top-right icon cluster — no text entries in the menu. "Khám phá" is the
+  // single menu entry: a link to the store that opens the collection panel
+  // on hover (desktop) — privacy/terms live in the footer only.
   const isAccountPage = currentPath.startsWith("/tai-khoan");
-  const links = [
-    { href: localizePath(locale, "/store"), label: t("nav.products") },
-    { href: localizePath(locale, "/privacy"), label: t("footer.privacy") },
-    { href: localizePath(locale, "/terms"), label: t("footer.terms") },
-  ];
-  const desktopLinks = links;
+  const storeHref = localizePath(locale, "/store");
+  const hasMega = collections.length > 0;
 
   return (
     <header
       className="reveal reveal-nav sticky top-0 z-40 w-full border-b border-line/70 bg-paper/90 backdrop-blur-md"
       data-reveal
+      onKeyDown={(event) => {
+        if (event.key !== "Escape") return;
+        setMegaOpen(false);
+        setMenuOpen(false);
+        setExploreOpen(false);
+      }}
+      onBlur={(event) => {
+        // Focus left both the trigger and the panel — collapse the mega.
+        const next = event.relatedTarget;
+        if (
+          megaOpen &&
+          (!next ||
+            (!next.closest("#mega-collections") &&
+              !next.closest("[data-mega-trigger]")))
+        ) {
+          setMegaOpen(false);
+        }
+      }}
     >
       <div className="wrap flex h-16 items-center justify-between gap-6 wide:h-20">
         <a
@@ -87,21 +138,27 @@ export const Nav = ({ locale, regionId, currentPath = "/" }: NavProps) => {
           aria-label={t("nav.main")}
           className="hidden items-center gap-6 text-[16px] tablet:flex"
         >
-          {desktopLinks.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              aria-current={
-                currentPath === link.href ||
-                currentPath.startsWith(`${link.href}/`)
-                  ? "page"
-                  : undefined
-              }
-              className="text-ink/70 transition-colors hover:text-ink aria-[current=page]:font-medium aria-[current=page]:text-ink"
-            >
-              {link.label}
-            </a>
-          ))}
+          <a
+            href={storeHref}
+            data-mega-trigger
+            aria-expanded={hasMega ? megaOpen : undefined}
+            aria-controls={hasMega ? "mega-collections" : undefined}
+            aria-current={
+              currentPath === storeHref ||
+              currentPath.startsWith(`${storeHref}/`)
+                ? "page"
+                : undefined
+            }
+            onMouseEnter={() => {
+              cancelClose();
+              if (hasMega) setMegaOpen(true);
+            }}
+            onMouseLeave={scheduleClose}
+            onFocus={() => hasMega && setMegaOpen(true)}
+            className="text-ink/70 transition-colors hover:text-ink aria-[current=page]:font-medium aria-[current=page]:text-ink"
+          >
+            {t("nav.explore")}
+          </a>
         </nav>
 
         <div className="flex items-center gap-4">
@@ -239,21 +296,107 @@ export const Nav = ({ locale, regionId, currentPath = "/" }: NavProps) => {
         </div>
       </div>
 
+      {hasMega && (
+        <div
+          id="mega-collections"
+          onMouseEnter={cancelClose}
+          onMouseLeave={scheduleClose}
+          className={`absolute inset-x-0 top-full hidden border-t border-line bg-paper transition-[opacity,visibility] duration-200 tablet:block motion-reduce:transition-none ${
+            megaOpen ? "visible opacity-100" : "invisible opacity-0"
+          }`}
+        >
+          <div className="wrap py-8">
+            <div className="flex items-baseline justify-between">
+              <p className="type-label">{t("nav.megaCollections")}</p>
+              <a
+                href={storeHref}
+                className="text-sm text-ink/70 underline-offset-4 transition-colors hover:text-ink hover:underline"
+              >
+                {t("nav.megaAll")} →
+              </a>
+            </div>
+            <ul className="mt-6 grid grid-cols-2 gap-x-6 gap-y-8 tablet:grid-cols-4">
+              {collections.map((collection) => (
+                <li key={collection.href}>
+                  <a href={collection.href} className="group block">
+                    <div className="aspect-[4/5] overflow-hidden border border-line bg-fog">
+                      {collection.image && (
+                        <img
+                          src={collection.image}
+                          alt=""
+                          loading="lazy"
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transition-none"
+                        />
+                      )}
+                    </div>
+                    <p className="mt-3 text-sm font-medium underline-offset-4 group-hover:underline">
+                      {collection.label}
+                    </p>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
       {menuOpen && (
         <div className="border-t border-line bg-paper tablet:hidden">
           <nav
             aria-label={t("nav.menu")}
-            className="wrap flex flex-col gap-5 py-6"
+            className="wrap flex flex-col gap-4 py-6"
           >
-            {links.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="type-label font-normal"
-              >
-                {link.label}
+            {hasMega ? (
+              <>
+                <button
+                  type="button"
+                  aria-expanded={exploreOpen}
+                  aria-controls="explore-sheet"
+                  onClick={() => setExploreOpen((open) => !open)}
+                  className="flex items-center justify-between type-label font-normal"
+                >
+                  {t("nav.explore")}
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 14 14"
+                    fill="none"
+                    aria-hidden="true"
+                    className={`transition-transform motion-reduce:transition-none ${
+                      exploreOpen ? "rotate-180" : ""
+                    }`}
+                  >
+                    <path
+                      d="M3 5l4 4 4-4"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+                {exploreOpen && (
+                  <div id="explore-sheet" className="flex flex-col gap-3 pl-1">
+                    <a href={storeHref} className="text-sm text-ink/70">
+                      {t("nav.megaAll")}
+                    </a>
+                    {collections.map((collection) => (
+                      <a
+                        key={collection.href}
+                        href={collection.href}
+                        className="text-sm text-ink/70"
+                      >
+                        {collection.label}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <a href={storeHref} className="type-label font-normal">
+                {t("nav.explore")}
               </a>
-            ))}
+            )}
           </nav>
         </div>
       )}

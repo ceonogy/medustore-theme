@@ -1,7 +1,8 @@
 ---
 import heroImage from "@assets/hero.webp";
-import { useTranslations } from "@i18n";
+import { localizePath, useTranslations } from "@i18n";
 import { getRegion } from "@lib/data/regions";
+import { getTaxonomy } from "@lib/data/taxonomy";
 import { CartSidebar } from "@modules/layout/components/CartSidebar";
 import Footer from "@modules/layout/components/Footer.astro";
 import { Nav } from "@modules/layout/components/Nav";
@@ -37,6 +38,33 @@ const {
 
 const { locale, countryCode } = Astro.locals;
 const t = useTranslations(locale);
+
+// The header mega menu mirrors Medusa: collections that carry products show
+// up here, nothing is hardcoded. `metadata.image` wins when present, the
+// collection's own first product thumbnail keeps the card visual. A taxonomy
+// failure degrades the nav to the plain "Khám phá" link — never a 503.
+let navCollections: {
+  label: string;
+  href: string;
+  image?: string;
+}[] = [];
+try {
+  const taxonomy = await getTaxonomy();
+  navCollections = [...taxonomy.collectionByHandle.values()]
+    .filter((collection) =>
+      taxonomy.collectionIdsWithProducts.has(collection.id),
+    )
+    .map((collection) => ({
+      label: collection.title,
+      href: localizePath(locale, `/bo-suu-tap/${collection.handle}`),
+      image:
+        collection.image ??
+        taxonomy.collectionThumbnails.get(collection.id) ??
+        undefined,
+    }));
+} catch (error) {
+  console.error("nav collections unavailable", error);
+}
 
 const siteName = t("site.name");
 const pageTitle = title ? `${title} | ${siteName}` : siteName;
@@ -149,6 +177,7 @@ const regionId = region?.id || null;
       locale={locale}
       regionId={regionId}
       currentPath={Astro.url.pathname}
+      collections={navCollections}
     />
     <main class="flex-1">
       <slot />
