@@ -867,7 +867,8 @@ header:not([data-mega-locked]):has([data-mega-trigger]:hover) #mega-collections,
 header:not([data-mega-locked]):has([data-mega-trigger]:focus-visible)
   #mega-collections,
 header:not([data-mega-locked]) #mega-collections:hover,
-header:not([data-mega-locked]) #mega-collections:focus-within {
+header:not([data-mega-locked]) #mega-collections:focus-within,
+header:not([data-mega-locked])[data-mega-open="true"] #mega-collections {
   opacity: 1;
   visibility: visible;
   translate: 0 0;

@@ -19,6 +19,7 @@ export const vi = {
 
   "nav.explore": "Khám phá",
   "nav.megaCollections": "Bộ sưu tập",
+  "nav.megaFeatured": "Nổi bật",
   "nav.megaAll": "Tất cả sản phẩm",
   "nav.cart": "Giỏ hàng",
   "nav.cartCount": "Giỏ hàng ({{count}})",
@@ -155,6 +156,7 @@ export const en: typeof vi = {
 
   "nav.explore": "Explore",
   "nav.megaCollections": "Collections",
+  "nav.megaFeatured": "Featured",
   "nav.megaAll": "All products",
   "nav.cart": "Cart",
   "nav.cartCount": "Cart ({{count}})",

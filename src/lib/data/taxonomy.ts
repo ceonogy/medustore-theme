@@ -38,6 +38,13 @@ export type CollectionNode = {
   image: string | null;
 };
 
+/** A featured product for the mega menu — only handle/title/image matter. */
+export type FeaturedProduct = {
+  handle: string;
+  title: string;
+  thumbnail: string;
+};
+
 export type Taxonomy = {
   categoryByHandle: Map<string, CategoryNode>;
   categoryHandleById: Map<string, string>;
@@ -48,6 +55,9 @@ export type Taxonomy = {
   /** First product thumbnail per collection — the mega-menu card image when
    *  the collection itself carries no `metadata.image`. */
   collectionThumbnails: Map<string, string>;
+  /** Products flagged `metadata.featured` in the Medusa admin (newest first,
+   *  capped at 5) — the "Nổi bật" row of the header mega menu. */
+  featuredProducts: FeaturedProduct[];
   productHandleById: Map<string, string>;
   /** Every size the catalogue offers (lowercase — the canonical URL form). */
   sizeValues: Set<string>;
@@ -165,9 +175,12 @@ type CollectionRow = {
 type LightProduct = {
   id: string;
   handle: string;
+  title: string;
   collection_id: string | null;
   thumbnail?: string | null;
   origin_country?: string | null;
+  created_at?: string | null;
+  metadata?: Record<string, unknown> | null;
   options?: { id: string; title?: string | null }[] | null;
   variants?: ProductVariant[] | null;
 };
@@ -181,7 +194,7 @@ const listLightProducts = async (): Promise<LightProduct[]> => {
   for (;;) {
     const { products, count } = await sdk.store.product.list({
       fields:
-        "id,handle,collection_id,thumbnail,*collection,origin_country,*options,*variants.options",
+        "id,handle,title,collection_id,thumbnail,*collection,origin_country,created_at,+metadata,*options,*variants.options",
       limit: PAGE_SIZE,
       offset,
     });
@@ -190,14 +203,18 @@ const listLightProducts = async (): Promise<LightProduct[]> => {
         (product: {
           id: string;
           handle?: string | null;
+          title?: string | null;
           collection_id?: string | null;
           thumbnail?: string | null;
           origin_country?: string | null;
+          created_at?: string | null;
+          metadata?: Record<string, unknown> | null;
           options?: { id: string; title?: string | null }[] | null;
           variants?: ProductVariant[] | null;
         }) => ({
           id: product.id,
           handle: product.handle ?? "",
+          title: product.title ?? "",
           collection_id:
             product.collection_id ??
             (product as { collection?: { id?: string } | null }).collection
@@ -205,6 +222,8 @@ const listLightProducts = async (): Promise<LightProduct[]> => {
             null,
           thumbnail: product.thumbnail ?? null,
           origin_country: product.origin_country ?? null,
+          created_at: product.created_at ?? null,
+          metadata: product.metadata ?? null,
           options: product.options ?? null,
           variants: product.variants ?? null,
         }),
@@ -313,6 +332,26 @@ const loadTaxonomy = async (): Promise<Taxonomy> => {
     updateHistory(history, "product", productHandleById) || historyChanged;
   if (historyChanged) writeHistoryFile(history);
 
+  // "Nổi bật": products flagged metadata.featured in the Medusa admin product
+  // page. Newest first, capped at 5, only cards with a photo (the mega-menu
+  // tile needs an image; admin can fix a blank one by setting the thumbnail).
+  const featuredProducts = lightProducts
+    .filter((product) => {
+      const featured = product.metadata?.featured;
+      return (
+        !!product.handle &&
+        !!product.thumbnail &&
+        (featured === true || featured === "true" || featured === 1)
+      );
+    })
+    .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))
+    .slice(0, 5)
+    .map((product) => ({
+      handle: product.handle,
+      title: product.title || product.handle,
+      thumbnail: product.thumbnail as string,
+    }));
+
   return {
     categoryByHandle,
     categoryHandleById,
@@ -320,6 +359,7 @@ const loadTaxonomy = async (): Promise<Taxonomy> => {
     collectionHandleById,
     collectionIdsWithProducts,
     collectionThumbnails,
+    featuredProducts,
     productHandleById,
     sizeValues,
     originValues,

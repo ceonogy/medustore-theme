@@ -41,9 +41,16 @@ const t = useTranslations(locale);
 
 // The header mega menu mirrors Medusa: collections that carry products show
 // up here, nothing is hardcoded. `metadata.image` wins when present, the
-// collection's own first product thumbnail keeps the card visual. A taxonomy
-// failure degrades the nav to the plain "Khám phá" link — never a 503.
+// collection's own first product thumbnail keeps the card visual. The "Nổi
+// bật" row reads products flagged `metadata.featured` in the admin (max 5,
+// newest first). A taxonomy failure degrades the nav to the plain "Khám
+// phá" link — never a 503.
 let navCollections: {
+  label: string;
+  href: string;
+  image?: string;
+}[] = [];
+let navFeatured: {
   label: string;
   href: string;
   image?: string;
@@ -62,6 +69,11 @@ try {
         taxonomy.collectionThumbnails.get(collection.id) ??
         undefined,
     }));
+  navFeatured = taxonomy.featuredProducts.map((product) => ({
+    label: product.title,
+    href: localizePath(locale, `/store/${product.handle}`),
+    image: product.thumbnail,
+  }));
 } catch (error) {
   console.error("nav collections unavailable", error);
 }
@@ -178,6 +190,7 @@ const regionId = region?.id || null;
       regionId={regionId}
       currentPath={Astro.url.pathname}
       collections={navCollections}
+      featured={navFeatured}
     />
     <main class="flex-1">
       <slot />
