@@ -55,6 +55,20 @@ export const vi = {
   "account.profile.saved": "Đã lưu thông tin của bạn",
   "account.profile.saveFailed": "Không thể lưu, vui lòng thử lại",
 
+  "account.addresses.title": "Địa chỉ",
+  "account.addresses.empty": "Chưa có địa chỉ nào.",
+  "account.addresses.add": "Thêm địa chỉ",
+  "account.addresses.editTitle": "Chỉnh sửa địa chỉ",
+  "account.addresses.edit": "Sửa",
+  "account.addresses.delete": "Xóa",
+  "account.addresses.confirmDelete": "Xóa địa chỉ này?",
+  "account.addresses.save": "Lưu địa chỉ",
+  "account.addresses.cancel": "Hủy",
+  "account.addresses.saved": "Đã lưu địa chỉ",
+  "account.addresses.deleted": "Đã xóa địa chỉ",
+  "account.addresses.failed": "Không thể lưu địa chỉ, vui lòng thử lại",
+  "account.addresses.default": "Mặc định",
+
   "account.logout": "Đăng xuất",
 
   "account.orders.pageTitle": "Đơn hàng của tôi",
@@ -151,6 +165,20 @@ export const en: typeof vi = {
   "account.profile.save": "Save changes",
   "account.profile.saved": "Your details have been saved",
   "account.profile.saveFailed": "Could not save, please try again",
+
+  "account.addresses.title": "Addresses",
+  "account.addresses.empty": "You have no addresses yet.",
+  "account.addresses.add": "Add address",
+  "account.addresses.editTitle": "Edit address",
+  "account.addresses.edit": "Edit",
+  "account.addresses.delete": "Delete",
+  "account.addresses.confirmDelete": "Delete this address?",
+  "account.addresses.save": "Save address",
+  "account.addresses.cancel": "Cancel",
+  "account.addresses.saved": "Address saved",
+  "account.addresses.deleted": "Address deleted",
+  "account.addresses.failed": "Could not save the address, please try again",
+  "account.addresses.default": "Default",
 
   "account.logout": "Sign out",
 

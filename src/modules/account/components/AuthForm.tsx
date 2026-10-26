@@ -6,6 +6,7 @@ import {
   toAuthError,
 } from "@lib/auth";
 import { sanitizeNextPath } from "@lib/utils/auth-session";
+import { splitFullName } from "@lib/utils/name";
 import { useEffect, useState, type FormEvent } from "react";
 
 interface AuthFormProps {
@@ -35,8 +36,8 @@ export const AuthForm = ({ locale, mode }: AuthFormProps) => {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  // One "HỌ & TÊN" field — split into Medusa's first/last on submit.
+  const [fullName, setFullName] = useState("");
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -72,7 +73,7 @@ export const AuthForm = ({ locale, mode }: AuthFormProps) => {
     } else if (password.length < 8) {
       errors.password = t("account.error.passwordTooShort");
     }
-    if (!isLogin && (!firstName.trim() || !lastName.trim())) {
+    if (!isLogin && !fullName.trim()) {
       errors.name = t("account.error.nameRequired");
     }
     return errors;
@@ -90,11 +91,12 @@ export const AuthForm = ({ locale, mode }: AuthFormProps) => {
       if (isLogin) {
         await loginCustomer({ email: email.trim(), password });
       } else {
+        const { first_name, last_name } = splitFullName(fullName);
         await registerCustomer({
           email: email.trim(),
           password,
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
+          first_name,
+          last_name,
         });
       }
       window.location.assign(destination());
@@ -110,46 +112,27 @@ export const AuthForm = ({ locale, mode }: AuthFormProps) => {
         <h1 className="type-title">
           {isLogin ? t("account.login.title") : t("account.register.title")}
         </h1>
-        <p className="mt-3 text-ink/70">
-          {isLogin
-            ? t("account.login.subtitle")
-            : t("account.register.subtitle")}
-        </p>
+        {/* The login page shows no subtitle (spec 2026-10-27). */}
+        {!isLogin && (
+          <p className="mt-3 text-ink/70">{t("account.register.subtitle")}</p>
+        )}
 
         <form onSubmit={onSubmit} noValidate className="mt-8 space-y-4">
           {!isLogin && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label htmlFor="account-first-name" className={LABEL}>
-                  {t("account.field.firstName")}
-                </label>
-                <input
-                  id="account-first-name"
-                  name="given-name"
-                  autoComplete="given-name"
-                  value={firstName}
-                  onChange={(event) => setFirstName(event.target.value)}
-                  aria-invalid={Boolean(fieldErrors.name)}
-                  className={`${INPUT_BASE} ${fieldErrors.name ? "border-red-400" : "border-gray-300"}`}
-                />
-              </div>
-              <div>
-                <label htmlFor="account-last-name" className={LABEL}>
-                  {t("account.field.lastName")}
-                </label>
-                <input
-                  id="account-last-name"
-                  name="family-name"
-                  autoComplete="family-name"
-                  value={lastName}
-                  onChange={(event) => setLastName(event.target.value)}
-                  aria-invalid={Boolean(fieldErrors.name)}
-                  className={`${INPUT_BASE} ${fieldErrors.name ? "border-red-400" : "border-gray-300"}`}
-                />
-              </div>
-              <p className={`${ERROR} sm:col-span-2`}>
-                {fieldErrors.name ?? ""}
-              </p>
+            <div>
+              <label htmlFor="account-full-name" className={LABEL}>
+                {t("account.field.fullName")}
+              </label>
+              <input
+                id="account-full-name"
+                name="name"
+                autoComplete="name"
+                value={fullName}
+                onChange={(event) => setFullName(event.target.value)}
+                aria-invalid={Boolean(fieldErrors.name)}
+                className={`${INPUT_BASE} ${fieldErrors.name ? "border-red-400" : "border-gray-300"}`}
+              />
+              <p className={ERROR}>{fieldErrors.name ?? ""}</p>
             </div>
           )}
 

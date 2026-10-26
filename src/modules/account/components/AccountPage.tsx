@@ -5,6 +5,7 @@ import { isValidVietnamPhone } from "@lib/utils/phone";
 import { joinFullName, splitFullName } from "@lib/utils/name";
 import { useEffect, useState, type FormEvent } from "react";
 import { AccountShell } from "./AccountShell";
+import { AddressSection } from "./AddressSection";
 
 interface AccountPageProps {
   locale: Locale;
@@ -202,6 +203,11 @@ export const AccountPage = ({ locale, loginPath }: AccountPageProps) => {
           {busy ? t("account.working") : t("account.profile.save")}
         </button>
       </form>
+
+      <h2 className="mt-10 text-xl font-bold">
+        {t("account.addresses.title")}
+      </h2>
+      <AddressSection locale={locale} />
     </AccountShell>
   );
 };

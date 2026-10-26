@@ -56,7 +56,7 @@ export const vi = {
   "checkout.shipping.billingSameCheckbox":
     "Địa chỉ thanh toán trùng với địa chỉ giao hàng",
   "checkout.shipping.email": "Email*",
-  "checkout.shipping.phone": "Số điện thoại",
+  "checkout.shipping.phone": "Số điện thoại*",
   "checkout.shipping.saveFailed": "Không thể lưu địa chỉ. Vui lòng thử lại.",
   "checkout.shipping.saving": "Đang lưu...",
   "checkout.shipping.continueToDelivery": "Tiếp tục đến bước giao hàng",
@@ -161,7 +161,7 @@ export const en: typeof vi = {
   "checkout.shipping.billingSameCheckbox":
     "Billing address same as shipping address",
   "checkout.shipping.email": "Email*",
-  "checkout.shipping.phone": "Phone",
+  "checkout.shipping.phone": "Phone*",
   "checkout.shipping.saveFailed": "Failed to save address. Please try again.",
   "checkout.shipping.saving": "Saving...",
   "checkout.shipping.continueToDelivery": "Continue to delivery",

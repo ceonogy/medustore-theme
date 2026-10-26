@@ -295,10 +295,31 @@
       transform: none;
     }
 
+    /* Spatial hovers are dropped, not snapped: with `transition: none`
+       the product zoom and the CTA slide JUMP into place (a transform
+       with no easing reads as a jolt). The zoom simply doesn't happen;
+       the CTA cross-fades in instead of sliding. `.btn` is deliberately
+       absent — its 2px eased lift is a micro-hover, and killing its
+       transition made the auth submit button snap on hover (user
+       report, 2026-10-27). */
     .product-media > img,
-    .btn,
-    .product-cta {
+    .product:hover .product-media > img,
+    .product:focus-visible .product-media > img {
       transition: none;
+      transform: none;
+    }
+
+    .product-cta {
+      transform: none;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .product:hover .product-cta,
+    .product:focus-visible .product-cta {
+      opacity: 1;
+      pointer-events: auto;
     }
   }
 

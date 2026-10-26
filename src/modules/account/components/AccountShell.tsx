@@ -77,7 +77,9 @@ export const AccountShell = ({
         </aside>
 
         <div className="min-w-0 tablet:order-first">
-          <h1 className="type-title">{heading}</h1>
+          {/* type-title is a centred section heading by design — the CP
+              pages want theirs flush-left like checkout. */}
+          <h1 className="type-title text-left">{heading}</h1>
           {children}
         </div>
       </div>
