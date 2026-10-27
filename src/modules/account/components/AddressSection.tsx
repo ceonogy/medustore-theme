@@ -139,7 +139,9 @@ export const AddressSection = ({ locale }: AddressSectionProps) => {
       nextErrors.ward = t("checkout.validation.wardRequired");
     }
     const phoneValue = form.phone.trim();
-    if (phoneValue && !isValidVietnamPhone(phoneValue)) {
+    if (!phoneValue) {
+      nextErrors.phone = t("checkout.validation.phoneRequired");
+    } else if (!isValidVietnamPhone(phoneValue)) {
       nextErrors.phone = t("account.profile.phoneInvalid");
     }
     setErrors(nextErrors);
@@ -312,7 +314,7 @@ export const AddressSection = ({ locale }: AddressSectionProps) => {
 
       <div>
         <label htmlFor="address-phone" className={LABEL}>
-          {t("account.profile.phone")}
+          {t("checkout.shipping.phone")}
         </label>
         <input
           id="address-phone"

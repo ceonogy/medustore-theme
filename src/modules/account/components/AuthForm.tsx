@@ -187,6 +187,17 @@ export const AuthForm = ({ locale, mode }: AuthFormProps) => {
             </p>
           </div>
 
+          {isLogin && (
+            <p className="-mt-2 text-right">
+              <a
+                href={localizePath(locale, "/tai-khoan/quen-mat-khau")}
+                className="text-sm text-ink/70 underline underline-offset-4 transition-colors hover:text-ink"
+              >
+                {t("account.login.forgotPassword")}
+              </a>
+            </p>
+          )}
+
           {formError && (
             <p
               role="alert"

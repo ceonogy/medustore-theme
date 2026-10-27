@@ -167,6 +167,39 @@ export async function updateProfile(input: {
 }
 
 /** Path of the current page (for `?next=`) - browser only. */
+/**
+ * Start the password-reset flow: POST /auth/customer/emailpass/reset-password.
+ *
+ * The route answers 201 whether or not the account exists (no
+ * enumeration); the reset link itself arrives by email, sent by the
+ * backend's `auth.password_reset` subscriber.
+ */
+export async function requestPasswordReset(email: string): Promise<void> {
+  try {
+    await sdk.auth.resetPassword("customer", "emailpass", {
+      identifier: email,
+    });
+  } catch (error) {
+    throw toAuthError(error);
+  }
+}
+
+/**
+ * Consume the single-use reset token from the emailed link and set the new
+ * password. The token is a purpose-bound JWT (15-minute TTL) — the backend
+ * rejects session bearers, expired tokens and replays.
+ */
+export async function resetPassword(
+  token: string,
+  password: string,
+): Promise<void> {
+  try {
+    await sdk.auth.updateProvider("customer", "emailpass", { password }, token);
+  } catch (error) {
+    throw toAuthError(error);
+  }
+}
+
 export function currentRequestPath(): string {
   if (typeof window === "undefined") return "/";
   return window.location.pathname + window.location.search;

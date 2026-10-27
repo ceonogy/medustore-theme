@@ -291,12 +291,16 @@ const PER_VISITOR_ROOTS = new Set(["cart", "checkout", "order"]);
 // backend). SSR keeps talking to the backend URL directly.
 const MEDUSA_PROXY_PREFIX = "/medusa";
 
+// Forwarded verbatim so backend rate limiting (password reset) can key
+// on the real client IP — OLS appends it; the backend trusts the
+// rightmost entry only.
 const PROXY_REQUEST_HEADERS = [
   "accept",
   "content-type",
   "authorization",
   "idempotency-key",
   "x-publishable-api-key",
+  "x-forwarded-for",
 ];
 
 const proxyToBackend = async (context: APIContext): Promise<Response> => {

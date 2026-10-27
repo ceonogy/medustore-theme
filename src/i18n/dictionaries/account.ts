@@ -29,6 +29,38 @@ export const vi = {
   "account.register.haveAccount": "Đã có tài khoản?",
   "account.register.loginLink": "Đăng nhập",
 
+  "account.login.forgotPassword": "Quên mật khẩu?",
+
+  "account.forgot.pageTitle": "Quên mật khẩu",
+  "account.forgot.pageDescription":
+    "Nhập email để nhận link đặt lại mật khẩu Demostore.",
+  "account.forgot.title": "Quên mật khẩu",
+  "account.forgot.subtitle":
+    "Nhập email đã đăng ký — chúng tôi sẽ gửi cho bạn link đặt mật khẩu mới.",
+  "account.forgot.submit": "Gửi link đặt lại",
+  "account.forgot.success":
+    "Nếu email tồn tại trong hệ thống, link đặt lại mật khẩu đã được gửi. Kiểm tra hộp thư của bạn.",
+  "account.forgot.rateLimited":
+    "Quá nhiều yêu cầu. Vui lòng thử lại sau ít phút.",
+  "account.forgot.failed": "Không thể gửi yêu cầu, vui lòng thử lại.",
+  "account.forgot.sentAgain": "Gửi lại yêu cầu",
+  "account.forgot.backToLogin": "Quay lại đăng nhập",
+
+  "account.reset.pageTitle": "Đặt lại mật khẩu",
+  "account.reset.pageDescription":
+    "Chọn mật khẩu mới cho tài khoản Demostore của bạn.",
+  "account.reset.title": "Đặt lại mật khẩu",
+  "account.reset.subtitle": "Mật khẩu mới cần tối thiểu 8 ký tự.",
+  "account.reset.passwordConfirm": "Nhập lại mật khẩu mới",
+  "account.reset.submit": "Đặt lại mật khẩu",
+  "account.reset.success":
+    "Mật khẩu đã được cập nhật. Bạn có thể đăng nhập bằng mật khẩu mới.",
+  "account.reset.invalidToken":
+    "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu link mới.",
+  "account.reset.mismatch": "Mật khẩu nhập lại không khớp.",
+  "account.reset.checking": "Đang kiểm tra liên kết...",
+  "account.reset.toLogin": "Đi tới trang đăng nhập",
+
   "account.field.email": "Email",
   "account.field.emailPlaceholder": "ban@example.com",
   "account.field.password": "Mật khẩu",
@@ -139,6 +171,38 @@ export const en: typeof vi = {
   "account.register.submit": "Create account",
   "account.register.haveAccount": "Already have an account?",
   "account.register.loginLink": "Sign in",
+
+  "account.login.forgotPassword": "Forgot password?",
+
+  "account.forgot.pageTitle": "Forgot password",
+  "account.forgot.pageDescription":
+    "Enter your email to receive a Demostore password-reset link.",
+  "account.forgot.title": "Forgot password",
+  "account.forgot.subtitle":
+    "Enter your registered email — we'll send you a link to set a new password.",
+  "account.forgot.submit": "Send reset link",
+  "account.forgot.success":
+    "If that email exists in our system, a password-reset link has been sent. Check your inbox.",
+  "account.forgot.rateLimited":
+    "Too many requests. Please try again in a few minutes.",
+  "account.forgot.failed": "Could not send the request, please try again.",
+  "account.forgot.sentAgain": "Send again",
+  "account.forgot.backToLogin": "Back to sign in",
+
+  "account.reset.pageTitle": "Reset password",
+  "account.reset.pageDescription":
+    "Choose a new password for your Demostore account.",
+  "account.reset.title": "Reset password",
+  "account.reset.subtitle": "The new password needs at least 8 characters.",
+  "account.reset.passwordConfirm": "Repeat the new password",
+  "account.reset.submit": "Reset password",
+  "account.reset.success":
+    "Password updated. You can now sign in with your new password.",
+  "account.reset.invalidToken":
+    "This password-reset link is invalid or has expired. Please request a new one.",
+  "account.reset.mismatch": "The passwords don't match.",
+  "account.reset.checking": "Checking the link...",
+  "account.reset.toLogin": "Go to sign in",
 
   "account.field.email": "Email",
   "account.field.emailPlaceholder": "you@example.com",
