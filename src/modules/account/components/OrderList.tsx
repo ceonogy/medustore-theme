@@ -18,11 +18,6 @@ interface OrderListProps {
 /** Orders per page; the API caps `take` at 100. */
 const PAGE_SIZE = 30;
 
-// ⚠️ TEMP (0 để tắt, xóa khi test xong): giả lập lịch sử N đơn để test
-// pagination UI (nhiều trang, ô …, trang cuối lệch) — không đụng dữ liệu
-// thật. Khi tắt, count lấy từ API và chỉ khách có >30 đơn mới thấy nav.
-const TEMP_FAKE_COUNT = 215;
-
 const formatDate = (iso: string, locale: Locale): string =>
   new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : "en-GB", {
     day: "2-digit",
@@ -73,10 +68,8 @@ export const OrderList = ({ locale, loginPath }: OrderListProps) => {
   const [failed, setFailed] = useState(false);
   const [pageError, setPageError] = useState(false);
   const [pageLoading, setPageLoading] = useState(false);
-  const baseRef = useRef<AccountOrder[] | null>(null);
   const listTopRef = useRef<HTMLDivElement | null>(null);
 
-  const temp = TEMP_FAKE_COUNT > 0;
   const pageCount = Math.ceil(count / PAGE_SIZE);
 
   useEffect(() => {
@@ -101,42 +94,13 @@ export const OrderList = ({ locale, loginPath }: OrderListProps) => {
       }
     };
 
-    // TEMP mode: fetch the real rows once, then synthesize every page from
-    // them (cycled rows, fake sequential display ids past the real head).
-    const synthesize = (base: AccountOrder[]): AccountOrder[] => {
-      if (base.length === 0) return [];
-      const end = Math.min(start + PAGE_SIZE, TEMP_FAKE_COUNT);
-      return Array.from({ length: Math.max(0, end - start) }, (_, i) => {
-        const abs = start + i;
-        const source = base[abs % base.length];
-        return abs < base.length ? source : { ...source, display_id: abs + 4 };
-      });
-    };
-
     setPageLoading(page > 1);
     setPageError(false);
 
     (async () => {
       try {
-        if (temp && baseRef.current) {
-          setRows(synthesize(baseRef.current));
-          setCount(TEMP_FAKE_COUNT);
-          done();
-          return;
-        }
-
-        const res = await listOrders(
-          temp ? { take: PAGE_SIZE } : { take: PAGE_SIZE, skip: start },
-        );
+        const res = await listOrders({ take: PAGE_SIZE, skip: start });
         if (!active) return;
-
-        if (temp) {
-          baseRef.current = res.orders;
-          setRows(res.orders.length > 0 ? synthesize(res.orders) : []);
-          setCount(res.orders.length > 0 ? TEMP_FAKE_COUNT : res.count);
-          done();
-          return;
-        }
 
         // Deep link past the end (`?page=99`) — clamp instead of a blank
         // list pretending the customer has no orders.
@@ -189,12 +153,6 @@ export const OrderList = ({ locale, loginPath }: OrderListProps) => {
     );
   }
 
-  // TEMP pages cycle the real rows; keys must stay unique per absolute row.
-  const renderRows = rows.map((order, i) => ({
-    order,
-    key: temp ? `t-${(page - 1) * PAGE_SIZE + i}` : order.id,
-  }));
-
   return (
     <AccountShell
       locale={locale}
@@ -222,11 +180,11 @@ export const OrderList = ({ locale, loginPath }: OrderListProps) => {
 
         {rows.length > 0 && (
           <ul className="mt-8 space-y-4">
-            {renderRows.map(({ order, key }) => {
+            {rows.map((order) => {
               const first = order.items[0];
               const media = first ? resolveOrderItemMedia(first) : null;
               return (
-                <li key={key}>
+                <li key={order.id}>
                   <a
                     href={localizePath(
                       locale,
