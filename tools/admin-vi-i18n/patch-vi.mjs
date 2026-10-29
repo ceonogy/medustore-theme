@@ -60,6 +60,7 @@ const flags = {
   json: args.includes("--json"),
   quiet: args.includes("--quiet"),
   noDefaultVi: args.includes("--no-default-vi"),
+  noLabels: args.includes("--no-labels"),
   help: args.includes("--help") || args.includes("-h"),
 };
 
@@ -78,6 +79,8 @@ Options:
   --restart           pm2 restart medusa after writing
   --no-default-vi     Keep Medusa's stock language default instead of
                       making Vietnamese the Admin's default language
+  --no-labels         Keep Medusa's stock payment rows in the Admin
+                      (order # / provider name / date / status)
   --json              Emit machine-readable JSON
   --quiet             Only print the summary line
   -h, --help          Show this help
@@ -503,6 +506,195 @@ function applyDefaultLanguage({ medusaRoot, backendDir }, { write, enabled }) {
   return result;
 }
 
+// ------------------------------------------------------ Runtime label patching
+//
+// The Admin's order → Payments rows render raw machine values:
+//
+//     #5R7ZEDV                    <- 7 last chars of the *payment* id
+//     30 Oct, 2026, 03:44:51      <- "dd MMM, yyyy, HH:mm:ss"
+//     pp_sepay                    <- payment.provider_id, only CSS-capitalised
+//     Captured                    <- hard-coded English status
+//
+// None of that is an i18n key — they are values read from the API — so the
+// translation dictionary cannot reach them. They are rewritten here in the
+// shipped @medusajs/dashboard bundle instead, exactly like the language
+// default above: at most one replacement per pattern per file, re-applied by
+// a plain re-run, skipped with --no-labels.
+
+/** Friendly names for the payment providers this shop uses. */
+const PAYMENT_LABELS = {
+  pp_sepay: "SePay",
+  pp_system_default: "Xác nhận thủ công",
+  manual_manual: "Thủ công",
+};
+
+const LABEL_RECORD = `{${Object.entries(PAYMENT_LABELS)
+  .map(([id, label]) => `"${id}":"${label}"`)
+  .join(",")}}`;
+
+/** Self-contained expression: no import needed, works in every chunk. */
+const PROVIDER_LABEL_EXPR =
+  `((${LABEL_RECORD})[payment.provider_id] || ` +
+  `String(payment.provider_id).replace(/^pp_/, "").replace(/_/g, " "))`;
+
+/** Order number instead of the payment id, with the old form as fallback. */
+const ORDER_ID_EXPR =
+  `((order.display_id != null ? "#" + order.display_id ` +
+  `: "#" + String(payment.id).replace(/^pay_/, "").slice(-7)))`;
+
+const RE_PAYMENT_ID_CELL =
+  /\/\* @__PURE__ \*\/\s*(?:\(0,\s*[\w$.]+\)|[\w$]+)\(\s*display_id_default,\s*\{\s*id:\s*payment\.id\s*\}\s*\)/g;
+const RE_PROVIDER_TITLECASE =
+  /className:\s*"capitalize",\s*children:\s*payment\.provider_id\b/g;
+const RE_PROVIDER_PLAIN = /children:\s*payment\.provider_id\b/g;
+const RE_DATE_FORMAT = /"dd MMM, yyyy, HH:mm:ss"/g;
+const RE_STATUS_CANCELED = /\["Canceled", "red"\]/g;
+const RE_STATUS_CAPTURED = /\["Captured", "green"\]/g;
+const RE_STATUS_PENDING = /\["Pending", "orange"\]/g;
+
+const RUNTIME_LABEL_FIXES = [
+  {
+    name: "order # instead of payment-id hash",
+    re: RE_PAYMENT_ID_CELL,
+    out: () => ORDER_ID_EXPR,
+  },
+  {
+    name: "provider label (drop Title Case)",
+    re: RE_PROVIDER_TITLECASE,
+    out: () => `children: ${PROVIDER_LABEL_EXPR}`,
+  },
+  {
+    name: "provider label",
+    re: RE_PROVIDER_PLAIN,
+    out: () => `children: ${PROVIDER_LABEL_EXPR}`,
+  },
+  {
+    name: "date dd/MM/yyyy HH:mm",
+    re: RE_DATE_FORMAT,
+    out: () => '"dd/MM/yyyy HH:mm"',
+  },
+  {
+    name: "status: Đã hủy",
+    re: RE_STATUS_CANCELED,
+    out: () => '["Đã hủy", "red"]',
+  },
+  {
+    name: "status: Đã thu tiền",
+    re: RE_STATUS_CAPTURED,
+    out: () => '["Đã thu tiền", "green"]',
+  },
+  {
+    name: "status: Chờ xử lý",
+    re: RE_STATUS_PENDING,
+    out: () => '["Chờ xử lý", "orange"]',
+  },
+];
+
+const MARKER_ORDER_ID = "order.display_id != null";
+const MARKER_LABEL = `"pp_sepay":"SePay"`;
+
+/** Applied to one file's text; idempotent and reports what it touched. */
+function applyRuntimeLabelFixes(text) {
+  const actions = [];
+  let next = text;
+
+  for (const fix of RUNTIME_LABEL_FIXES) {
+    const r = replaceAll(next, fix.re, fix.out());
+    if (r.applied) {
+      next = r.text;
+      actions.push(`${fix.name}${r.count > 1 ? ` x${r.count}` : ""}`);
+    }
+  }
+
+  const complete = next.includes(MARKER_LABEL) || next.includes(MARKER_ORDER_ID);
+
+  return { text: next, actions, changed: actions.length > 0, complete };
+}
+
+/**
+ * Rewrites the order-payments rows in every shipped bundle file that carries
+ * them (`order-detail-*.mjs` and `app.js` today). Files without the patterns
+ * are left alone, so an Admin build that moves the markup reports "not-found"
+ * instead of silently doing nothing.
+ */
+function applyRuntimeLabels({ medusaRoot, backendDir }, { write, enabled }) {
+  const result = {
+    status: "disabled",
+    files: [],
+    unchanged: [],
+    unrecognised: [],
+    applied: false,
+  };
+  if (!enabled) return result;
+
+  const pkgDir = findDashboardPackage(medusaRoot, backendDir);
+  if (!pkgDir) return { ...result, status: "package-missing" };
+
+  const changed = [];
+  const unchanged = [];
+  const unrecognised = [];
+
+  for (const file of candidateLanguageFiles(pkgDir)) {
+    let text;
+    try {
+      text = fs.readFileSync(file, "utf8");
+    } catch {
+      continue;
+    }
+    // only files that render the payments rows are interesting
+    if (!text.includes("payment.provider_id")) continue;
+
+    const rel = path.relative(pkgDir, file);
+    const fix = applyRuntimeLabelFixes(text);
+
+    if (fix.changed) {
+      changed.push({ file: rel, actions: fix.actions });
+      if (write) {
+        fs.writeFileSync(file, fix.text, "utf8");
+        result.applied = true;
+      }
+    } else if (fix.complete) {
+      unchanged.push({ file: rel, actions: [] });
+    } else {
+      unrecognised.push(rel);
+    }
+  }
+
+  result.files = changed;
+  result.unchanged = unchanged;
+  result.unrecognised = unrecognised;
+
+  if (changed.length === 0 && unchanged.length === 0) {
+    result.status = "not-found";
+    result.files = [];
+  } else if (changed.length > 0) {
+    result.status = write ? "patched" : "would-patch";
+  } else {
+    result.status = "already-patched";
+  }
+
+  return result;
+}
+
+function describeRuntimeLabels(r) {
+  switch (r.status) {
+    case "disabled":
+      return "left stock (payment row labels disabled)";
+    case "package-missing":
+      return "@medusajs/dashboard not found";
+    case "not-found":
+      return "payment rows not recognised — check the Admin build";
+    case "already-patched":
+      return "order # + provider labels (already applied)";
+    case "would-patch":
+      return `order # + provider labels (would patch ${r.files.length} file(s))`;
+    case "patched":
+      return `order # + provider labels (patched ${r.files.length} file(s))`;
+    default:
+      return r.status;
+  }
+}
+
 function describeDefaultLanguage(r) {
   switch (r.status) {
     case "disabled":
@@ -593,6 +785,13 @@ async function main() {
     { write: shouldWrite, enabled: !flags.noDefaultVi },
   );
 
+  // Also before `medusa build`. Rewrites the raw values the order → Payments
+  // rows render (payment-id hash, `pp_sepay`, hard-coded dates/statuses).
+  const runtimeLabels = applyRuntimeLabels(
+    { medusaRoot, backendDir },
+    { write: shouldWrite, enabled: !flags.noLabels },
+  );
+
   const report = {
     adminPath,
     medusaRoot,
@@ -614,6 +813,7 @@ async function main() {
     unknownOverrides,
     upToDate,
     defaultLanguage,
+    runtimeLabels,
     wrote: false,
     built: false,
     restarted: false,
@@ -637,6 +837,12 @@ async function main() {
     if ((defaultLanguage.unrecognised ?? []).length) {
       log(
         `  warning: i18n config shape not recognised in ${defaultLanguage.unrecognised.join(", ")}`,
+      );
+    }
+    log(`  payment labels : ${describeRuntimeLabels(runtimeLabels)}`);
+    if ((runtimeLabels.unrecognised ?? []).length) {
+      log(
+        `  warning: payment rows not recognised in ${runtimeLabels.unrecognised.join(", ")}`,
       );
     }
     if (report.stillEnglish) {
@@ -685,6 +891,30 @@ async function main() {
       log("           keep opening in English until this is updated.");
     }
     if (defaultLanguage.status === "patched" && !flags.build) {
+      log("  Re-run with --build for the change to reach the served bundle.");
+    }
+  }
+
+  if (shouldWrite && !flags.json && !flags.check) {
+    log("");
+    log("── Payment row labels ───────────────────────────────────────");
+    log(`  ${describeRuntimeLabels(runtimeLabels)}`);
+    for (const f of runtimeLabels.files) {
+      log(`    ${f.file}: ${f.actions.join(", ")}`);
+    }
+    for (const f of runtimeLabels.unchanged ?? []) {
+      log(`    ${f.file}: already applied`);
+    }
+    if ((runtimeLabels.unrecognised ?? []).length) {
+      log(
+        `  warning: payment rows not recognised in ${runtimeLabels.unrecognised.join(", ")}`,
+      );
+    }
+    if (runtimeLabels.status === "not-found") {
+      log("  warning: the Admin build no longer renders the payment rows where");
+      log("           expected; the stock values (#hash / pp_* / English) stay.");
+    }
+    if (runtimeLabels.status === "patched" && !flags.build) {
       log("  Re-run with --build for the change to reach the served bundle.");
     }
   }

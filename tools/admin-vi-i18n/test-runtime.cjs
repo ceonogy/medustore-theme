@@ -223,6 +223,80 @@ assert(
   `cookie=${live.lookupCookie} localStorage=${live.lookupLocalStorage}`,
 );
 
+// ── payment row labels: values, not i18n keys ───────────────────────────────
+// The Order → Payments rows render API values (payment-id hash, `pp_sepay`,
+// dates, English statuses). The tool rewrites those expressions in the shipped
+// bundle, so read them back live: this fails if the patch is lost — e.g. after
+// `yarn install` — and patch-vi.mjs must be re-run.
+function readPaymentRows() {
+  let entries;
+  try {
+    entries = fs.readdirSync(path.join(DASHBOARD, "dist"));
+  } catch {
+    return null;
+  }
+  const rows = [];
+  for (const f of entries.filter((f) => /\.(js|mjs)$/.test(f))) {
+    const text = fs.readFileSync(path.join(DASHBOARD, "dist", f), "utf8");
+    if (!text.includes("payment.provider_id")) continue;
+    rows.push({
+      file: `dist/${f}`,
+      orderNumber:
+        text.includes("order.display_id != null") &&
+        text.includes('replace(/^pay_/, "")'),
+      providerLabel: text.includes('"pp_sepay":"SePay"'),
+      dateFormat: !text.includes('"dd MMM, yyyy, HH:mm:ss"'),
+      statusVi:
+        text.includes('Đã thu tiền') &&
+        text.includes('Chờ xử lý') &&
+        text.includes('Đã hủy'),
+      stockStatus:
+        text.includes('["Captured", "green"]') ||
+        text.includes('["Pending", "orange"]') ||
+        text.includes('["Canceled", "red"]'),
+      stockProvider:
+        /className:\s*"capitalize",\s*children:\s*payment\.provider_id/.test(
+          text,
+        ),
+    });
+  }
+  return rows;
+}
+
+const paymentRows = readPaymentRows();
+console.log("\n── order payment row labels ───────────────────────────────");
+assert(
+  "payment rows found in the shipped dashboard bundle",
+  Array.isArray(paymentRows) && paymentRows.length > 0,
+  paymentRows ? `${paymentRows.length} file(s)` : "dist unreadable",
+);
+const rowsSorted = Array.isArray(paymentRows) ? paymentRows : [];
+assert(
+  "provider id → readable label (SePay / Xác nhận thủ công)",
+  rowsSorted.length > 0 && rowsSorted.every((r) => r.providerLabel),
+  rowsSorted.map((r) => r.file).join(", "),
+);
+assert(
+  "no raw `capitalize`d provider id left",
+  rowsSorted.every((r) => !r.stockProvider),
+);
+assert(
+  "payment dates use dd/MM/yyyy HH:mm",
+  rowsSorted.every((r) => r.dateFormat),
+);
+assert(
+  "payment status labels are Vietnamese",
+  rowsSorted.some((r) => r.statusVi) && rowsSorted.every((r) => !r.stockStatus),
+  rowsSorted
+    .filter((r) => r.statusVi)
+    .map((r) => r.file)
+    .join(", "),
+);
+assert(
+  "order number shown instead of the payment-id hash",
+  rowsSorted.some((r) => r.orderNumber),
+);
+
 (async () => {
   console.log("── environment shipped to the admin ─────────────────────────");
   assert(

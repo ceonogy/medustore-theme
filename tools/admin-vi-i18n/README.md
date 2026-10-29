@@ -73,6 +73,7 @@ cp tools/admin-vi-i18n/config.example.json tools/admin-vi-i18n/config.json
 | `--build`         | run `yarn build` (`medusa build`) after writing |
 | `--restart`       | `pm2 restart medusa` after writing              |
 | `--no-default-vi` | keep Medusa's stock language default            |
+| `--no-labels`     | keep Medusa's stock order-payment row values    |
 | `--json`          | machine-readable report                         |
 | `--quiet`         | summary line only                               |
 
@@ -130,6 +131,36 @@ It touches `node_modules/@medusajs/dashboard/dist/*` (the bundle input) and
 `src/i18n/config.ts`, matches at most once per pattern, and is re-applied by a
 plain re-run — so run this tool again after any `yarn install` or Medusa
 upgrade. `--check` reports the state; `test-runtime.cjs` asserts it.
+
+## Payment row labels
+
+The **Order → Payments** rows render raw machine values — none of them is an
+i18n key, so the dictionary cannot reach them. Medusa ships:
+
+| rendered                 | source in the dashboard bundle                      |
+| ------------------------ | --------------------------------------------------- |
+| `#5R7ZEDV`               | last 7 chars of the **payment** id, not the order   |
+| `30 Oct, 2026, 03:44:51` | `format(date, "dd MMM, yyyy, HH:mm:ss")`            |
+| `pp_sepay`               | `payment.provider_id`, only CSS-`capitalize`d       |
+| `pp_system_default`      | same                                                |
+| `Captured` / `Pending`   | hard-coded English status labels                    |
+
+The tool rewrites those expressions in place (`--no-labels` skips it):
+
+| now renders          | how                                                                 |
+| -------------------- | ------------------------------------------------------------------- |
+| `#9`                 | `order.display_id`, falling back to the payment-id hash             |
+| `30/10/2026 03:44`   | `"dd/MM/yyyy HH:mm"`                                                |
+| `SePay`              | map `pp_sepay → "SePay"`                                            |
+| `Xác nhận thủ công`  | map `pp_system_default → "Xác nhận thủ công"`                       |
+| `Đã thu tiền` / `Chờ xử lý` / `Đã hủy` | Vietnamese status labels                           |
+
+Unknown providers still get a readable fallback (strip the `pp_` prefix and
+underscores). It edits the same shipped files as the language default —
+`order-detail-*.mjs`, `order-create-refund-*.mjs` and `app.js` today — is
+idempotent, and reports `already applied` on a re-run. If a future Medusa build
+moves the markup, `--check` reports `payment rows not recognised` instead of
+silently doing nothing.
 
 ## Testing
 
