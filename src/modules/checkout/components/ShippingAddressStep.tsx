@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { fetchCheckoutPrefill } from "@lib/checkout-prefill";
 import { updateCartAddress } from "@lib/stores/cart";
+import { formatLocality } from "@lib/utils/address";
 import { isValidVietnamPhone } from "@lib/utils/phone";
 import type { StoreCart } from "@medusajs/types";
 import { useEffect, useRef, useState } from "react";
@@ -197,9 +198,7 @@ const ReadOnlyView = ({
   const shippingLines = [
     joinFullName(shipping) || null,
     shipping?.address_1 ?? null,
-    shipping?.city && shipping?.province
-      ? `${shipping.city}, ${shipping.province}`
-      : (shipping?.province ?? null),
+    formatLocality(shipping) || null,
   ].filter(Boolean) as string[];
 
   return (

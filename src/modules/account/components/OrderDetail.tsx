@@ -5,6 +5,7 @@ import {
   type AccountOrder,
 } from "@lib/account-orders";
 import { convertToLocale } from "@lib/utils/money";
+import { formatAddressLines } from "@lib/utils/address";
 import { useEffect, useState } from "react";
 import { AccountShell } from "./AccountShell";
 import { OrderStatus } from "./OrderStatus";
@@ -185,7 +186,7 @@ export const OrderDetail = ({
             {[address.first_name, address.last_name].filter(Boolean).join(" ")}
           </p>
           <p className="text-sm text-ink/70">
-            {[address.address_1, address.city].filter(Boolean).join(", ")}
+            {formatAddressLines(address).join(", ")}
           </p>
           {address.phone && (
             <p className="text-sm text-ink/70">{address.phone}</p>

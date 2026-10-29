@@ -5,6 +5,7 @@ import {
   type Translator,
 } from "@i18n";
 import { sdk } from "@lib/sdk";
+import { formatLocality } from "@lib/utils/address";
 import { convertToLocale } from "@lib/utils/money";
 import { resolveLineItemMedia } from "@lib/utils/line-item";
 import type { StoreCart } from "@medusajs/types";
@@ -470,8 +471,7 @@ export const ConfirmedFallbackPage = ({
                       </>
                     )}
                     <br />
-                    {cart.shipping_address.postal_code},{" "}
-                    {cart.shipping_address.city}
+                    {formatLocality(cart.shipping_address)}
                   </address>
                 </div>
               )}
@@ -490,8 +490,7 @@ export const ConfirmedFallbackPage = ({
                       <br />
                       {cart.billing_address.address_1}
                       <br />
-                      {cart.billing_address.postal_code},{" "}
-                      {cart.billing_address.city}
+                      {formatLocality(cart.billing_address)}
                     </address>
                   )}
                 </div>
