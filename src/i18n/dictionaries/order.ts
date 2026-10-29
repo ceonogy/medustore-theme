@@ -26,6 +26,23 @@ export const vi = {
   "order.sameAsShipping": "Giống địa chỉ giao hàng",
   "order.payment": "Thanh toán",
   "order.manualPayment": "Thanh toán thủ công",
+  "order.sepay.title": "Thanh toán chuyển khoản",
+  "order.sepay.instruction":
+    "Quét mã QR bằng app ngân hàng, hoặc chuyển khoản theo thông tin bên dưới.",
+  "order.sepay.qrAlt": "Mã QR chuyển khoản",
+  "order.sepay.vaLabel": "Số tài khoản (VA)",
+  "order.sepay.bankLabel": "Ngân hàng",
+  "order.sepay.holderLabel": "Chủ tài khoản",
+  "order.sepay.amountLabel": "Số tiền",
+  "order.sepay.contentLabel": "Nội dung chuyển khoản",
+  "order.sepay.expires": "Vui lòng thanh toán trước {{time}}.",
+  "order.sepay.copy": "Sao chép",
+  "order.sepay.copied": "Đã sao chép",
+  "order.sepay.waiting":
+    "Đang chờ thanh toán… Đơn hàng tự xác nhận ngay khi nhận đủ tiền.",
+  "order.sepay.paid": "Đã nhận thanh toán — cảm ơn bạn!",
+  "order.sepay.loadFailed":
+    "Không tải được thông tin chuyển khoản. Vui lòng kiểm tra email xác nhận.",
 
   "order.nextSteps": "Tiếp theo sẽ diễn ra như thế nào?",
   "order.processing": "Đang xử lý đơn hàng",
@@ -59,6 +76,23 @@ export const en: typeof vi = {
   "order.sameAsShipping": "Same as shipping address",
   "order.payment": "Payment",
   "order.manualPayment": "Manual Payment",
+  "order.sepay.title": "Bank transfer payment",
+  "order.sepay.instruction":
+    "Scan the QR with your banking app, or transfer using the details below.",
+  "order.sepay.qrAlt": "Bank transfer QR code",
+  "order.sepay.vaLabel": "Account number (VA)",
+  "order.sepay.bankLabel": "Bank",
+  "order.sepay.holderLabel": "Account holder",
+  "order.sepay.amountLabel": "Amount",
+  "order.sepay.contentLabel": "Transfer reference",
+  "order.sepay.expires": "Please pay before {{time}}.",
+  "order.sepay.copy": "Copy",
+  "order.sepay.copied": "Copied",
+  "order.sepay.waiting":
+    "Waiting for payment… Your order confirms automatically once the funds arrive.",
+  "order.sepay.paid": "Payment received — thank you!",
+  "order.sepay.loadFailed":
+    "Could not load the transfer details. Please check your confirmation email.",
 
   "order.nextSteps": "What happens next?",
   "order.processing": "Order Processing",

@@ -7,7 +7,12 @@ import {
   useStripe,
 } from "@stripe/react-stripe-js";
 import { useEffect, useState } from "react";
-import { localizePath, useTranslations, type Locale } from "@i18n";
+import {
+  localizePath,
+  useTranslations,
+  type Locale,
+  type Translator,
+} from "@i18n";
 
 interface PaymentStepProps {
   cart: StoreCart;
@@ -37,8 +42,13 @@ function isStripeProvider(providerId: string): boolean {
   return providerId.startsWith("pp_stripe_");
 }
 
-function formatProviderName(providerId: string): string {
-  if (providerId === "pp_system_default") return "Manual Payment";
+function isSePayProvider(providerId: string): boolean {
+  return providerId === "pp_sepay";
+}
+
+function formatProviderName(providerId: string, t: Translator): string {
+  if (providerId === "pp_system_default") return t("order.manualPayment");
+  if (isSePayProvider(providerId)) return t("checkout.payment.sepayName");
   if (isStripeProvider(providerId)) return "Credit Card (Stripe)";
   return providerId
     .replace(/^pp_/, "")
@@ -134,7 +144,14 @@ export const PaymentStep = ({ cart, locale, mode }: PaymentStepProps) => {
 
       const result = await completeCart();
       if (result.type === "order" || result.type === "already_completed") {
-        window.location.href = localizePath(locale, "/order/confirmed");
+        const orderId = result.type === "order" ? result.order?.id : undefined;
+        try {
+          if (orderId) sessionStorage.setItem("medusa_last_order_id", orderId);
+        } catch {}
+        const confirmedUrl =
+          localizePath(locale, "/order/confirmed") +
+          (orderId ? `?order=${encodeURIComponent(orderId)}` : "");
+        window.location.href = confirmedUrl;
       } else {
         setError(
           result.error.message || t("checkout.payment.placeOrderFailed"),
@@ -196,7 +213,7 @@ export const PaymentStep = ({ cart, locale, mode }: PaymentStepProps) => {
                     className="w-4 h-4 accent-black"
                   />
                   <span className="text-sm font-medium">
-                    {formatProviderName(provider.id)}
+                    {formatProviderName(provider.id, t)}
                   </span>
                   {isTestProvider(provider.id) && (
                     <span className="text-xs text-orange-600 bg-orange-50 border border-orange-200 rounded px-2 py-0.5">
@@ -217,6 +234,15 @@ export const PaymentStep = ({ cart, locale, mode }: PaymentStepProps) => {
             <div className="mb-6 p-4 border border-gray-200 rounded-md">
               <PaymentElement />
             </div>
+          )}
+
+        {isSePayProvider(selectedProviderId) &&
+          cart.payment_collection?.payment_sessions?.some(
+            (s) => s.provider_id === selectedProviderId,
+          ) && (
+            <p className="mb-6 p-4 border border-gray-200 rounded-md text-sm text-gray-600 leading-relaxed">
+              {t("checkout.payment.sepayHint")}
+            </p>
           )}
 
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}

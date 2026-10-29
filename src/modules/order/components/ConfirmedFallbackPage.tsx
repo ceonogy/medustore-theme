@@ -4,17 +4,37 @@ import {
   type Locale,
   type Translator,
 } from "@i18n";
+import { sdk } from "@lib/sdk";
 import { convertToLocale } from "@lib/utils/money";
 import { resolveLineItemMedia } from "@lib/utils/line-item";
 import type { StoreCart } from "@medusajs/types";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface ConfirmedFallbackPageProps {
   locale: Locale;
 }
 
+interface SePayPayment {
+  provider_id: string;
+  display_id: number | null;
+  order_code: string | null;
+  va_number: string | null;
+  qr_code_url: string | null;
+  bank_name: string | null;
+  account_number: string | null;
+  account_holder_name: string | null;
+  amount: number | null;
+  expires_at: string | null;
+  captured: boolean;
+  captured_at: string | null;
+  collection_status: string | null;
+}
+
+const SEPAY_POLL_MS = 5000;
+
 function formatProviderName(providerId: string, t: Translator): string {
   if (providerId === "pp_system_default") return t("order.manualPayment");
+  if (providerId === "pp_sepay") return t("checkout.payment.sepayName");
   return providerId
     .replace(/^pp_/, "")
     .split("_")
@@ -22,11 +42,77 @@ function formatProviderName(providerId: string, t: Translator): string {
     .join(" ");
 }
 
+/** Đọc order id từ ?order= (ưu tiên) hoặc sessionStorage do checkout ghi lại. */
+function readOrderId(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const fromUrl = new URLSearchParams(window.location.search).get("order");
+    if (fromUrl) return fromUrl;
+  } catch {}
+  try {
+    return sessionStorage.getItem("medusa_last_order_id");
+  } catch {
+    return null;
+  }
+}
+
+/** `2026-10-31 03:44:35` (giờ VN) → `31/10/2026 03:44`. */
+function formatExpiry(value: string): string {
+  const d = new Date(value.replace(" ", "T") + "+07:00");
+  if (Number.isNaN(d.getTime())) return value;
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(
+    d.getHours(),
+  )}:${p(d.getMinutes())}`;
+}
+
+/** Hàng "nhãn — giá trị" kèm nút sao chép. */
+function TransferRow({
+  label,
+  value,
+  copyLabel,
+  copiedLabel,
+  onCopy,
+  copied,
+  mono,
+}: {
+  label: string;
+  value: string;
+  copyLabel: string;
+  copiedLabel: string;
+  onCopy: (value: string) => void;
+  copied: boolean;
+  mono?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-2">
+      <div className="min-w-0">
+        <p className="text-xs text-gray-500">{label}</p>
+        <p className={`text-sm ${mono ? "font-mono" : ""} break-all`}>
+          {value}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() => onCopy(value)}
+        className="shrink-0 text-xs border border-gray-300 rounded px-2 py-1 hover:bg-gray-50"
+      >
+        {copied ? copiedLabel : copyLabel}
+      </button>
+    </div>
+  );
+}
+
 export const ConfirmedFallbackPage = ({
   locale,
 }: ConfirmedFallbackPageProps) => {
   const t = useTranslations(locale);
   const [cart, setCart] = useState<StoreCart | null>(null);
+  const [orderId, setOrderId] = useState<string | null>(null);
+  const [sepay, setSepay] = useState<SePayPayment | null>(null);
+  const [sepayError, setSepayError] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const pollRef = useRef<number | null>(null);
 
   useEffect(() => {
     try {
@@ -36,7 +122,67 @@ export const ConfirmedFallbackPage = ({
         sessionStorage.removeItem("medusa_cart_snapshot");
       }
     } catch {}
+    setOrderId(readOrderId());
   }, []);
+
+  // Tải thông tin chuyển khoản SePay và poll cho tới khi nhận đủ tiền.
+  useEffect(() => {
+    if (!orderId) return;
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const res = await sdk.client.fetch<{ payment: SePayPayment | null }>(
+          `/store/sepay/order/${orderId}`,
+        );
+        if (cancelled) return;
+        setSepay(res.payment);
+        setSepayError(false);
+        if (res.payment?.captured && pollRef.current !== null) {
+          window.clearInterval(pollRef.current);
+          pollRef.current = null;
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Failed to load SePay payment info:", err);
+          setSepayError(true);
+        }
+      }
+    };
+
+    void load();
+    pollRef.current = window.setInterval(load, SEPAY_POLL_MS);
+    return () => {
+      cancelled = true;
+      if (pollRef.current !== null) {
+        window.clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, [orderId]);
+
+  const copy = useCallback(async (value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedKey(value);
+      window.setTimeout(
+        () => setCopiedKey((k) => (k === value ? null : k)),
+        1500,
+      );
+    } catch {}
+  }, []);
+
+  const renderRow = (label: string, value: string, mono = false) => (
+    <TransferRow
+      label={label}
+      value={value}
+      copyLabel={t("order.sepay.copy")}
+      copiedLabel={t("order.sepay.copied")}
+      onCopy={copy}
+      copied={copiedKey === value}
+      mono={mono}
+    />
+  );
 
   const currency = cart?.currency_code ?? "usd";
   const paymentProviderId =
@@ -83,6 +229,100 @@ export const ConfirmedFallbackPage = ({
           )}
         </p>
       </div>
+
+      {/* SePay bank transfer: QR + VA + poll trạng thái */}
+      {sepay && !sepay.captured && (
+        <section aria-labelledby="sepay-heading" className="mb-8">
+          <h2 id="sepay-heading" className="text-lg font-semibold mb-4">
+            {t("order.sepay.title")}
+          </h2>
+          <div className="border border-gray-200 rounded-md p-4 tablet:p-6">
+            <p className="text-sm text-gray-600 mb-4">
+              {t("order.sepay.instruction")}
+            </p>
+
+            {sepay.qr_code_url && (
+              <img
+                src={sepay.qr_code_url}
+                alt={t("order.sepay.qrAlt")}
+                width={224}
+                height={224}
+                className="mx-auto mb-4 w-56 h-56 border border-gray-200 rounded"
+              />
+            )}
+
+            <div className="divide-y divide-gray-100">
+              {sepay.bank_name &&
+                renderRow(t("order.sepay.bankLabel"), sepay.bank_name)}
+              {sepay.va_number &&
+                renderRow(t("order.sepay.vaLabel"), sepay.va_number, true)}
+              {sepay.account_holder_name &&
+                renderRow(
+                  t("order.sepay.holderLabel"),
+                  sepay.account_holder_name,
+                )}
+              {sepay.amount != null &&
+                renderRow(
+                  t("order.sepay.amountLabel"),
+                  // SePay chỉ hỗ trợ VND; luôn định dạng VND kể cả khi không
+                  // còn cart snapshot (khách mở lại link trực tiếp).
+                  convertToLocale({
+                    amount: sepay.amount,
+                    currencyCode: "vnd",
+                  }),
+                )}
+              {sepay.order_code &&
+                renderRow(
+                  t("order.sepay.contentLabel"),
+                  sepay.order_code,
+                  true,
+                )}
+            </div>
+
+            {sepay.expires_at && (
+              <p className="text-xs text-gray-500 mt-3">
+                {t("order.sepay.expires", {
+                  time: formatExpiry(sepay.expires_at),
+                })}
+              </p>
+            )}
+
+            <p className="flex items-center gap-2 text-sm text-orange-600 mt-4">
+              <span
+                className="inline-block w-2 h-2 rounded-full bg-orange-500 animate-pulse"
+                aria-hidden="true"
+              />
+              {t("order.sepay.waiting")}
+            </p>
+          </div>
+        </section>
+      )}
+
+      {sepay?.captured && (
+        <div className="mb-8 flex items-center gap-2 rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+          <svg
+            className="w-5 h-5 shrink-0"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M5 13l4 4L19 7"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          {t("order.sepay.paid")}
+        </div>
+      )}
+
+      {sepayError && !sepay && (
+        <p className="mb-8 text-sm text-gray-500">
+          {t("order.sepay.loadFailed")}
+        </p>
+      )}
 
       {cart && (
         <>

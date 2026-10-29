@@ -96,6 +96,9 @@ export const vi = {
   "checkout.payment.placeOrderFailed": "Không thể đặt hàng. Vui lòng thử lại.",
   "checkout.payment.placing": "Đang đặt hàng...",
   "checkout.payment.placeOrder": "Đặt hàng",
+  "checkout.payment.sepayName": "Chuyển khoản ngân hàng (SePay)",
+  "checkout.payment.sepayHint":
+    "Quét mã QR bằng app ngân hàng hoặc chuyển khoản đúng nội dung. Đơn hàng được xác nhận tự động ngay khi nhận đủ tiền — bạn không cần chờ tại trang này.",
 
   // OrderSummary
   "checkout.summary.title": "Giỏ hàng của bạn",
@@ -201,6 +204,9 @@ export const en: typeof vi = {
     "Failed to place order. Please try again.",
   "checkout.payment.placing": "Placing order...",
   "checkout.payment.placeOrder": "Place order",
+  "checkout.payment.sepayName": "Bank transfer (SePay)",
+  "checkout.payment.sepayHint":
+    "Scan the QR with your banking app or transfer using the exact reference. The order is confirmed automatically once payment is received.",
 
   // OrderSummary
   "checkout.summary.title": "In your Cart",
