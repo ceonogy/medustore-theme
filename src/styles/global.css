@@ -877,14 +877,17 @@
   opacity: 0;
   visibility: hidden;
   translate: 0 -8px;
-  /* Close is delayed 180ms (grace) so a cursor that briefly leaves
-     the menu can come back; the open transition is redeclared below
-     with a longer, softer ease so the panel eases in rather than
-     snapping. */
+  /* Close defaults: 180ms grace + 0.22s fade. The open rule (below) and
+     the switch rule retune the same transition through these custom
+     properties — instead of redeclaring `transition` — so the
+     prefers-reduced-motion block, which replaces `transition` outright,
+     keeps winning. */
   transition:
-    opacity 0.22s ease 0.18s,
-    translate 0.22s ease 0.18s,
-    visibility 0s linear 0.4s;
+    opacity var(--mega-dur, 0.22s) var(--mega-ease, ease)
+      var(--mega-delay, 0.18s),
+    translate var(--mega-dur, 0.22s) var(--mega-ease, ease)
+      var(--mega-delay, 0.18s),
+    visibility 0s linear var(--mega-vis, 0.4s);
 }
 
 header:not([data-mega-locked]):has([data-mega-trigger="featured"]:hover)
@@ -906,13 +909,36 @@ header:not([data-mega-locked])[data-mega-open="collections"] #mega-collections {
   opacity: 1;
   visibility: visible;
   translate: 0 0;
-  /* Open (hover in / click / keyboard): a slightly longer ease-out curve
-     than the close so the panel settles in smoothly. Visibility flips
-     instantly (0 delay) so the panel is interactive the moment it opens. */
-  transition:
-    opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    translate 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    visibility 0s linear 0s;
+  /* Paint the active panel above a still-fading one so a switch never
+     shows the outgoing panel on top (both are full-width and overlap). */
+  z-index: 1;
+  /* Open (hover in / click / keyboard): a longer, softer ease than the
+     close. `transition-delay: 0s` is a concrete override (it beats the
+     base graces and keeps the panel interactive the instant it opens,
+     including under prefers-reduced-motion). */
+  --mega-dur: 0.28s;
+  --mega-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: 0s;
+}
+
+/* Switching menus — hover "Bộ sưu tập" then "Nổi Bật" (or click/keyboard):
+   the outgoing panel must not sit on top of the incoming one for the whole
+   close grace. When one panel is the active one (data-mega-open, with JS)
+   or its trigger is hovered (no-JS), the *other* panel drops its 180ms
+   grace and fades out with the incoming panel instead. Selectors mirror the
+   open rule above; this block must come after it. Under reduced motion the
+   base `transition` is replaced wholesale, so these vars are inert and the
+   swap is instant. */
+header:not([data-mega-locked])[data-mega-open="featured"] #mega-collections,
+header:not([data-mega-locked])[data-mega-open="collections"] #mega-featured,
+header:not([data-mega-locked]):has([data-mega-trigger="featured"]:hover)
+  #mega-collections,
+header:not([data-mega-locked]):has([data-mega-trigger="collections"]:hover)
+  #mega-featured {
+  --mega-dur: 0.14s;
+  --mega-ease: ease;
+  --mega-delay: 0s;
+  --mega-vis: 0.14s;
 }
 
 /* Hover bridge: a transparent extension below each trigger so the
