@@ -876,9 +876,11 @@
 #mega-collections {
   opacity: 0;
   visibility: hidden;
-  translate: 0 -6px;
+  translate: 0 -8px;
   /* Close is delayed 180ms (grace) so a cursor that briefly leaves
-     the menu can come back; open is instant. */
+     the menu can come back; the open transition is redeclared below
+     with a longer, softer ease so the panel eases in rather than
+     snapping. */
   transition:
     opacity 0.22s ease 0.18s,
     translate 0.22s ease 0.18s,
@@ -904,7 +906,13 @@ header:not([data-mega-locked])[data-mega-open="collections"] #mega-collections {
   opacity: 1;
   visibility: visible;
   translate: 0 0;
-  transition-delay: 0s;
+  /* Open (hover in / click / keyboard): a slightly longer ease-out curve
+     than the close so the panel settles in smoothly. Visibility flips
+     instantly (0 delay) so the panel is interactive the moment it opens. */
+  transition:
+    opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    translate 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 0s;
 }
 
 /* Hover bridge: a transparent extension below each trigger so the
@@ -947,6 +955,43 @@ header:not([data-mega-locked])[data-mega-open="collections"] #mega-collections {
   animation: mega-in 0.2s ease-out;
 }
 
+/* Mobile nav drawer. Always mounted — `data-open` toggles it — so opening
+   and closing animate instead of flashing in. The height is eased with the
+   `grid-template-rows: 0fr↔1fr` trick (smooth height with no magic pixel
+   value: the header grows with whatever the drawer contains) plus a short
+   fade. `inert` on the wrapper keeps the closed links out of the tab order,
+   and the 810px cutover mirrors the template's `tablet:` breakpoint. */
+.nav-drawer {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    grid-template-rows 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.2s ease;
+}
+
+.nav-drawer[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.nav-drawer > * {
+  min-height: 0;
+}
+
+/* No separator line while collapsed — otherwise the inner `border-t` adds a
+   stray 1px band under the header even with a 0fr row. */
+.nav-drawer[data-open="false"] > * {
+  border-top-width: 0;
+}
+
+@media (min-width: 810px) {
+  .nav-drawer {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   /* No animation, but keep the hoverable grace window: with a flat
      `transition: none` the panel vanished the instant the cursor
@@ -959,5 +1004,8 @@ header:not([data-mega-locked])[data-mega-open="collections"] #mega-collections {
   }
   .mega-in {
     animation: none;
+  }
+  .nav-drawer {
+    transition: none;
   }
 }

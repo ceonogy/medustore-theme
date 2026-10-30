@@ -488,115 +488,125 @@ export const Nav = ({
         </div>
       )}
 
-      {menuOpen && (
-        <div className="border-t border-line bg-paper tablet:hidden">
-          <nav
-            aria-label={t("nav.menu")}
-            className="wrap flex flex-col gap-4 py-6"
-          >
-            <a href={storeHref} className="type-label font-normal">
-              {t("nav.explore")}
-            </a>
-            {hasFeatured && (
-              <>
-                <button
-                  type="button"
-                  aria-expanded={featuredOpen}
-                  aria-controls="featured-sheet"
-                  onClick={() => setFeaturedOpen((open) => !open)}
-                  className="flex items-center justify-between type-label font-normal"
-                >
-                  {t("nav.megaFeatured")}
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 14 14"
-                    fill="none"
-                    aria-hidden="true"
-                    className={`transition-transform motion-reduce:transition-none ${
-                      featuredOpen ? "rotate-180" : ""
-                    }`}
+      {/* Mobile drawer: always mounted so open/close animates (grid-rows
+          height + fade — see .nav-drawer in global.css) instead of flashing
+          in. `inert` on the collapsed wrapper keeps its links out of the tab
+          order until the hamburger opens it. */}
+      <div className="tablet:hidden">
+        <div
+          className="nav-drawer"
+          data-open={menuOpen ? "true" : "false"}
+          inert={!menuOpen}
+        >
+          <div className="border-t border-line bg-paper">
+            <nav
+              aria-label={t("nav.menu")}
+              className="wrap flex flex-col gap-4 py-6"
+            >
+              <a href={storeHref} className="type-label font-normal">
+                {t("nav.explore")}
+              </a>
+              {hasFeatured && (
+                <>
+                  <button
+                    type="button"
+                    aria-expanded={featuredOpen}
+                    aria-controls="featured-sheet"
+                    onClick={() => setFeaturedOpen((open) => !open)}
+                    className="flex items-center justify-between type-label font-normal"
                   >
-                    <path
-                      d="M3 5l4 4 4-4"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </button>
-                {featuredOpen && (
-                  <div
-                    id="featured-sheet"
-                    className="mega-in flex flex-col gap-3 pl-1"
+                    {t("nav.megaFeatured")}
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 14 14"
+                      fill="none"
+                      aria-hidden="true"
+                      className={`transition-transform motion-reduce:transition-none ${
+                        featuredOpen ? "rotate-180" : ""
+                      }`}
+                    >
+                      <path
+                        d="M3 5l4 4 4-4"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                  {featuredOpen && (
+                    <div
+                      id="featured-sheet"
+                      className="mega-in flex flex-col gap-3 pl-1"
+                    >
+                      {featured.map((product) => (
+                        <a
+                          key={product.href}
+                          href={product.href}
+                          className="text-sm text-ink/70"
+                        >
+                          {product.label}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+              {hasCollections && (
+                <>
+                  <button
+                    type="button"
+                    aria-expanded={exploreOpen}
+                    aria-controls="explore-sheet"
+                    onClick={() => setExploreOpen((open) => !open)}
+                    className="flex items-center justify-between type-label font-normal"
                   >
-                    {featured.map((product) => (
-                      <a
-                        key={product.href}
-                        href={product.href}
-                        className="text-sm text-ink/70"
-                      >
-                        {product.label}
+                    {t("nav.megaCollections")}
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 14 14"
+                      fill="none"
+                      aria-hidden="true"
+                      className={`transition-transform motion-reduce:transition-none ${
+                        exploreOpen ? "rotate-180" : ""
+                      }`}
+                    >
+                      <path
+                        d="M3 5l4 4 4-4"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                  {exploreOpen && (
+                    <div
+                      id="explore-sheet"
+                      className="mega-in flex flex-col gap-3 pl-1"
+                    >
+                      <a href={storeHref} className="text-sm text-ink/70">
+                        {t("nav.megaAll")}
                       </a>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-            {hasCollections && (
-              <>
-                <button
-                  type="button"
-                  aria-expanded={exploreOpen}
-                  aria-controls="explore-sheet"
-                  onClick={() => setExploreOpen((open) => !open)}
-                  className="flex items-center justify-between type-label font-normal"
-                >
-                  {t("nav.megaCollections")}
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 14 14"
-                    fill="none"
-                    aria-hidden="true"
-                    className={`transition-transform motion-reduce:transition-none ${
-                      exploreOpen ? "rotate-180" : ""
-                    }`}
-                  >
-                    <path
-                      d="M3 5l4 4 4-4"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </button>
-                {exploreOpen && (
-                  <div
-                    id="explore-sheet"
-                    className="mega-in flex flex-col gap-3 pl-1"
-                  >
-                    <a href={storeHref} className="text-sm text-ink/70">
-                      {t("nav.megaAll")}
-                    </a>
-                    {collections.map((collection) => (
-                      <a
-                        key={collection.href}
-                        href={collection.href}
-                        className="text-sm text-ink/70"
-                      >
-                        {collection.label}
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </nav>
+                      {collections.map((collection) => (
+                        <a
+                          key={collection.href}
+                          href={collection.href}
+                          className="text-sm text-ink/70"
+                        >
+                          {collection.label}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </nav>
+          </div>
         </div>
-      )}
+      </div>
     </header>
   );
 };
