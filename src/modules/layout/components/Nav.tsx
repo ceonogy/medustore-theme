@@ -126,13 +126,30 @@ export const Nav = ({
       closeTimer.current = null;
     }
   };
+  // Mirror data-mega-open onto the header synchronously in the enter
+  // handlers too. The effect below runs *after* paint, so during a fast
+  // trigger switch the outgoing panel kept matching its [data-mega-open]
+  // rule for a frame while the incoming one already matched its :hover rule
+  // — both "open", and the later-DOM panel (collections) won the stacking
+  // tie and swallowed the pointer, so descending into the visible menu
+  // switched back to the previous one (probe: probe-nav-zorder-window).
+  // Setting it here makes the swap atomic; the z-index tiers in global.css
+  // back this up if the attribute is ever stale.
+  const syncMegaAttr = (id: "featured" | "collections" | null) => {
+    const header = headerRef.current;
+    if (!header) return;
+    if (id) header.setAttribute("data-mega-open", id);
+    else header.removeAttribute("data-mega-open");
+  };
   const enterMega = (id: "featured" | "collections") => () => {
     cancelMegaClose();
     headerRef.current?.removeAttribute("data-mega-locked");
+    syncMegaAttr(id);
     setMegaOpen(id);
   };
   const enterPanel = (id: "featured" | "collections") => () => {
     cancelMegaClose();
+    syncMegaAttr(id);
     setMegaOpen(id);
   };
   const scheduleMegaClose = (id: "featured" | "collections") => () => {
@@ -146,7 +163,10 @@ export const Nav = ({
     (id: "featured" | "collections") =>
     (event: FocusEvent<HTMLButtonElement>) => {
       // Mouse click focuses too — only keyboard focus opens.
-      if (event.currentTarget.matches(":focus-visible")) setMegaOpen(id);
+      if (event.currentTarget.matches(":focus-visible")) {
+        syncMegaAttr(id);
+        setMegaOpen(id);
+      }
     };
 
   // Mirror the open state onto the header as data-mega-open="featured" |

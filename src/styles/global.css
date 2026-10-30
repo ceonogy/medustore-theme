@@ -921,6 +921,33 @@ header:not([data-mega-locked])[data-mega-open="collections"] #mega-collections {
   transition-delay: 0s;
 }
 
+/* Direct-interaction wins the stacking order. data-mega-open is mirrored by
+   React in an effect *after* paint, so for the first frames of a trigger
+   switch the outgoing panel still matches its `[data-mega-open]` rule while
+   the incoming one already matches its `:hover` rule: both are "open" and,
+   with equal z-index, the later-DOM panel (#mega-collections) paints on top
+   and steals the pointer — descending into the visible menu then hit-tested
+   the *old* panel and switched back (probe: /tmp/opencode/qa/
+   probe-nav-zorder-window). Give the trigger/panel-hovered and focus cases a
+   higher z-index so the menu the pointer is actually on always wins; the
+   attribute-only case keeps z-index 1. */
+header:not([data-mega-locked]):has([data-mega-trigger="featured"]:hover)
+  #mega-featured,
+header:not([data-mega-locked]):has([data-mega-trigger="featured"]:focus-visible)
+  #mega-featured,
+header:not([data-mega-locked]) #mega-featured:hover,
+header:not([data-mega-locked]) #mega-featured:focus-within,
+header:not([data-mega-locked]):has([data-mega-trigger="collections"]:hover)
+  #mega-collections,
+header:not([data-mega-locked]):has(
+    [data-mega-trigger="collections"]:focus-visible
+  )
+  #mega-collections,
+header:not([data-mega-locked]) #mega-collections:hover,
+header:not([data-mega-locked]) #mega-collections:focus-within {
+  z-index: 2;
+}
+
 /* Switching menus — hover "Bộ sưu tập" then "Nổi Bật" (or click/keyboard):
    the outgoing panel must not sit on top of the incoming one for the whole
    close grace. When one panel is the active one (data-mega-open, with JS)
