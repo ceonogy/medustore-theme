@@ -146,6 +146,27 @@ alerts when a dump is missing/stale or the restore drill failed. Healthy
 runs are silent; set `WATCHDOG_ALERT_URL` to pipe alerts into a
 Slack/Discord/ntfy webhook.
 
+### Backend (Medusa) modules
+
+The storefront repo also carries the **deployable backend source** under
+[`backend/`](./backend/README.md) — the SePay payment provider, the Brevo
+notification provider, the SePay webhook/refresh routes, the admin SePay page,
+subscribers/workflows and the search/promotion APIs. It is a mirror of
+`/home/medusa/apps/backend`, not a standalone project; secrets and runtime data
+(`.env`, `node_modules/`, `.medusa/`, `static/`) stay out of git.
+
+Deploy it with the script at the repo root:
+
+```bash
+./deploy.sh               # rsync backend/ → /home/medusa/apps/backend, yarn build, pm2 restart medusa
+./deploy.sh --dry-run     # show the rsync changes without applying them
+./deploy.sh --no-build    # sync + restart only
+```
+
+`deploy.sh` protects `.env`, uploads and build caches from `rsync --delete`, so
+only code/config changes are applied. See [`backend/README.md`](./backend/README.md)
+for the module map, required env vars and the SePay/Brevo self-tests.
+
 ## Project Structure
 
 ```

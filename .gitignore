@@ -17,6 +17,19 @@ pnpm-debug.log*
 .env
 .env.production
 
+# backend (Medusa) — secrets, deps and runtime/build artifacts (source is tracked)
+backend/.env
+backend/.env.production
+backend/node_modules/
+backend/.medusa/
+backend/.turbo/
+backend/dist/
+backend/build/
+backend/.cache/
+backend/static/
+backend/uploads/
+backend/tsconfig.tsbuildinfo
+
 # server-side caches (taxonomy snapshots, handle history)
 .cache/
 
