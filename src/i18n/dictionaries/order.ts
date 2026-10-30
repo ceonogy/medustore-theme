@@ -43,6 +43,14 @@ export const vi = {
   "order.sepay.paid": "Đã nhận thanh toán — cảm ơn bạn!",
   "order.sepay.loadFailed":
     "Không tải được thông tin chuyển khoản. Vui lòng kiểm tra email xác nhận.",
+  "order.sepay.expired":
+    "Mã thanh toán này đã hết hạn. Hãy tạo mã mới để tiếp tục chuyển khoản.",
+  "order.sepay.regenerate": "Tạo lại mã thanh toán",
+  "order.sepay.regenerating": "Đang tạo mã mới...",
+  "order.sepay.regenerated":
+    "Đã tạo mã thanh toán mới. Vui lòng chuyển khoản theo thông tin bên dưới.",
+  "order.sepay.regenerateFailed":
+    "Không tạo lại được mã thanh toán. Vui lòng thử lại hoặc liên hệ hỗ trợ.",
 
   "order.nextSteps": "Tiếp theo sẽ diễn ra như thế nào?",
   "order.processing": "Đang xử lý đơn hàng",
@@ -93,6 +101,14 @@ export const en: typeof vi = {
   "order.sepay.paid": "Payment received — thank you!",
   "order.sepay.loadFailed":
     "Could not load the transfer details. Please check your confirmation email.",
+  "order.sepay.expired":
+    "This payment code has expired. Generate a new one to continue the transfer.",
+  "order.sepay.regenerate": "Generate new payment code",
+  "order.sepay.regenerating": "Generating...",
+  "order.sepay.regenerated":
+    "A new payment code has been created. Please transfer using the details below.",
+  "order.sepay.regenerateFailed":
+    "Could not generate a new payment code. Please try again or contact support.",
 
   "order.nextSteps": "What happens next?",
   "order.processing": "Order Processing",

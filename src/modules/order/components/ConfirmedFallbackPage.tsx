@@ -67,6 +67,13 @@ function formatExpiry(value: string): string {
   )}:${p(d.getMinutes())}`;
 }
 
+/** VA/QR đã hết hạn (giờ VN, không TZ) và chưa thu tiền. */
+function isPaymentExpired(payment: SePayPayment | null): boolean {
+  if (!payment || payment.captured || !payment.expires_at) return false;
+  const ms = Date.parse(payment.expires_at.replace(" ", "T") + "+07:00");
+  return !Number.isNaN(ms) && ms <= Date.now();
+}
+
 /** Hàng "nhãn — giá trị" kèm nút sao chép. */
 function TransferRow({
   label,
@@ -113,6 +120,11 @@ export const ConfirmedFallbackPage = ({
   const [sepay, setSepay] = useState<SePayPayment | null>(null);
   const [sepayError, setSepayError] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [regenerating, setRegenerating] = useState(false);
+  const [regenMessage, setRegenMessage] = useState<"none" | "ok" | "error">(
+    "none",
+  );
+  const [reloadKey, setReloadKey] = useState(0);
   const pollRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -139,7 +151,11 @@ export const ConfirmedFallbackPage = ({
         if (cancelled) return;
         setSepay(res.payment);
         setSepayError(false);
-        if (res.payment?.captured && pollRef.current !== null) {
+        // Ngừng poll khi đã thu tiền hoặc VA hết hạn (chờ khách tạo mã mới).
+        if (
+          (res.payment?.captured || isPaymentExpired(res.payment)) &&
+          pollRef.current !== null
+        ) {
           window.clearInterval(pollRef.current);
           pollRef.current = null;
         }
@@ -160,6 +176,28 @@ export const ConfirmedFallbackPage = ({
         pollRef.current = null;
       }
     };
+  }, [orderId, reloadKey]);
+
+  /** Tạo VA/QR mới khi VA cũ hết hạn rồi tải lại + poll tiếp. */
+  const regenerate = useCallback(async () => {
+    if (!orderId) return;
+    setRegenerating(true);
+    setRegenMessage("none");
+    try {
+      const res = await sdk.client.fetch<{
+        regenerated: boolean;
+        payment_updated: SePayPayment | null;
+      }>(`/store/sepay/order/${orderId}/refresh`, { method: "POST" });
+      if (res.payment_updated) setSepay(res.payment_updated);
+      if (res.regenerated) setRegenMessage("ok");
+      // Khởi động lại effect: tải dữ liệu mới + poll VA mới.
+      setReloadKey((k) => k + 1);
+    } catch (err) {
+      console.error("Failed to regenerate SePay VA:", err);
+      setRegenMessage("error");
+    } finally {
+      setRegenerating(false);
+    }
   }, [orderId]);
 
   const copy = useCallback(async (value: string) => {
@@ -238,63 +276,93 @@ export const ConfirmedFallbackPage = ({
             {t("order.sepay.title")}
           </h2>
           <div className="border border-gray-200 rounded-md p-4 tablet:p-6">
-            <p className="text-sm text-gray-600 mb-4">
-              {t("order.sepay.instruction")}
-            </p>
+            {isPaymentExpired(sepay) ? (
+              <>
+                <p className="text-sm text-orange-700 mb-4">
+                  {t("order.sepay.expired")}
+                </p>
+                {regenMessage === "ok" && (
+                  <p className="text-sm text-green-700 mb-4">
+                    {t("order.sepay.regenerated")}
+                  </p>
+                )}
+                {regenMessage === "error" && (
+                  <p className="text-sm text-red-600 mb-4">
+                    {t("order.sepay.regenerateFailed")}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={regenerate}
+                  disabled={regenerating}
+                  className="inline-block bg-black text-white py-2.5 px-6 rounded-md text-sm hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {regenerating
+                    ? t("order.sepay.regenerating")
+                    : t("order.sepay.regenerate")}
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-gray-600 mb-4">
+                  {t("order.sepay.instruction")}
+                </p>
 
-            {sepay.qr_code_url && (
-              <img
-                src={sepay.qr_code_url}
-                alt={t("order.sepay.qrAlt")}
-                width={224}
-                height={224}
-                className="mx-auto mb-4 w-56 h-56 border border-gray-200 rounded"
-              />
+                {sepay.qr_code_url && (
+                  <img
+                    src={sepay.qr_code_url}
+                    alt={t("order.sepay.qrAlt")}
+                    width={224}
+                    height={224}
+                    className="mx-auto mb-4 w-56 h-56 border border-gray-200 rounded"
+                  />
+                )}
+
+                <div className="divide-y divide-gray-100">
+                  {sepay.bank_name &&
+                    renderRow(t("order.sepay.bankLabel"), sepay.bank_name)}
+                  {sepay.va_number &&
+                    renderRow(t("order.sepay.vaLabel"), sepay.va_number, true)}
+                  {sepay.account_holder_name &&
+                    renderRow(
+                      t("order.sepay.holderLabel"),
+                      sepay.account_holder_name,
+                    )}
+                  {sepay.amount != null &&
+                    renderRow(
+                      t("order.sepay.amountLabel"),
+                      // SePay chỉ hỗ trợ VND; luôn định dạng VND kể cả khi không
+                      // còn cart snapshot (khách mở lại link trực tiếp).
+                      convertToLocale({
+                        amount: sepay.amount,
+                        currencyCode: "vnd",
+                      }),
+                    )}
+                  {sepay.order_code &&
+                    renderRow(
+                      t("order.sepay.contentLabel"),
+                      sepay.order_code,
+                      true,
+                    )}
+                </div>
+
+                {sepay.expires_at && (
+                  <p className="text-xs text-gray-500 mt-3">
+                    {t("order.sepay.expires", {
+                      time: formatExpiry(sepay.expires_at),
+                    })}
+                  </p>
+                )}
+
+                <p className="flex items-center gap-2 text-sm text-orange-600 mt-4">
+                  <span
+                    className="inline-block w-2 h-2 rounded-full bg-orange-500 animate-pulse"
+                    aria-hidden="true"
+                  />
+                  {t("order.sepay.waiting")}
+                </p>
+              </>
             )}
-
-            <div className="divide-y divide-gray-100">
-              {sepay.bank_name &&
-                renderRow(t("order.sepay.bankLabel"), sepay.bank_name)}
-              {sepay.va_number &&
-                renderRow(t("order.sepay.vaLabel"), sepay.va_number, true)}
-              {sepay.account_holder_name &&
-                renderRow(
-                  t("order.sepay.holderLabel"),
-                  sepay.account_holder_name,
-                )}
-              {sepay.amount != null &&
-                renderRow(
-                  t("order.sepay.amountLabel"),
-                  // SePay chỉ hỗ trợ VND; luôn định dạng VND kể cả khi không
-                  // còn cart snapshot (khách mở lại link trực tiếp).
-                  convertToLocale({
-                    amount: sepay.amount,
-                    currencyCode: "vnd",
-                  }),
-                )}
-              {sepay.order_code &&
-                renderRow(
-                  t("order.sepay.contentLabel"),
-                  sepay.order_code,
-                  true,
-                )}
-            </div>
-
-            {sepay.expires_at && (
-              <p className="text-xs text-gray-500 mt-3">
-                {t("order.sepay.expires", {
-                  time: formatExpiry(sepay.expires_at),
-                })}
-              </p>
-            )}
-
-            <p className="flex items-center gap-2 text-sm text-orange-600 mt-4">
-              <span
-                className="inline-block w-2 h-2 rounded-full bg-orange-500 animate-pulse"
-                aria-hidden="true"
-              />
-              {t("order.sepay.waiting")}
-            </p>
           </div>
         </section>
       )}
