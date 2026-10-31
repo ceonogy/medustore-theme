@@ -133,5 +133,40 @@ module.exports = defineConfig({
       // (dedup theo transaction id UNIQUE) + service ghi log delivery.
       resolve: './src/modules/sepay',
     },
+    {
+      // Fulfillment module — thêm provider GoShip BÊN CẠNH provider mặc định
+      // `manual`. Khai báo module này sẽ THAY thế entry fulfillment mặc định
+      // của Medusa (module trùng `resolve` thì cái sau thắng), nên phải giữ
+      // luôn `fulfillment-manual`: 2 shipping option flat hiện có đang dùng
+      // `fp_manual_manual`. Provider GoShip = `fp_goship_goship`.
+      resolve: '@medusajs/medusa/fulfillment',
+      options: {
+        providers: [
+          {
+            resolve: '@medusajs/medusa/fulfillment-manual',
+            id: 'manual',
+          },
+          {
+            resolve: './src/modules/goship/fulfillment-provider',
+            id: 'goship',
+            options: {
+              token: process.env.GOSHIP_TOKEN,
+              base_url: process.env.GOSHIP_BASE_URL,
+              fallback_fee: process.env.GOSHIP_FALLBACK_FEE,
+              default_service: process.env.GOSHIP_DEFAULT_SERVICE,
+            },
+          },
+        ],
+      },
+    },
+    {
+      // Custom module GoShip — cache danh mục địa giới (`goship_location`)
+      // cho dropdown tỉnh/quận/phường ở checkout.
+      resolve: './src/modules/goship',
+      options: {
+        token: process.env.GOSHIP_TOKEN,
+        base_url: process.env.GOSHIP_BASE_URL,
+      },
+    },
   ],
 })

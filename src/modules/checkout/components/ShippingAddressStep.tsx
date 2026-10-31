@@ -18,13 +18,19 @@ import {
 } from "./AddressFields";
 
 // Schemas are built per-render so validation messages follow the active locale.
+// The *codes* (GoShip) are what's actually required — the names are set
+// alongside them by the cascading selects.
 const buildAddressSchema = (t: Translator) =>
   z.object({
     fullName: z.string().min(1, t("checkout.validation.fullNameRequired")),
     address: z.string().min(1, t("checkout.validation.addressRequired")),
     company: z.string(),
-    province: z.string().min(1, t("checkout.validation.provinceRequired")),
-    ward: z.string().min(1, t("checkout.validation.wardRequired")),
+    province: z.string(),
+    district: z.string(),
+    ward: z.string(),
+    provinceCode: z.string().min(1, t("checkout.validation.provinceRequired")),
+    districtCode: z.string().min(1, t("checkout.validation.districtRequired")),
+    wardCode: z.string().min(1, t("checkout.validation.wardRequired")),
     postalCode: z.string(),
     country: z.string(),
   });
@@ -54,23 +60,36 @@ const EMPTY_ADDRESS: AddressValues = {
   address: "",
   company: "",
   province: "",
+  district: "",
   ward: "",
+  provinceCode: "",
+  districtCode: "",
+  wardCode: "",
   postalCode: "",
   country: "",
 };
 
 // Note: this Medusa version's cart API accepts `city` and `province` on
 // addresses but silently drops `district` (probed directly) — the
-// Vietnamese ward therefore lives in the `city` column.
+// Vietnamese ward therefore lives in the `city` column, and the GoShip
+// codes + district name live in `address.metadata`.
 function mapAddress(
   addr?: StoreCart["shipping_address"] | null,
 ): AddressValues {
+  const meta = ((
+    addr as { metadata?: Record<string, unknown> } | null | undefined
+  )?.metadata ?? {}) as Record<string, unknown>;
+  const asString = (v: unknown) => (typeof v === "string" ? v : "");
   return {
     fullName: joinFullName(addr),
     address: addr?.address_1 ?? "",
     company: addr?.company ?? "",
     province: addr?.province ?? "",
+    district: asString(meta.goship_district_name),
     ward: addr?.city ?? "",
+    provinceCode: asString(meta.goship_city_code),
+    districtCode: asString(meta.goship_district_code),
+    wardCode: asString(meta.goship_ward_code),
     postalCode: addr?.postal_code ?? "",
     country: addr?.country_code ?? "",
   };
@@ -313,20 +332,33 @@ export const ShippingAddressStep = ({
           fullName: prefill.fullName,
           address: prefill.address,
           province: prefill.province,
+          district: prefill.district,
           ward: prefill.ward,
+          provinceCode: prefill.provinceCode,
+          districtCode: prefill.districtCode,
+          wardCode: prefill.wardCode,
           country: prefill.country || countryCode,
         },
       });
     })();
   }, [cart, reset, countryCode, getValues]);
 
-  const provinceValue = watch("shipping.province");
-  const wardValue = watch("shipping.ward");
+  const shippingValues = watch("shipping");
 
   const onSubmit = async (data: CheckoutFormValues) => {
     setSubmitError("");
     try {
       const { first_name, last_name } = splitFullName(data.shipping.fullName);
+      // GoShip needs the numeric codes; the names are kept for display and
+      // as a fallback. `district` has no Medusa column, so it lives here.
+      const metadata = {
+        goship_city_code: data.shipping.provinceCode || undefined,
+        goship_district_code: data.shipping.districtCode || undefined,
+        goship_ward_code: data.shipping.wardCode || undefined,
+        goship_city_name: data.shipping.province || undefined,
+        goship_district_name: data.shipping.district || undefined,
+        goship_ward_name: data.shipping.ward || undefined,
+      };
       const address = {
         first_name,
         last_name,
@@ -338,6 +370,7 @@ export const ShippingAddressStep = ({
         postal_code: data.shipping.postalCode || undefined,
         country_code: data.shipping.country || countryCode,
         phone: data.phone || undefined,
+        metadata,
       };
 
       await updateCartAddress({
@@ -380,8 +413,7 @@ export const ShippingAddressStep = ({
           prefix="shipping"
           register={register}
           setValue={setValue}
-          provinceValue={provinceValue}
-          wardValue={wardValue}
+          values={shippingValues}
           errors={errors.shipping ?? {}}
           countries={countries}
         />

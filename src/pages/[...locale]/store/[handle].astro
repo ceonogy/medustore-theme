@@ -4,6 +4,7 @@ import Layout from "@layouts/Layout.astro";
 import { ResourceNotFoundError, retrieveProduct } from "@lib/data/products";
 import { getRegion } from "@lib/data/regions";
 import { getTaxonomy } from "@lib/data/taxonomy";
+import { fetchGoshipUnits } from "@lib/goship";
 import { getProductPrice } from "@lib/utils/get-product-price";
 import { breadcrumbJsonLd, productJsonLd, type Crumb } from "@lib/utils/seo";
 import JsonLd from "@modules/layout/components/JsonLd.astro";
@@ -72,6 +73,10 @@ try {
 if (product?.handle && productRef !== product.handle) {
   return Astro.redirect(`/store/${product.handle}`, 301);
 }
+
+// Đơn vị shop khai ở Admin → GoShip (Medusa không có cấu hình đơn vị). Chỉ để
+// hiện nhãn g/kg, cm/m ở phần thuộc tính sản phẩm; lỗi mạng → mặc định g/cm.
+const goshipUnits = await fetchGoshipUnits();
 
 const {
   title,
@@ -209,6 +214,8 @@ const structuredData = product
             length={length}
             width={width}
             height={height}
+            weightUnit={goshipUnits.weightUnit}
+            dimensionUnit={goshipUnits.dimensionUnit}
             locale={locale}
           />
         </div>

@@ -8,9 +8,16 @@ export interface CheckoutPrefill {
   fullName: string;
   address: string;
   province: string;
+  district: string;
   ward: string;
+  /** GoShip geo codes carried over from a previous order's address metadata. */
+  provinceCode: string;
+  districtCode: string;
+  wardCode: string;
   country: string;
 }
+
+const asString = (v: unknown) => (typeof v === "string" ? v : "");
 
 /**
  * Account data for the checkout address step: email and name come straight
@@ -31,6 +38,7 @@ export async function fetchCheckoutPrefill(): Promise<CheckoutPrefill | null> {
       latestOrder = undefined;
     }
     const addr = latestOrder?.shipping_address ?? null;
+    const meta = (addr?.metadata ?? {}) as Record<string, unknown>;
 
     return {
       email: customer.email ?? "",
@@ -39,7 +47,11 @@ export async function fetchCheckoutPrefill(): Promise<CheckoutPrefill | null> {
         joinFullName(customer) || (addr ? joinFullName(addr) : "") || "",
       address: addr?.address_1 ?? "",
       province: addr?.province ?? "",
+      district: asString(meta.goship_district_name),
       ward: addr?.city ?? "",
+      provinceCode: asString(meta.goship_city_code),
+      districtCode: asString(meta.goship_district_code),
+      wardCode: asString(meta.goship_ward_code),
       country: addr?.country_code ?? "",
     };
   } catch {

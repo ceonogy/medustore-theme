@@ -209,7 +209,21 @@ export const OrderList = ({ locale, loginPath }: OrderListProps) => {
                             id: String(order.display_id),
                           })}
                         </p>
-                        <OrderStatus locale={locale} status={order.status} />
+                        {order.payment_status ? (
+                          <OrderStatus
+                            locale={locale}
+                            status={order.payment_status}
+                          />
+                        ) : null}
+                        {order.fulfillment_status ? (
+                          <OrderStatus
+                            locale={locale}
+                            status={order.fulfillment_status}
+                          />
+                        ) : null}
+                        {!order.payment_status && !order.fulfillment_status && (
+                          <OrderStatus locale={locale} status={order.status} />
+                        )}
                       </div>
                       <p className="mt-1 text-sm text-ink/60">
                         {formatDate(order.created_at, locale)} ·{" "}

@@ -332,6 +332,12 @@ type CartAddress = {
   country_code: string;
   province?: string;
   phone?: string;
+  /**
+   * Address extras this API accepts but doesn't model as columns — the GoShip
+   * geo codes + district name live here (`goship_*` keys) so the fulfillment
+   * provider can place a shipment later.
+   */
+  metadata?: Record<string, unknown>;
 };
 
 export async function updateCartAddress(data: {

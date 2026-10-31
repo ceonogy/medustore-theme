@@ -3,6 +3,7 @@ import {
   getOrder,
   resolveOrderItemMedia,
   type AccountOrder,
+  type AccountOrderShipping,
 } from "@lib/account-orders";
 import { convertToLocale } from "@lib/utils/money";
 import { formatAddressLines } from "@lib/utils/address";
@@ -25,6 +26,23 @@ const formatDate = (iso: string, locale: Locale): string =>
     month: "2-digit",
     year: "numeric",
   }).format(new Date(iso));
+
+/** GoShip `update_time` is a UNIX timestamp (seconds, GMT+7). */
+const formatEventTime = (unix: number, locale: Locale): string =>
+  new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : "en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(unix * 1000));
+
+const PHASE_STYLES: Record<string, string> = {
+  pending: "bg-sand text-ink",
+  shipped: "bg-sand text-ink",
+  delivered: "bg-stock/10 text-stock",
+  canceled: "bg-fog text-muted",
+};
 
 /** One order: items, totals, shipping address, status. */
 export const OrderDetail = ({
@@ -112,7 +130,15 @@ export const OrderDetail = ({
       heading={
         <span className="flex flex-wrap items-center gap-4">
           {t("account.orders.orderNo", { id: String(order.display_id) })}
-          <OrderStatus locale={locale} status={order.status} />
+          {order.payment_status ? (
+            <OrderStatus locale={locale} status={order.payment_status} />
+          ) : null}
+          {order.fulfillment_status ? (
+            <OrderStatus locale={locale} status={order.fulfillment_status} />
+          ) : null}
+          {!order.payment_status && !order.fulfillment_status && (
+            <OrderStatus locale={locale} status={order.status} />
+          )}
         </span>
       }
     >
@@ -193,6 +219,100 @@ export const OrderDetail = ({
           )}
         </div>
       )}
+
+      <TrackingBlock locale={locale} shipping={order.shipping ?? null} />
     </AccountShell>
+  );
+};
+
+/** GoShip delivery block: phase badge, tracking number and timeline. */
+const TrackingBlock = ({
+  locale,
+  shipping,
+}: {
+  locale: Locale;
+  shipping: AccountOrderShipping | null;
+}) => {
+  const t = useTranslations(locale);
+  if (!shipping) return null;
+
+  const phase = shipping.phase || "pending";
+  const phaseLabel = t(`account.orders.shipPhase.${phase}`);
+  const phaseStyle = PHASE_STYLES[phase] ?? "bg-fog text-muted";
+
+  return (
+    <div className="mt-10 border border-line p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-sm font-bold">{t("account.orders.tracking")}</h2>
+        <span
+          className={`inline-block rounded-full px-3 py-1 text-xs whitespace-nowrap ${phaseStyle}`}
+        >
+          {phaseLabel}
+        </span>
+      </div>
+
+      <dl className="mt-4 space-y-2 text-sm">
+        <div className="flex gap-2">
+          <dt className="text-ink/60">{t("account.orders.carrier")}:</dt>
+          <dd>{shipping.carrier ?? shipping.carrier_short_name ?? "—"}</dd>
+        </div>
+        {shipping.tracking_number && (
+          <div className="flex gap-2">
+            <dt className="text-ink/60">
+              {t("account.orders.trackingNumber")}:
+            </dt>
+            <dd className="font-mono">{shipping.tracking_number}</dd>
+          </div>
+        )}
+        {shipping.expected && (
+          <div className="flex gap-2">
+            <dt className="text-ink/60">
+              {t("account.orders.expectedDelivery")}:
+            </dt>
+            <dd>{shipping.expected}</dd>
+          </div>
+        )}
+      </dl>
+
+      {shipping.tracking_url && (
+        <a
+          href={shipping.tracking_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-4 inline-block text-sm underline underline-offset-4 hover:text-ink/70"
+        >
+          {t("account.orders.trackCta")} →
+        </a>
+      )}
+
+      {shipping.timeline.length > 0 ? (
+        <div className="mt-6">
+          <h3 className="text-sm font-bold">{t("account.orders.timeline")}</h3>
+          <ol className="mt-3 space-y-3 border-l border-line pl-4">
+            {shipping.timeline.map((event, index) => (
+              <li key={`${event.status}-${event.update_time ?? index}`}>
+                <p className="text-sm font-medium">
+                  {event.status_text || event.description || event.status}
+                </p>
+                {event.status_text && event.description && (
+                  <p className="text-xs text-ink/60">{event.description}</p>
+                )}
+                {event.update_time != null && (
+                  <p className="text-xs text-ink/50">
+                    {formatEventTime(event.update_time, locale)}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : (
+        <p className="mt-4 text-sm text-ink/60">
+          {shipping.status_text
+            ? `${t("account.orders.shipStatus")}: ${shipping.status_text}`
+            : t("account.orders.noTracking")}
+        </p>
+      )}
+    </div>
   );
 };

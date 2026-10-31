@@ -18,12 +18,18 @@ export interface AccountOrderAddress {
   address_1?: string | null;
   country_code?: string | null;
   phone?: string | null;
+  /** Free-form extras — carries the GoShip `goship_*` geo codes/names. */
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface AccountOrder {
   id: string;
   display_id: number;
   status: string;
+  /** Computed by Medusa from payments (captured/authorized/refunded/...). */
+  payment_status?: string | null;
+  /** Computed by Medusa from fulfillment timestamps (shipped/delivered/...). */
+  fulfillment_status?: string | null;
   created_at: string;
   email: string | null;
   currency_code: string;
@@ -34,6 +40,41 @@ export interface AccountOrder {
   items: AccountOrderItem[];
   shipping_address: AccountOrderAddress | null;
   billing_address: AccountOrderAddress | null;
+  /** Latest GoShip shipment summary (null when nothing shipped yet). */
+  shipping?: AccountOrderShipping | null;
+}
+
+/** One step in the GoShip delivery timeline. */
+export interface AccountOrderShipmentEvent {
+  status: string;
+  status_text: string | null;
+  description: string | null;
+  update_time: number | null;
+  is_return: boolean;
+  is_lost: boolean;
+}
+
+/** GoShip shipment summary attached to a customer's order. */
+export interface AccountOrderShipping {
+  id: string;
+  phase: "pending" | "shipped" | "delivered" | "canceled" | string;
+  /** GoShip order code (`gcode`). */
+  gcode: string | null;
+  tracking_number: string | null;
+  tracking_url: string | null;
+  /** Shop-side shipping label (usually empty for customers). */
+  label_url?: string | null;
+  carrier: string | null;
+  carrier_short_name: string | null;
+  service: string | null;
+  expected: string | null;
+  status: number | string | null;
+  status_text: string | null;
+  created_at: string | null;
+  shipped_at: string | null;
+  delivered_at: string | null;
+  canceled_at: string | null;
+  timeline: AccountOrderShipmentEvent[];
 }
 
 /** One page of the signed-in customer's orders (GET /store/account/orders). */

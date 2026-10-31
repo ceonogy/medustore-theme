@@ -97,5 +97,12 @@ export default defineMiddlewares({
       matcher: '/webhooks/sepay',
       bodyParser: { preserveRawBody: true },
     },
+    {
+      // Webhook GoShip — ký `x-goship-hmac-sha256 = base64(HMAC_SHA256(rawBody, GOSHIP_CLIENT_SECRET))`,
+      // cũng cần raw body để verify.
+      method: ['POST'],
+      matcher: '/webhooks/goship',
+      bodyParser: { preserveRawBody: true },
+    },
   ],
 })

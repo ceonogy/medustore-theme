@@ -1,3 +1,7 @@
+import {
+  getLastFulfillmentStatus,
+  getLastPaymentStatus,
+} from "@medusajs/core-flows"
 import type {
   AuthenticatedMedusaRequest,
   MedusaResponse,
@@ -26,6 +30,17 @@ const ORDER_FIELDS = [
   "items.thumbnail",
   "items.product_title",
   "items.total",
+  // Nguồn để tính `payment_status` / `fulfillment_status` (xem core-flows).
+  "items.raw_quantity",
+  "items.detail.raw_fulfilled_quantity",
+  "payment_collections.amount",
+  "payment_collections.captured_amount",
+  "payment_collections.refunded_amount",
+  "payment_collections.status",
+  "fulfillments.packed_at",
+  "fulfillments.shipped_at",
+  "fulfillments.delivered_at",
+  "fulfillments.canceled_at",
   "shipping_address.*",
   "billing_address.*",
 ]
@@ -97,8 +112,25 @@ export const GET = async (
     return true
   })
 
+  // `payment_status` / `fulfillment_status` không phải cột DB mà do Medusa
+  // tính từ payment_collections + fulfillments; `query.graph` không trả về
+  // nên ta tính thủ công bằng helper core-flows (khớp Admin API).
+  const enriched = deduped.map((order) => {
+    const payment_status = getLastPaymentStatus(order as never)
+    const fulfillment_status = getLastFulfillmentStatus(order as never)
+    const publicOrder = { ...order } as Record<string, unknown>
+    delete publicOrder.payment_collections
+    for (const item of (publicOrder.items ?? []) as Array<
+      Record<string, unknown>
+    >) {
+      delete item.detail
+      delete item.raw_quantity
+    }
+    return { ...publicOrder, payment_status, fulfillment_status }
+  })
+
   res.json({
-    orders: deduped,
+    orders: enriched,
     count: metadata?.count ?? deduped.length + skip,
     take,
     skip,

@@ -9,6 +9,9 @@ interface Props {
   length?: number | null;
   width?: number | null;
   height?: number | null;
+  /** Đơn vị shop khai ở Admin → GoShip; chỉ để hiện nhãn. Mặc định g/cm. */
+  weightUnit?: string;
+  dimensionUnit?: string;
   locale: Locale;
 }
 
@@ -20,6 +23,8 @@ const {
   length,
   width,
   height,
+  weightUnit = "g",
+  dimensionUnit = "cm",
   locale,
 } = Astro.props;
 
@@ -37,10 +42,13 @@ const countryName = (() => {
   }
 })();
 
-// Dimension string, e.g. "32 × 26 × 6 cm"; weight is stored in grams.
+// Dimension string, e.g. "32 × 26 × 6 cm"; weight, e.g. "500 g". Medusa stores
+// bare numbers, so the unit comes from the shop's GoShip setting.
 const dimensions =
-  length && width && height ? `${length} × ${width} × ${height} cm` : null;
-const weightLabel = weight ? `${weight} g` : null;
+  length && width && height
+    ? `${length} × ${width} × ${height} ${dimensionUnit}`
+    : null;
+const weightLabel = weight ? `${weight} ${weightUnit}` : null;
 ---
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">

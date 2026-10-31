@@ -23,11 +23,16 @@ export const vi = {
   "checkout.address.city": "Thành phố*",
   "checkout.address.country": "Quốc gia",
   "checkout.address.province": "Tỉnh / Thành phố*",
+  "checkout.address.district": "Quận / Huyện*",
   "checkout.address.ward": "Phường / Xã*",
+  "checkout.address.loading": "Đang tải…",
+  "checkout.address.locationsFailed":
+    "Không tải được danh mục địa giới, vui lòng tải lại trang.",
 
   // Validation messages (ShippingAddressStep)
   "checkout.validation.fullNameRequired": "Vui lòng nhập họ và tên.",
   "checkout.validation.provinceRequired": "Vui lòng chọn tỉnh / thành phố.",
+  "checkout.validation.districtRequired": "Vui lòng chọn quận / huyện.",
   "checkout.validation.wardRequired": "Vui lòng chọn phường / xã.",
   "checkout.validation.firstNameRequired": "Vui lòng nhập họ.",
   "checkout.validation.lastNameRequired": "Vui lòng nhập tên.",
@@ -132,11 +137,16 @@ export const en: typeof vi = {
   "checkout.address.city": "City*",
   "checkout.address.country": "Country",
   "checkout.address.province": "Province / City*",
+  "checkout.address.district": "District*",
   "checkout.address.ward": "Ward / Commune*",
+  "checkout.address.loading": "Loading…",
+  "checkout.address.locationsFailed":
+    "Couldn't load the address directory. Please reload the page.",
 
   // Validation messages (ShippingAddressStep)
   "checkout.validation.fullNameRequired": "Full name is required",
   "checkout.validation.provinceRequired": "Province / city is required",
+  "checkout.validation.districtRequired": "District is required",
   "checkout.validation.wardRequired": "Ward / commune is required",
   "checkout.validation.firstNameRequired": "First name is required",
   "checkout.validation.lastNameRequired": "Last name is required",
