@@ -223,6 +223,45 @@ service module), làm giàu item từ `product_variant`/`product`, rồi ghép
 - Storefront hiển thị khối "Vận chuyển" (hãng, mã vận đơn, hành trình) ở trang
   chi tiết đơn trong tài khoản khách.
 
+## Nâng cấp core Medusa (an toàn)
+
+Phần tuỳ biến của shop nằm trọn trong `apps/backend/src` (module `goship`,
+`sepay`, API routes, admin widgets/routes, workflows hooks, `medusa-config.ts`).
+Script **không** sửa gì trong `node_modules` — nên nâng cấp core (đổi version
+`@medusajs/*` + `yarn install`) chỉ thay `node_modules`, **không đụng code mình**,
+và `deploy.sh` luôn lấy `backend/` trong repo làm nguồn sự thật.
+
+Nguyên tắc nâng cấp an toàn:
+
+1. **Pin & khoá version**: giữ version cụ thể trong `package.json` + commit
+   `yarn.lock`; nâng có chủ đích, tránh `latest`.
+2. **Backup DB trước** (migration chỉ đổi schema, nhưng vẫn nên có đường lùi):
+   ```bash
+   PGPASSWORD='...' pg_dump -h localhost -U medusa_user -d medusa_store \
+     -Fc -f ~/backup-medusa-$(date +%F-%H%M).dump
+   ```
+3. **Đổi version → cài → build xác nhận**:
+   ```bash
+   cd /home/medusa && yarn install && yarn build
+   ```
+4. **Chạy test trước khi restart thật**:
+   ```bash
+   cd /home/medusa/apps/backend && yarn test:unit   # unit backend
+   cd /home/storefront && yarn test                 # unit storefront
+   bash /tmp/opencode/test-cases.sh                 # ma trận QA end-to-end
+   ```
+5. **Deploy + theo dõi**: `./deploy.sh` (từ repo) rồi `pm2 logs medusa`.
+6. Migrations của core/module chỉ **thêm/sửa bảng, cột** — không xoá product,
+   variant hay order. Rollback: cài lại version cũ trong `package.json` rồi
+   `yarn install && yarn build`, hoặc restore từ file `pg_dump` ở bước 2.
+
+Code backend chỉ import **package công khai** của Medusa (`@medusajs/framework`,
+`@medusajs/medusa`, `@medusajs/admin-sdk`, `@medusajs/ui`, `@medusajs/icons`,
+`@medusajs/core-flows`) — **không** import đường dẫn internal (`/dist/...`), nên
+ít rủi ro vỡ khi lên version. Rủi ro còn lại: breaking change API/type, hoặc
+component/zone của admin UI đổi — nên kiểm tra lại widget `goship` và trang
+`/app/goship` sau mỗi lần nâng.
+
 ## Self-test
 
 Chạy trong `apps/backend` trên máy chủ (sau khi đã build/DB sẵn sàng):

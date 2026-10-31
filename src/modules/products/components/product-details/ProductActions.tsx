@@ -79,11 +79,17 @@ export const ProductActions = ({
   }, [productId, regionId]);
 
   const selectedVariant = useMemo(() => {
-    if (
-      !variants.length ||
-      !options.length ||
-      Object.keys(selectedOptions).length !== options.length
-    ) {
+    if (!variants.length) {
+      return;
+    }
+
+    // Sản phẩm chỉ có đúng một phiên bản và không có lựa chọn → mua ngay,
+    // không bắt khách bấm chọn gì.
+    if (!options.length) {
+      return variants.length === 1 ? variants[0] : undefined;
+    }
+
+    if (Object.keys(selectedOptions).length !== options.length) {
       return;
     }
 
@@ -118,10 +124,6 @@ export const ProductActions = ({
     !isProductInStock(selectedVariant) ||
     isAdding;
 
-  if (options.length === 0) {
-    return null;
-  }
-
   return (
     <div className="flex flex-col gap-8">
       {options.map((option) => (
@@ -145,6 +147,12 @@ export const ProductActions = ({
           </div>
         </div>
       ))}
+
+      {variants.length === 0 && (
+        <p className="text-sm text-gray-500">
+          {t("products.actions.noVariants")}
+        </p>
+      )}
 
       <button
         className={clsx(

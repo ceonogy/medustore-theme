@@ -9,6 +9,7 @@ export const vi = {
   // product-details → ProductActions
   "products.actions.addToCart": "Thêm vào giỏ",
   "products.actions.adding": "Đang thêm...",
+  "products.actions.noVariants": "Sản phẩm chưa có phiên bản để đặt hàng.",
 
   // product-details → ProductAttributes
   "products.attributes.material": "Chất liệu",
@@ -70,6 +71,7 @@ export const en: typeof vi = {
   // product-details → ProductActions
   "products.actions.addToCart": "Add to Cart",
   "products.actions.adding": "Adding...",
+  "products.actions.noVariants": "This product has no variants to order yet.",
 
   // product-details → ProductAttributes
   "products.attributes.material": "Material",

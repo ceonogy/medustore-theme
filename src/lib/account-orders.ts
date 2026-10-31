@@ -1,4 +1,5 @@
 import { sdk } from "@lib/sdk";
+import { displayVariantTitle } from "@lib/utils/variant-title";
 
 export interface AccountOrderItem {
   id: string;
@@ -118,6 +119,6 @@ export function resolveOrderItemMedia(item: AccountOrderItem): {
   return {
     thumbnailUrl: item.thumbnail,
     productTitle: item.product_title || item.title,
-    variantTitle: item.variant_title,
+    variantTitle: displayVariantTitle(item.variant_title),
   };
 }

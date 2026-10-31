@@ -8,6 +8,7 @@ import { sdk } from "@lib/sdk";
 import { formatLocality } from "@lib/utils/address";
 import { convertToLocale } from "@lib/utils/money";
 import { resolveLineItemMedia } from "@lib/utils/line-item";
+import { displayVariantTitle } from "@lib/utils/variant-title";
 import type { StoreCart } from "@medusajs/types";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -406,6 +407,9 @@ export const ConfirmedFallbackPage = ({
                 // comes from the line-item snapshot fields (shared helper).
                 const media = resolveLineItemMedia(item);
                 const thumbnailUrl = media.thumbnailUrl;
+                // Nhãn biến thể mặc định (sản phẩm 1 phiên bản) → ẩn.
+                const variantTitle =
+                  media.variantTitle ?? displayVariantTitle(item.variant_title);
 
                 const lineTotal = (item.unit_price ?? 0) * (item.quantity ?? 1);
                 return (
@@ -424,9 +428,9 @@ export const ConfirmedFallbackPage = ({
                       <p className="font-medium text-sm truncate">
                         {media.productTitle ?? item.title}
                       </p>
-                      {(media.variantTitle ?? item.variant_title) && (
+                      {variantTitle && (
                         <p className="text-xs text-gray-500 mt-0.5">
-                          {media.variantTitle ?? item.variant_title}
+                          {variantTitle}
                         </p>
                       )}
                       <div className="flex justify-between mt-2 text-sm">

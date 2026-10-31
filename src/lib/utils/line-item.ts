@@ -1,4 +1,5 @@
 import type { StoreCartLineItem } from "@medusajs/types";
+import { displayVariantTitle } from "@lib/utils/variant-title";
 
 /**
  * Resolve a line item's display fields.
@@ -35,6 +36,6 @@ export function resolveLineItemMedia(item: StoreCartLineItem): {
       null,
     productTitle:
       item.product_title || item.title || variant?.product?.title || null,
-    variantTitle: item.variant_title || variant?.title || null,
+    variantTitle: displayVariantTitle(item.variant_title || variant?.title),
   };
 }

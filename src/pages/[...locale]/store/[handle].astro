@@ -194,7 +194,26 @@ const structuredData = product
           <div class="flex flex-col gap-4">
             <h1 class="type-display">{title}</h1>
             <p class="text-gray-500">{description}</p>
-            <p class="text-4xl font-bold">{cheapestPrice?.calculated_price}</p>
+            {cheapestPrice &&
+              (cheapestPrice.price_type === "sale" ? (
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span class="text-4xl font-bold">
+                    <span class="sr-only">{t("products.price.current")}</span>
+                    {cheapestPrice.calculated_price}
+                  </span>
+                  <s class="text-lg text-gray-400 line-through">
+                    <span class="sr-only">{t("products.price.original")}</span>
+                    {cheapestPrice.original_price}
+                  </s>
+                  <span class="rounded-full bg-red-100 px-2 py-0.5 text-sm font-semibold text-red-600">
+                    -{cheapestPrice.percentage_diff}%
+                  </span>
+                </div>
+              ) : (
+                <p class="text-4xl font-bold">
+                  {cheapestPrice.calculated_price}
+                </p>
+              ))}
           </div>
 
           <ProductActions
