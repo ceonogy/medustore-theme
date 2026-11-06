@@ -543,7 +543,8 @@
 /* Itemized set list under the lookbook copy: numbered editorial rows
    mirroring the pins, so the text column is content, not air. */
 .hs-look-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1.1fr) minmax(0, 1fr) 176px;
   gap: 14px;
   align-items: baseline;
   padding-block: 13px;
@@ -559,35 +560,58 @@
 }
 
 .hs-look-name {
-  flex: 1;
   min-width: 0;
   font-size: 14px;
   font-weight: 500;
   transition: text-decoration-color 220ms ease;
 }
 
+/* The first product attribute (Kích cỡ / Chất liệu) sits between the name
+   and the price. Muted so it reads as secondary; one ellipsised line keeps
+   every row on the same height. */
+.hs-look-attr {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--color-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .hs-look-meta {
   display: flex;
   gap: 14px;
   align-items: baseline;
+  justify-self: end;
   white-space: nowrap;
 }
 
-/* Narrow panels (phones): the name takes its own line and the price
-   group wraps beneath it, right-aligned — a sale pair must never
-   squeeze the product name into a ribbon. */
+/* Narrow panels (phones): price stays flush right on the first line, the
+   attribute drops below the title instead of squeezing both onto one row. */
 @media (max-width: 639px) {
   .hs-look-row {
-    flex-wrap: wrap;
-    row-gap: 2px;
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "idx name meta"
+      "idx attr attr";
+    row-gap: 3px;
+  }
+
+  .hs-look-idx {
+    grid-area: idx;
   }
 
   .hs-look-name {
-    flex: 0 1 calc(100% - 40px);
+    grid-area: name;
+  }
+
+  .hs-look-attr {
+    grid-area: attr;
+    font-size: 12px;
   }
 
   .hs-look-meta {
-    margin-left: auto;
+    grid-area: meta;
   }
 }
 

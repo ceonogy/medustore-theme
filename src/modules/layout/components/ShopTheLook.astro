@@ -45,6 +45,29 @@ const SPOTS = [
   },
 ] as const;
 
+/* First attribute shown in the middle of each look row: the product's first
+   option ("Kích cỡ: S - M - L"), falling back to its material. Values are
+   collected from the variants in catalogue order, so sizes stay ordered. */
+const attributeFor = (product: HttpTypes.StoreProduct) => {
+  const values = new Map<string, string[]>();
+  for (const variant of product.variants ?? []) {
+    for (const option of variant.options ?? []) {
+      const title = option.option?.title;
+      if (!title || !option.value) continue;
+      const list = values.get(title) ?? [];
+      if (!list.includes(option.value)) list.push(option.value);
+      values.set(title, list);
+    }
+  }
+  for (const option of product.options ?? []) {
+    const list = values.get(option.title);
+    if (list?.length) return `${option.title}: ${list.join(" - ")}`;
+  }
+  return product.material
+    ? `${t("products.attributes.material")}: ${product.material}`
+    : null;
+};
+
 const spots = SPOTS.map((spot) => {
   const product = products.find((p) => p.handle === spot.handle);
   if (!product) return null;
@@ -56,6 +79,7 @@ const spots = SPOTS.map((spot) => {
     title: product.title,
     thumbnail: product.thumbnail ?? product.images?.[0]?.url ?? null,
     price: cheapestPrice,
+    attribute: attributeFor(product),
   };
 }).filter((spot): spot is NonNullable<typeof spot> => spot !== null);
 ---
@@ -160,7 +184,7 @@ const spots = SPOTS.map((spot) => {
           {t("home.lookTitle")}
         </h2>
         <p
-          class="type-body mt-4 max-w-lg text-muted reveal"
+          class="type-body mt-4 text-muted reveal"
           data-reveal
           style="--reveal-delay: 160ms"
         >
@@ -171,7 +195,7 @@ const spots = SPOTS.map((spot) => {
           /* The set, itemized: shoppable rows mirroring the pins, so the
             column carries content instead of empty space. */
         }
-        <ul class="mt-8 max-w-lg border-t border-line">
+        <ul class="mt-8 border-t border-line">
           {
             spots.map((spot, index) => (
               <li
@@ -187,6 +211,11 @@ const spots = SPOTS.map((spot) => {
                     {String(index + 1).padStart(2, "0")}
                   </span>
                   <span class="hs-look-name">{spot.title}</span>
+                  {spot.attribute && (
+                    <span class="hs-look-attr" title={spot.attribute}>
+                      {spot.attribute}
+                    </span>
+                  )}
                   <span class="hs-look-meta">
                     {spot.price?.price_type === "sale" && (
                       <s class="hs-look-was">{spot.price.original_price}</s>

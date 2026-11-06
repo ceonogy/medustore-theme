@@ -2,9 +2,10 @@ export const PRODUCTS_PAGE_SIZE = 100;
 
 export const PRODUCT_CARD_FIELDS =
   "id,title,handle,created_at,thumbnail,*images,*variants.calculated_price,*categories,*collection," +
-  // Facet attributes: the origin scalar and the option vocabulary that makes
-  // up the size values (variant options join their title through `option_id`).
-  "origin_country,*options,*variants.options";
+  // Facet attributes: the origin/material scalars and the option vocabulary
+  // that makes up the size values (variant options join their title through
+  // `option_id`).
+  "origin_country,material,*options,*variants.options";
 
 export type ProductListQuery = {
   region_id: string;

@@ -14,7 +14,7 @@ describe("product pagination", () => {
       region_id: "reg_test",
       fields:
         "id,title,handle,created_at,thumbnail,*images,*variants.calculated_price,*categories,*collection," +
-        "origin_country,*options,*variants.options",
+        "origin_country,material,*options,*variants.options",
       limit: 100,
       offset: 0,
     });

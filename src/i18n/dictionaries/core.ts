@@ -5,10 +5,10 @@
  * `vi` is the source of truth for keys (Vietnamese-first); `en` mirrors it.
  */
 export const vi = {
-  "site.name": "Demo Store",
+  "site.name": "ZStore",
   "site.description":
     "Cửa hàng demo dựng bằng Astro và Medusa cho hiệu năng tối ưu.",
-  "site.brand": "Demo Store",
+  "site.brand": "ZStore",
 
   "common.unknownError": "Đã xảy ra lỗi không xác định",
   "common.loading": "Đang tải...",
@@ -31,7 +31,7 @@ export const vi = {
   "nav.menu": "Menu",
   "nav.close": "Đóng menu",
 
-  "footer.eyebrow": "Demo Store",
+  "footer.eyebrow": "ZStore",
   "footer.headline": "Một cửa hàng sẵn sàng để ra mắt.",
   "footer.description":
     "Được xây dựng cho việc duyệt web nhanh, thanh toán gọn gàng và trải nghiệm mua sắm trọn vẹn từ cú nhấp đầu tiên đến khi đơn hàng được xác nhận.",
@@ -49,12 +49,12 @@ export const vi = {
   "footer.privacy": "Chính sách bảo mật",
   "footer.terms": "Điều khoản",
   "footer.startShopping": "Bắt đầu mua sắm",
-  "footer.copyright": "© {{year}} Demo Store. Mọi quyền được bảo lưu.",
+  "footer.copyright": "© {{year}} ZStore. Mọi quyền được bảo lưu.",
 
   "home.eyebrow": "Astro + Medusa",
   "home.title": "Cửa hàng thương mại điện tử mẫu",
   "home.subtitle":
-    "Demo Store là cách nhanh nhất để dựng cửa hàng của bạn, với hiệu năng là ưu tiên hàng đầu.",
+    "ZStore là cách nhanh nhất để dựng cửa hàng của bạn, với hiệu năng là ưu tiên hàng đầu.",
   "home.browseProducts": "Xem sản phẩm",
   "home.imageAlt": "Sản phẩm nổi bật",
   "home.heroTitle": "MẶC ĐƠN GIẢN.\nCHẤT RIÊNG.",
@@ -111,7 +111,7 @@ export const vi = {
 
   "privacy.title": "Chính sách bảo mật",
   "privacy.description":
-    "Tìm hiểu cách Demo Store xử lý dữ liệu khách hàng và thanh toán.",
+    "Tìm hiểu cách ZStore xử lý dữ liệu khách hàng và thanh toán.",
   "privacy.eyebrow": "Chính sách bảo mật",
   "privacy.heading": "Nền tảng cửa hàng ưu tiên quyền riêng tư",
   "privacy.p1":
@@ -122,7 +122,7 @@ export const vi = {
     "Nếu bạn đưa cửa hàng này vào sản xuất, hãy thay trang này bằng chính sách doanh nghiệp, thời hạn lưu giữ và thông tin liên hệ của riêng bạn trước khi vận hành thật.",
 
   "terms.title": "Điều khoản",
-  "terms.description": "Điều khoản cơ bản cho trải nghiệm Demo Store.",
+  "terms.description": "Điều khoản cơ bản cho trải nghiệm ZStore.",
   "terms.eyebrow": "Điều khoản",
   "terms.heading": "Điều khoản đơn giản cho cửa hàng sẵn sàng demo",
   "terms.p1":
@@ -143,10 +143,10 @@ export const vi = {
 };
 
 export const en: typeof vi = {
-  "site.name": "Demo Store",
+  "site.name": "ZStore",
   "site.description":
     "Demo store built with Astro and Medusa for maximum performance.",
-  "site.brand": "Demo Store",
+  "site.brand": "ZStore",
 
   "common.unknownError": "Unknown error",
   "common.loading": "Loading...",
@@ -169,7 +169,7 @@ export const en: typeof vi = {
   "nav.menu": "Menu",
   "nav.close": "Close menu",
 
-  "footer.eyebrow": "Demo Store",
+  "footer.eyebrow": "ZStore",
   "footer.headline": "A storefront that feels ready to ship.",
   "footer.description":
     "Built for fast browsing, clean checkout, and a polished shopping flow from first click to confirmed order.",
@@ -187,12 +187,12 @@ export const en: typeof vi = {
   "footer.privacy": "Privacy",
   "footer.terms": "Terms",
   "footer.startShopping": "Start shopping",
-  "footer.copyright": "© {{year}} Demo Store. All rights reserved.",
+  "footer.copyright": "© {{year}} ZStore. All rights reserved.",
 
   "home.eyebrow": "Astro + Medusa",
   "home.title": "e-commerce demo store",
   "home.subtitle":
-    "Demo Store is a good way to start building your e-commerce store, with maximum performance in mind.",
+    "ZStore is a good way to start building your e-commerce store, with maximum performance in mind.",
   "home.browseProducts": "Browse products",
   "home.imageAlt": "Featured product",
   "home.heroTitle": "WEAR SIMPLE.\nOWN YOUR STYLE.",
@@ -250,8 +250,7 @@ export const en: typeof vi = {
   "product.imageAlt": "Product image",
 
   "privacy.title": "Privacy",
-  "privacy.description":
-    "Learn how Demo Store handles customer and checkout data.",
+  "privacy.description": "Learn how ZStore handles customer and checkout data.",
   "privacy.eyebrow": "Privacy",
   "privacy.heading": "Privacy-first storefront foundations",
   "privacy.p1":
@@ -262,7 +261,7 @@ export const en: typeof vi = {
     "If you adapt this store for production, update this page with your own business policies, retention periods, and contact details before going live.",
 
   "terms.title": "Terms",
-  "terms.description": "Basic storefront terms for the Demo Store experience.",
+  "terms.description": "Basic storefront terms for the ZStore experience.",
   "terms.eyebrow": "Terms",
   "terms.heading": "Simple terms for a demo-ready storefront",
   "terms.p1":

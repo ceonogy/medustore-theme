@@ -5,6 +5,7 @@ import {
   useTranslations,
   type Locale,
 } from "@i18n";
+import zstoreMark from "@assets/zstore-mark.svg";
 import {
   $cartItemCount,
   $regionId,
@@ -223,9 +224,17 @@ export const Nav = ({
       <div className="wrap flex h-16 items-center justify-between gap-6 wide:h-20">
         <a
           href={localizePath(locale, "/")}
-          className="text-base font-bold uppercase tracking-tight wide:text-lg"
+          className="flex items-center gap-2 text-base font-bold tracking-tight wide:text-lg"
         >
-          {t("site.brand")}
+          <img
+            src={zstoreMark.src}
+            alt=""
+            width={28}
+            height={28}
+            className="h-7 w-7 wide:h-8 wide:w-8"
+            aria-hidden="true"
+          />
+          <span>{t("site.brand")}</span>
         </a>
 
         <nav
