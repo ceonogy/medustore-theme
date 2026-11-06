@@ -8,6 +8,7 @@ import { breadcrumbJsonLd, itemListJsonLd } from "@lib/utils/seo";
 import JsonLd from "@modules/layout/components/JsonLd.astro";
 import NotFoundNotice from "@modules/layout/components/NotFoundNotice.astro";
 import ProductListing from "@modules/products/components/product-listing/ProductListing.astro";
+import Countdown from "@modules/ui/components/Countdown.astro";
 
 /**
  * `/khuyen-mai/{slug-from-title}` — the slug is derived on the backend from
@@ -117,13 +118,13 @@ const structuredData =
   noindex={!showListing}
 >
   {structuredData && <JsonLd data={structuredData} />}
-  <div class="wrap section">
+  <div class="wrap overflow-x-clip pt-6 pb-16 tablet:pt-8 tablet:pb-20">
     {
       showListing && listing && promotion ? (
         <>
           <nav
             aria-label={t("products.breadcrumb.home")}
-            class="mb-5 flex flex-wrap items-center gap-1 text-sm text-gray-500"
+            class="mb-4 flex flex-wrap items-center gap-1 text-xs text-gray-500 tablet:text-sm"
           >
             <a
               href={localizePath(locale, "/")}
@@ -144,13 +145,33 @@ const structuredData =
             </span>
           </nav>
 
-          <h1 class="type-display mb-4">{promotion.title}</h1>
-          <p class="mb-8 max-w-3xl text-gray-600">
-            {description}
-            {dateLine && (
-              <span class="mt-2 block text-sm text-gray-500">{dateLine}</span>
-            )}
-          </p>
+          {/* Same compact header as a campaign card on /khuyen-mai: title,
+              blurb and dates on the left, countdown on the right. */}
+          <header class="mb-6 rounded-2xl border border-line bg-fog/40 p-4 tablet:mb-8 tablet:p-5">
+            <div class="flex flex-col gap-4 tablet:flex-row tablet:items-end tablet:justify-between">
+              <div class="min-w-0">
+                <h1 class="type-title text-left">{promotion.title}</h1>
+                <p class="mt-1.5 max-w-2xl text-sm text-gray-600 tablet:text-base">
+                  {description}
+                </p>
+                {dateLine && (
+                  <p class="mt-1.5 text-xs text-muted tablet:text-sm">
+                    {dateLine}
+                  </p>
+                )}
+              </div>
+
+              {promotion.ends_at && (
+                <Countdown
+                  endsAt={promotion.ends_at}
+                  locale={locale}
+                  compact
+                  inline
+                  class="shrink-0"
+                />
+              )}
+            </div>
+          </header>
 
           <ProductListing
             products={listing.products}

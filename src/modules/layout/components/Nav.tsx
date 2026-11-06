@@ -107,6 +107,7 @@ export const Nav = ({
   // mega — privacy/terms live in the footer only.
   const isAccountPage = currentPath.startsWith("/tai-khoan");
   const storeHref = localizePath(locale, "/store");
+  const promotionsHref = localizePath(locale, "/khuyen-mai");
   const hasFeatured = featured.length > 0;
   const hasCollections = collections.length > 0;
 
@@ -273,6 +274,18 @@ export const Nav = ({
               {t("nav.megaCollections")}
             </button>
           )}
+          <a
+            href={promotionsHref}
+            aria-current={
+              currentPath === promotionsHref ||
+              currentPath.startsWith(`${promotionsHref}/`)
+                ? "page"
+                : undefined
+            }
+            className="text-ink/70 transition-colors hover:text-ink aria-[current=page]:font-medium aria-[current=page]:text-ink"
+          >
+            {t("nav.promotions")}
+          </a>
         </nav>
 
         <div className="flex items-center gap-4">
@@ -623,6 +636,9 @@ export const Nav = ({
                   )}
                 </>
               )}
+              <a href={promotionsHref} className="type-label font-normal">
+                {t("nav.promotions")}
+              </a>
             </nav>
           </div>
         </div>

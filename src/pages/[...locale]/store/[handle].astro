@@ -1,8 +1,9 @@
 ---
-import { useTranslations } from "@i18n";
+import { localizePath, useTranslations } from "@i18n";
 import Layout from "@layouts/Layout.astro";
 import { ResourceNotFoundError, retrieveProduct } from "@lib/data/products";
 import { getRegion } from "@lib/data/regions";
+import { listPromotions, type Promotion } from "@lib/data/promotions";
 import { getTaxonomy } from "@lib/data/taxonomy";
 import { fetchGoshipUnits } from "@lib/goship";
 import { getProductPrice } from "@lib/utils/get-product-price";
@@ -12,6 +13,7 @@ import NotFoundNotice from "@modules/layout/components/NotFoundNotice.astro";
 import ImageCarouselWrapper from "@modules/products/components/product-details/image-carousel/ImageCarouselWrapper.astro";
 import { ProductActions } from "@modules/products/components/product-details/ProductActions";
 import ProductAttributes from "@modules/products/components/product-details/ProductAttributes.astro";
+import Countdown from "@modules/ui/components/Countdown.astro";
 
 const { locale, countryCode } = Astro.locals;
 // The route segment is the product's SEO handle, e.g. `/store/ao-so-mi-caro-co-dien`.
@@ -96,6 +98,32 @@ const {
 const { cheapestPrice } = getProductPrice({
   productVariants: variants ?? [],
 });
+
+// A product can sit in more than one live price list; show the sale that
+// expires first so the countdown reflects the deadline the customer is
+// actually racing. A promotions outage is only an enhancement failure — the
+// product page still renders without the countdown.
+let activePromotion: Promotion | null = null;
+if (product) {
+  const productId = product.id;
+  try {
+    const promotions = await listPromotions();
+    activePromotion =
+      promotions
+        .filter(
+          (promotion) =>
+            promotion.type === "sale" &&
+            Boolean(promotion.ends_at) &&
+            promotion.product_ids.includes(productId),
+        )
+        .sort(
+          (a, b) =>
+            Date.parse(String(a.ends_at)) - Date.parse(String(b.ends_at)),
+        )[0] ?? null;
+  } catch (promotionError) {
+    console.error(promotionError);
+  }
+}
 
 const origin = Astro.site?.origin ?? Astro.url.origin;
 
@@ -214,6 +242,32 @@ const structuredData = product
                   {cheapestPrice.calculated_price}
                 </p>
               ))}
+            {activePromotion && activePromotion.ends_at && (
+              <div class="mt-2 rounded-xl border border-line bg-fog/60 p-4">
+                <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+                  <div class="min-w-0">
+                    <p class="type-label">{activePromotion.title}</p>
+                    <p class="mt-1 text-sm text-muted">
+                      {t("promotions.countdown.productNote")}
+                    </p>
+                  </div>
+                  <Countdown
+                    endsAt={activePromotion.ends_at}
+                    locale={locale}
+                    compact
+                  />
+                </div>
+                <a
+                  href={localizePath(
+                    locale,
+                    `/khuyen-mai/${activePromotion.slug}`,
+                  )}
+                  class="mt-3 inline-block text-sm font-medium underline underline-offset-4"
+                >
+                  {t("promotions.viewProgram")} →
+                </a>
+              </div>
+            )}
           </div>
 
           <ProductActions

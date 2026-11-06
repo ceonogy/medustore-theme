@@ -20,6 +20,21 @@ export const vi = {
   "promotions.itemsSingular": "{{count}} sản phẩm",
   "promotions.itemsPlural": "{{count}} sản phẩm",
   "promotions.imageAlt": "Ảnh chương trình {{name}}",
+
+  // countdown (shared by the promotion sections + product detail)
+  "promotions.countdown.label": "Kết thúc sau",
+  "promotions.countdown.days": "Ngày",
+  "promotions.countdown.hours": "Giờ",
+  "promotions.countdown.minutes": "Phút",
+  "promotions.countdown.seconds": "Giây",
+  "promotions.countdown.ended": "Đã kết thúc",
+  "promotions.countdown.productNote":
+    "Chương trình khuyến mãi đang áp dụng cho sản phẩm này.",
+  "promotions.viewProgram": "Xem chương trình",
+  "promotions.viewAll": "Xem tất cả {{count}} sản phẩm",
+  "promotions.noProducts": "Chương trình chưa có sản phẩm để hiển thị.",
+  "promotions.slider.prev": "Sản phẩm trước",
+  "promotions.slider.next": "Sản phẩm tiếp theo",
 };
 
 export const en = {
@@ -35,4 +50,18 @@ export const en = {
   "promotions.itemsSingular": "{{count}} product",
   "promotions.itemsPlural": "{{count}} products",
   "promotions.imageAlt": "Image for {{name}}",
+
+  "promotions.countdown.label": "Ends in",
+  "promotions.countdown.days": "Days",
+  "promotions.countdown.hours": "Hours",
+  "promotions.countdown.minutes": "Minutes",
+  "promotions.countdown.seconds": "Seconds",
+  "promotions.countdown.ended": "Ended",
+  "promotions.countdown.productNote":
+    "This promotion is currently applied to this product.",
+  "promotions.viewProgram": "View promotion",
+  "promotions.viewAll": "View all {{count}} products",
+  "promotions.noProducts": "This promotion has no products to show yet.",
+  "promotions.slider.prev": "Previous product",
+  "promotions.slider.next": "Next product",
 };

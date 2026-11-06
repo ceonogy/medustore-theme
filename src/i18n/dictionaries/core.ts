@@ -18,6 +18,7 @@ export const vi = {
     "Một lỗi tạm thời đã xảy ra. Vui lòng thử lại sau.",
 
   "nav.explore": "Khám phá",
+  "nav.promotions": "Khuyến mãi",
   "nav.megaCollections": "Bộ sưu tập",
   "nav.megaFeatured": "Nổi bật",
   "nav.megaAll": "Tất cả sản phẩm",
@@ -155,6 +156,7 @@ export const en: typeof vi = {
     "Something went wrong temporarily. Please try again shortly.",
 
   "nav.explore": "Explore",
+  "nav.promotions": "Promotions",
   "nav.megaCollections": "Collections",
   "nav.megaFeatured": "Featured",
   "nav.megaAll": "All products",

@@ -1,5 +1,5 @@
 ---
-import { Image } from "astro:assets";
+import type { HttpTypes } from "@medusajs/types";
 import { localizePath, useTranslations } from "@i18n";
 import Layout from "@layouts/Layout.astro";
 import { listProducts } from "@lib/data/products";
@@ -7,15 +7,21 @@ import { getRegion } from "@lib/data/regions";
 import { listPromotions } from "@lib/data/promotions";
 import { breadcrumbJsonLd, itemListJsonLd } from "@lib/utils/seo";
 import JsonLd from "@modules/layout/components/JsonLd.astro";
+import ProductSlider from "@modules/products/components/product-slider/ProductSlider.astro";
+import Countdown from "@modules/ui/components/Countdown.astro";
 
 /**
- * `/khuyen-mai` — the index of every promotion that is live right now
- * (active price list inside its time window, data from the custom
- * `GET /store/promotions` route). The list itself always answers 200; an
- * empty catalogue of promotions is a quiet page, not a missing one.
+ * `/khuyen-mai` — every live promotion (active price list inside its time
+ * window, from the custom `GET /store/promotions` route) rendered as its own
+ * section: title, countdown to the deadline and a horizontally scrollable
+ * product slider. The per-promotion listing still lives at
+ * `/khuyen-mai/{slug}` for "view all".
  */
 const { locale, countryCode } = Astro.locals;
 const t = useTranslations(locale);
+
+/** Upper bound on cards per slider — keeps the page weight predictable. */
+const MAX_PRODUCTS_PER_PROMOTION = 8;
 
 const unavailable = () =>
   new Response(t("common.serviceUnavailable"), {
@@ -34,6 +40,19 @@ try {
   return unavailable();
 }
 
+// One catalogue fetch feeds every slider. A failure here only empties the
+// sliders; the campaign headings and countdowns still render.
+let products: HttpTypes.StoreProduct[] = [];
+if (promotions.length) {
+  try {
+    const region = await getRegion(countryCode);
+    if (region) products = await listProducts(region.id);
+  } catch (error) {
+    console.error(error);
+  }
+}
+const productById = new Map(products.map((product) => [product.id, product]));
+
 const formatDate = (value: string | null): string | undefined => {
   if (!value) return undefined;
   const date = new Date(value);
@@ -45,53 +64,35 @@ const formatDate = (value: string | null): string | undefined => {
   }).format(date);
 };
 
-// A price list carries no picture of its own, so each card borrows the
-// first image of its own products — the way the homepage collection cards
-// do. Decoration only: a failure here just leaves the text fallback.
-let thumbnailById = new Map<string, string>();
-if (promotions.length) {
-  try {
-    const region = await getRegion(countryCode);
-    const products = region ? await listProducts(region.id) : [];
-    const imageById = new Map(
-      products.map((product) => [product.id, product.thumbnail ?? ""]),
-    );
-    thumbnailById = new Map(
-      promotions.map((promotion) => [
-        promotion.id,
-        promotion.product_ids.map((id) => imageById.get(id)).find(Boolean) ??
-          "",
-      ]),
-    );
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-const cards = promotions.map((promotion) => {
+const sections = promotions.map((promotion) => {
   const startsAt = formatDate(promotion.starts_at);
   const endsAt = formatDate(promotion.ends_at);
-  const dateLine = [startsAt, endsAt].filter(Boolean).length
-    ? [
-        startsAt && `${t("promotions.startsAt")}: ${startsAt}`,
-        endsAt && `${t("promotions.endsAt")}: ${endsAt}`,
-      ]
-        .filter(Boolean)
-        .join(" · ")
-    : undefined;
+  const dateLine =
+    startsAt || endsAt
+      ? [
+          startsAt && `${t("promotions.startsAt")}: ${startsAt}`,
+          endsAt && `${t("promotions.endsAt")}: ${endsAt}`,
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : undefined;
 
   return {
-    href: localizePath(locale, `/khuyen-mai/${promotion.slug}`),
+    id: promotion.id,
     title: promotion.title,
-    description: promotion.description || undefined,
-    image: thumbnailById.get(promotion.id) || undefined,
-    count: promotion.product_ids.length,
+    description: promotion.description,
+    href: localizePath(locale, `/khuyen-mai/${promotion.slug}`),
+    endsAtIso: promotion.ends_at,
     dateLine,
+    count: promotion.product_ids.length,
+    products: promotion.product_ids
+      .map((id) => productById.get(id))
+      .filter((product): product is HttpTypes.StoreProduct => Boolean(product))
+      .slice(0, MAX_PRODUCTS_PER_PROMOTION),
   };
 });
 
 const origin = Astro.site?.origin ?? Astro.url.origin;
-// The breadcrumb mirrors the visible one; the list mirrors the promo cards.
 const structuredData = [
   breadcrumbJsonLd(
     [
@@ -100,10 +101,13 @@ const structuredData = [
     ],
     origin,
   ),
-  ...(cards.length
+  ...(sections.length
     ? [
         itemListJsonLd(
-          cards.map((card) => ({ name: card.title, path: card.href })),
+          sections.map((section) => ({
+            name: section.title,
+            path: section.href,
+          })),
           origin,
         ),
       ]
@@ -116,80 +120,73 @@ const structuredData = [
   description={t("promotions.metaDescription")}
 >
   <JsonLd data={structuredData} />
-  <div class="wrap section">
-    <nav
-      aria-label={t("products.breadcrumb.home")}
-      class="mb-5 flex flex-wrap items-center gap-1 text-sm text-gray-500"
-    >
-      <a
-        href={localizePath(locale, "/")}
-        class="hover:text-black hover:underline"
-      >
-        {t("products.breadcrumb.home")}
-      </a>
-      <span aria-hidden="true">/</span>
-      <span aria-current="page" class="text-black">
-        {t("promotions.title")}
-      </span>
-    </nav>
-
-    <h1 class="type-display mb-4">{t("promotions.title")}</h1>
-    <p class="mb-8 max-w-3xl text-gray-600">{t("promotions.intro")}</p>
+  <div class="wrap overflow-x-clip pt-6 pb-16 tablet:pt-8 tablet:pb-20">
+    {
+      /* The header menu already names this page; keep the h1 for crawlers and
+        screen readers instead of repeating a visible title + intro above the
+        first campaign. */
+    }
+    <h1 class="sr-only">{t("promotions.title")}</h1>
 
     {
-      cards.length === 0 ? (
+      sections.length === 0 ? (
         <p class="text-gray-600">{t("promotions.empty")}</p>
       ) : (
-        <div class="grid gap-6 tablet:grid-cols-3 tablet:gap-8">
-          {cards.map((card, index) => (
-            <a
-              href={card.href}
-              class="group reveal"
-              data-reveal
-              style={`--reveal-delay: ${index * 80}ms`}
+        <div class="flex min-w-0 flex-col gap-8 tablet:gap-10">
+          {sections.map((section) => (
+            <section
+              aria-labelledby={`promo-${section.id}`}
+              class="min-w-0 overflow-hidden rounded-2xl border border-line bg-fog/40 p-4 tablet:p-5"
             >
-              <span class="relative block aspect-[3/4] overflow-hidden rounded-xl bg-fog">
-                {card.image ? (
-                  <Image
-                    src={card.image}
-                    width={720}
-                    height={960}
-                    alt={t("promotions.imageAlt", { name: card.title })}
-                    widths={[360, 540, 720]}
-                    sizes="(max-width: 809px) 100vw, 33vw"
-                    format="webp"
-                    quality={55}
-                    class="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-                  />
-                ) : (
-                  <span class="flex h-full w-full items-center justify-center text-muted">
-                    {card.title}
-                  </span>
-                )}
-              </span>
-              <span class="type-label mt-4 flex items-center justify-between">
-                {card.title}
-                <span
-                  aria-hidden="true"
-                  class="transition-transform duration-300 group-hover:translate-x-1"
-                >
-                  →
-                </span>
-              </span>
-              {card.description && (
-                <span class="type-body mt-1 block text-muted">
-                  {card.description}
-                </span>
+              <div class="mb-5 flex flex-col gap-4 tablet:flex-row tablet:items-end tablet:justify-between">
+                <div class="min-w-0">
+                  <h2 id={`promo-${section.id}`} class="type-title text-left">
+                    {section.title}
+                  </h2>
+                  {section.description && (
+                    <p class="mt-1.5 max-w-2xl text-sm text-gray-600 tablet:text-base">
+                      {section.description}
+                    </p>
+                  )}
+                  {section.dateLine && (
+                    <p class="mt-1.5 text-xs text-muted tablet:text-sm">
+                      {section.dateLine}
+                    </p>
+                  )}
+                </div>
+
+                <div class="flex flex-col gap-3 tablet:flex-row tablet:items-end tablet:justify-end">
+                  {section.endsAtIso && (
+                    <Countdown
+                      endsAt={section.endsAtIso}
+                      locale={locale}
+                      compact
+                    />
+                  )}
+                  <a
+                    href={section.href}
+                    class="group inline-flex shrink-0 items-center gap-1 text-sm font-medium underline-offset-4 hover:underline"
+                  >
+                    {t("promotions.viewAll", { count: section.count })}
+                    <span
+                      aria-hidden="true"
+                      class="transition-transform duration-300 group-hover:translate-x-1"
+                    >
+                      →
+                    </span>
+                  </a>
+                </div>
+              </div>
+
+              {section.products.length > 0 ? (
+                <ProductSlider
+                  products={section.products}
+                  label={section.title}
+                />
+              ) : (
+                <p class="text-gray-600">{t("promotions.noProducts")}</p>
               )}
-              <span class="mt-2 block text-sm text-muted">
-                {card.dateLine && <span class="block">{card.dateLine}</span>}
-                <span class="block">
-                  {card.count === 1
-                    ? t("promotions.itemsSingular", { count: card.count })
-                    : t("promotions.itemsPlural", { count: card.count })}
-                </span>
-              </span>
-            </a>
+            </section>
           ))}
         </div>
       )
