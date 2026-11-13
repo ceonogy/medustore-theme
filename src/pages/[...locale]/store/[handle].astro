@@ -1,0 +1,301 @@
+---
+import { localizePath, useTranslations } from "@i18n";
+import Layout from "@layouts/Layout.astro";
+import { ResourceNotFoundError, retrieveProduct } from "@lib/data/products";
+import { getRegion } from "@lib/data/regions";
+import { listPromotions, type Promotion } from "@lib/data/promotions";
+import { getTaxonomy } from "@lib/data/taxonomy";
+import { addonClientConfig, addons } from "@lib/addons";
+import { getProductPrice } from "@lib/utils/get-product-price";
+import { breadcrumbJsonLd, productJsonLd, type Crumb } from "@lib/utils/seo";
+import JsonLd from "@modules/layout/components/JsonLd.astro";
+import NotFoundNotice from "@modules/layout/components/NotFoundNotice.astro";
+import ImageCarouselWrapper from "@modules/products/components/product-details/image-carousel/ImageCarouselWrapper.astro";
+import { ProductActions } from "@modules/products/components/product-details/ProductActions";
+import ProductAttributes from "@modules/products/components/product-details/ProductAttributes.astro";
+import Countdown from "@modules/ui/components/Countdown.astro";
+
+const { locale, countryCode } = Astro.locals;
+// The route segment is the product's SEO handle, e.g. `/store/ao-so-mi-caro-co-dien`.
+const { handle: productRef } = Astro.params;
+const t = useTranslations(locale);
+
+const unavailable = () =>
+  new Response(t("common.serviceUnavailable"), {
+    status: 503,
+    headers: {
+      "Retry-After": "30",
+      "Content-Type": "text/plain; charset=utf-8",
+    },
+  });
+
+if (!productRef) {
+  return new Response("Not Found", {
+    status: 404,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
+}
+
+const region = await getRegion(countryCode).catch((regionError) => {
+  console.error(regionError);
+  return null;
+});
+
+if (!region) {
+  // No region means the backend is not answering with data — not a dead URL.
+  return unavailable();
+}
+
+let product: Awaited<ReturnType<typeof retrieveProduct>> | undefined;
+let error: Error | undefined;
+
+try {
+  product = await retrieveProduct(productRef, region.id);
+} catch (e) {
+  if (!(e instanceof ResourceNotFoundError)) {
+    console.error(e);
+    return unavailable();
+  }
+
+  // A renamed handle keeps its old URL alive: 301 onto the current one.
+  try {
+    const taxonomy = await getTaxonomy();
+    const legacy = taxonomy.legacy.product.get(productRef);
+    if (legacy) return Astro.redirect(`/store/${legacy}`, 301);
+  } catch (taxonomyError) {
+    console.error(taxonomyError);
+  }
+
+  error = e;
+  Astro.response.status = 404;
+}
+
+// Links published with the raw id keep working — permanently moved onto the
+// SEO-friendly URL so crawlers only ever see one canonical address.
+if (product?.handle && productRef !== product.handle) {
+  return Astro.redirect(`/store/${product.handle}`, 301);
+}
+
+// Units configured in Admin → GoShip (Medusa has no unit settings). Used only
+// for the g/kg + cm/m labels on the product attributes; the optional addon
+// falls back to gram/cm when it is absent or unreachable.
+const goshipUnits = addons.goship
+  ? await addons.goship.getUnits(addonClientConfig())
+  : ({ weightUnit: "g", dimensionUnit: "cm" } as const);
+
+const {
+  title,
+  description,
+  images,
+  options,
+  variants,
+  material,
+  origin_country,
+  type,
+  weight,
+  length,
+  width,
+  height,
+} = product ?? {};
+
+const { cheapestPrice } = getProductPrice({
+  productVariants: variants ?? [],
+});
+
+// A product can sit in more than one live price list; show the sale that
+// expires first so the countdown reflects the deadline the customer is
+// actually racing. A promotions outage is only an enhancement failure — the
+// product page still renders without the countdown.
+let activePromotion: Promotion | null = null;
+if (product) {
+  const productId = product.id;
+  try {
+    const promotions = await listPromotions();
+    activePromotion =
+      promotions
+        .filter(
+          (promotion) =>
+            promotion.type === "sale" &&
+            Boolean(promotion.ends_at) &&
+            promotion.product_ids.includes(productId),
+        )
+        .sort(
+          (a, b) =>
+            Date.parse(String(a.ends_at)) - Date.parse(String(b.ends_at)),
+        )[0] ?? null;
+  } catch (promotionError) {
+    console.error(promotionError);
+  }
+}
+
+const origin = Astro.site?.origin ?? Astro.url.origin;
+
+// Availability from what the variants say: unmanaged inventory and
+// backorderable variants are always sellable, a managed one is only in
+// stock while its quantity lasts (the store API exposes it with
+// `+variants.inventory_quantity`, part of PRODUCT_DETAIL_FIELDS).
+const inStock = (variants ?? []).some(
+  (variant) =>
+    !variant.manage_inventory ||
+    variant.allow_backorder ||
+    (variant.inventory_quantity ?? 0) > 0,
+);
+
+// Breadcrumb: home → owning category (its parent first, when the category
+// sits a level down) → this product, falling back to the collection. The
+// taxonomy lookup only deepens the crumb — if it fails, the crumb shortens
+// and the product page still renders.
+const crumbs: Crumb[] = [{ name: t("products.breadcrumb.home"), path: "/" }];
+const category = product?.categories?.[0];
+
+if (product) {
+  if (category) {
+    if (category.parent_category_id) {
+      try {
+        const taxonomy = await getTaxonomy();
+        const parentHandle = taxonomy.categoryHandleById.get(
+          category.parent_category_id,
+        );
+        const parent = parentHandle
+          ? taxonomy.categoryByHandle.get(parentHandle)
+          : undefined;
+        if (parent) {
+          crumbs.push({ name: parent.name, path: `/${parent.handle}` });
+        }
+      } catch (taxonomyError) {
+        console.error(taxonomyError);
+      }
+    }
+    crumbs.push({ name: category.name, path: `/${category.handle}` });
+  } else if (product.collection?.handle) {
+    crumbs.push({
+      name: product.collection.title || product.collection.handle,
+      path: `/bo-suu-tap/${product.collection.handle}`,
+    });
+  }
+  crumbs.push({ name: product.title, path: `/store/${product.handle}` });
+}
+
+const structuredData = product
+  ? [
+      productJsonLd(
+        {
+          name: product.title,
+          description: product.description,
+          path: `/store/${product.handle}`,
+          images: (images ?? []).map((image) => image.url),
+          price: cheapestPrice?.calculated_price_number,
+          currencyCode: cheapestPrice?.currency_code,
+          inStock,
+          siteName: t("site.name"),
+        },
+        origin,
+      ),
+      // A lone "home" crumb would be noise; only emit a real hierarchy.
+      ...(crumbs.length > 1 ? [breadcrumbJsonLd(crumbs, origin)] : []),
+    ]
+  : null;
+---
+
+<Layout
+  title={title ?? (error ? t("common.pageNotFound") : undefined)}
+  description={description ??
+    t("product.metaDescription", { title: title ?? "" })}
+  image={images?.[0]?.url}
+  type="product"
+  noindex={Boolean(error)}
+>
+  {structuredData && <JsonLd data={structuredData} />}
+  {
+    error && (
+      <div class="wrap section">
+        <NotFoundNotice asHeading />
+      </div>
+    )
+  }
+  {
+    product && (
+      <div class="wrap grid grid-cols-1 gap-10 pb-16 pt-10 tablet:gap-20 tablet:pt-14 lg:grid-cols-2">
+        <ImageCarouselWrapper
+          images={images ?? []}
+          alt={title ?? t("product.imageAlt")}
+        />
+
+        <div class="flex flex-col gap-20">
+          <div class="flex flex-col gap-4">
+            <h1 class="type-display">{title}</h1>
+            <p class="text-gray-500">{description}</p>
+            {cheapestPrice &&
+              (cheapestPrice.price_type === "sale" ? (
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span class="text-4xl font-bold">
+                    <span class="sr-only">{t("products.price.current")}</span>
+                    {cheapestPrice.calculated_price}
+                  </span>
+                  <s class="text-lg text-gray-400 line-through">
+                    <span class="sr-only">{t("products.price.original")}</span>
+                    {cheapestPrice.original_price}
+                  </s>
+                  <span class="rounded-full bg-red-100 px-2 py-0.5 text-sm font-semibold text-red-600">
+                    -{cheapestPrice.percentage_diff}%
+                  </span>
+                </div>
+              ) : (
+                <p class="text-4xl font-bold">
+                  {cheapestPrice.calculated_price}
+                </p>
+              ))}
+            {activePromotion && activePromotion.ends_at && (
+              <div class="mt-2 rounded-xl border border-line bg-fog/60 p-4">
+                <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+                  <div class="min-w-0">
+                    <p class="type-label">{activePromotion.title}</p>
+                    <p class="mt-1 text-sm text-muted">
+                      {t("promotions.countdown.productNote")}
+                    </p>
+                  </div>
+                  <Countdown
+                    endsAt={activePromotion.ends_at}
+                    locale={locale}
+                    compact
+                  />
+                </div>
+                <a
+                  href={localizePath(
+                    locale,
+                    `/khuyen-mai/${activePromotion.slug}`,
+                  )}
+                  class="mt-3 inline-block text-sm font-medium underline underline-offset-4"
+                >
+                  {t("promotions.viewProgram")} →
+                </a>
+              </div>
+            )}
+          </div>
+
+          <ProductActions
+            options={options ?? []}
+            variants={variants ?? []}
+            productId={product.id}
+            regionId={region.id}
+            locale={locale}
+            client:visible
+          />
+
+          <ProductAttributes
+            material={material}
+            origin_country={origin_country}
+            type={type}
+            weight={weight}
+            length={length}
+            width={width}
+            height={height}
+            weightUnit={goshipUnits.weightUnit}
+            dimensionUnit={goshipUnits.dimensionUnit}
+            locale={locale}
+          />
+        </div>
+      </div>
+    )
+  }
+</Layout>

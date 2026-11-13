@@ -1,0 +1,23 @@
+---
+import { useTranslations } from "@i18n";
+import Layout from "@layouts/Layout.astro";
+
+const { locale } = Astro.locals;
+const t = useTranslations(locale);
+---
+
+<Layout title={t("privacy.title")} description={t("privacy.description")}>
+  <section class="mx-auto max-w-3xl px-4 py-12 tablet:px-6">
+    <p class="text-xs font-semibold uppercase tracking-[0.28em] text-black/55">
+      {t("privacy.eyebrow")}
+    </p>
+    <h1 class="mt-4 text-4xl font-bold tracking-tight text-black">
+      {t("privacy.heading")}
+    </h1>
+    <div class="mt-8 space-y-6 text-base leading-8 text-black/70">
+      <p>{t("privacy.p1")}</p>
+      <p>{t("privacy.p2")}</p>
+      <p>{t("privacy.p3")}</p>
+    </div>
+  </section>
+</Layout>

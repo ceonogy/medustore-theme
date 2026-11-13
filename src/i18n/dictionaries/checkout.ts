@@ -1,0 +1,232 @@
+/**
+ * Checkout flow copy: address, delivery, payment steps and the order summary.
+ *
+ * Keys are owned by this file — add new ones here rather than in `core.ts`.
+ */
+export const vi = {
+  "checkout.pageTitle": "Thanh toán",
+  "checkout.pageDescription": "Hoàn tất việc mua hàng của bạn.",
+
+  // CheckoutPage
+  "checkout.page.emptyCartTitle": "Giỏ hàng của bạn đang trống",
+  "checkout.page.emptyCartText":
+    "Hãy thêm sản phẩm vào giỏ trước khi thanh toán.",
+  "checkout.page.continueShopping": "Tiếp tục mua sắm",
+
+  // AddressFields
+  "checkout.address.firstName": "Họ*",
+  "checkout.address.lastName": "Tên*",
+  "checkout.address.fullName": "Họ & Tên*",
+  "checkout.address.address": "Địa chỉ*",
+  "checkout.address.company": "Công ty",
+  "checkout.address.postalCode": "Mã bưu chính*",
+  "checkout.address.city": "Thành phố*",
+  "checkout.address.country": "Quốc gia",
+  "checkout.address.province": "Tỉnh / Thành phố*",
+  "checkout.address.district": "Quận / Huyện*",
+  "checkout.address.ward": "Phường / Xã*",
+  "checkout.address.loading": "Đang tải…",
+  "checkout.address.locationsFailed":
+    "Không tải được danh mục địa giới, vui lòng tải lại trang.",
+
+  // Validation messages (ShippingAddressStep)
+  "checkout.validation.fullNameRequired": "Vui lòng nhập họ và tên.",
+  "checkout.validation.provinceRequired": "Vui lòng chọn tỉnh / thành phố.",
+  "checkout.validation.districtRequired": "Vui lòng chọn quận / huyện.",
+  "checkout.validation.wardRequired": "Vui lòng chọn phường / xã.",
+  "checkout.validation.firstNameRequired": "Vui lòng nhập họ.",
+  "checkout.validation.lastNameRequired": "Vui lòng nhập tên.",
+  "checkout.validation.addressRequired": "Vui lòng nhập địa chỉ.",
+  "checkout.validation.postalCodeRequired": "Vui lòng nhập mã bưu chính.",
+  "checkout.validation.cityRequired": "Vui lòng nhập thành phố.",
+  "checkout.validation.countryRequired": "Vui lòng chọn quốc gia.",
+  "checkout.validation.emailRequired": "Vui lòng nhập email.",
+  "checkout.validation.phoneRequired": "Vui lòng nhập số điện thoại.",
+  "checkout.validation.phoneInvalid":
+    "Số điện thoại không hợp lệ (VD: 0912 345 678).",
+
+  // ShippingAddressStep — step progress row
+  "checkout.stepper.address": "Địa chỉ",
+  "checkout.stepper.delivery": "Giao hàng",
+  "checkout.stepper.payment": "Thanh toán",
+  "checkout.validation.emailInvalid": "Vui lòng nhập địa chỉ email hợp lệ.",
+
+  // ShippingAddressStep
+  "checkout.shipping.title": "Địa chỉ giao hàng",
+  "checkout.shipping.contact": "Liên hệ",
+  "checkout.shipping.billingTitle": "Địa chỉ thanh toán",
+  "checkout.shipping.billingSame":
+    "Địa chỉ thanh toán và giao hàng giống nhau.",
+  "checkout.shipping.edit": "Chỉnh sửa",
+  "checkout.shipping.billingSameCheckbox":
+    "Địa chỉ thanh toán trùng với địa chỉ giao hàng",
+  "checkout.shipping.email": "Email*",
+  "checkout.shipping.phone": "Số điện thoại*",
+  "checkout.shipping.saveFailed": "Không thể lưu địa chỉ. Vui lòng thử lại.",
+  "checkout.shipping.saving": "Đang lưu...",
+  "checkout.shipping.continueToDelivery": "Tiếp tục đến bước giao hàng",
+
+  // DeliveryStep
+  "checkout.delivery.title": "Giao hàng",
+  "checkout.delivery.edit": "Chỉnh sửa",
+  "checkout.delivery.shippingMethod": "Phương thức vận chuyển",
+  "checkout.delivery.subtitle": "Bạn muốn đơn hàng được giao như thế nào?",
+  "checkout.delivery.free": "Miễn phí",
+  "checkout.delivery.locker": "Tủ đồ: {{point}}",
+  "checkout.delivery.loading": "Đang tải phương thức vận chuyển...",
+  "checkout.delivery.empty":
+    "Không có phương thức vận chuyển nào phù hợp với địa chỉ của bạn.",
+  "checkout.delivery.loadFailed":
+    "Không thể tải phương thức vận chuyển. Vui lòng thử lại.",
+  "checkout.delivery.updateFailed":
+    "Không thể cập nhật phương thức vận chuyển. Vui lòng thử lại.",
+  "checkout.delivery.lockerSaveFailed":
+    "Không thể lưu lựa chọn tủ đồ. Vui lòng thử lại.",
+  "checkout.delivery.selectedLocker": "Tủ đồ đã chọn:",
+  "checkout.delivery.chooseLocker": "Chọn tủ đồ",
+  "checkout.delivery.changeLocker": "Đổi tủ đồ",
+  "checkout.delivery.saving": "Đang lưu...",
+  "checkout.delivery.continueToPayment": "Tiếp tục đến thanh toán",
+
+  // PaymentStep
+  "checkout.payment.title": "Thanh toán",
+  "checkout.payment.testOnly": "Lưu ý: Chỉ dùng cho mục đích kiểm thử.",
+  "checkout.payment.loading": "Đang tải phương thức thanh toán...",
+  "checkout.payment.empty": "Không có phương thức thanh toán nào khả dụng.",
+  "checkout.payment.loadFailed":
+    "Không thể tải phương thức thanh toán. Vui lòng thử lại.",
+  "checkout.payment.setFailed":
+    "Không thể đặt phương thức thanh toán. Vui lòng thử lại.",
+  "checkout.payment.paymentFailed": "Thanh toán thất bại. Vui lòng thử lại.",
+  "checkout.payment.placeOrderFailed": "Không thể đặt hàng. Vui lòng thử lại.",
+  "checkout.payment.placing": "Đang đặt hàng...",
+  "checkout.payment.placeOrder": "Đặt hàng",
+  "checkout.payment.sepayName": "Chuyển khoản ngân hàng (SePay)",
+  "checkout.payment.sepayHint":
+    "Quét mã QR bằng app ngân hàng hoặc chuyển khoản đúng nội dung. Đơn hàng được xác nhận tự động ngay khi nhận đủ tiền — bạn không cần chờ tại trang này.",
+
+  // OrderSummary
+  "checkout.summary.title": "Giỏ hàng của bạn",
+  "checkout.summary.subtotal": "Tạm tính (chưa gồm phí vận chuyển và thuế)",
+  "checkout.summary.shipping": "Phí vận chuyển",
+  "checkout.summary.taxes": "Thuế",
+  "checkout.summary.total": "Tổng cộng",
+  "checkout.summary.productFallback": "Sản phẩm",
+  "checkout.summary.variant": "Phiên bản: {{variant}}",
+
+  // InPostGeoWidget
+  "checkout.inpost.close": "Đóng",
+};
+
+export const en: typeof vi = {
+  "checkout.pageTitle": "Checkout",
+  "checkout.pageDescription": "Complete your purchase.",
+
+  // CheckoutPage
+  "checkout.page.emptyCartTitle": "Your cart is empty",
+  "checkout.page.emptyCartText": "Add items before checking out.",
+  "checkout.page.continueShopping": "Continue Shopping",
+
+  // AddressFields
+  "checkout.address.firstName": "First name*",
+  "checkout.address.lastName": "Last name*",
+  "checkout.address.fullName": "Full name*",
+  "checkout.address.address": "Address*",
+  "checkout.address.company": "Company",
+  "checkout.address.postalCode": "Postal code*",
+  "checkout.address.city": "City*",
+  "checkout.address.country": "Country",
+  "checkout.address.province": "Province / City*",
+  "checkout.address.district": "District*",
+  "checkout.address.ward": "Ward / Commune*",
+  "checkout.address.loading": "Loading…",
+  "checkout.address.locationsFailed":
+    "Couldn't load the address directory. Please reload the page.",
+
+  // Validation messages (ShippingAddressStep)
+  "checkout.validation.fullNameRequired": "Full name is required",
+  "checkout.validation.provinceRequired": "Province / city is required",
+  "checkout.validation.districtRequired": "District is required",
+  "checkout.validation.wardRequired": "Ward / commune is required",
+  "checkout.validation.firstNameRequired": "First name is required",
+  "checkout.validation.lastNameRequired": "Last name is required",
+  "checkout.validation.addressRequired": "Address is required",
+  "checkout.validation.postalCodeRequired": "Postal code is required",
+  "checkout.validation.cityRequired": "City is required",
+  "checkout.validation.countryRequired": "Country is required",
+  "checkout.validation.emailRequired": "Email is required",
+  "checkout.validation.phoneRequired": "Phone number is required",
+  "checkout.validation.phoneInvalid":
+    "Enter a valid Vietnamese phone number (e.g. 0912 345 678)",
+
+  // ShippingAddressStep — step progress row
+  "checkout.stepper.address": "Address",
+  "checkout.stepper.delivery": "Delivery",
+  "checkout.stepper.payment": "Payment",
+  "checkout.validation.emailInvalid": "Enter a valid email address",
+
+  // ShippingAddressStep
+  "checkout.shipping.title": "Shipping Address",
+  "checkout.shipping.contact": "Contact",
+  "checkout.shipping.billingTitle": "Billing Address",
+  "checkout.shipping.billingSame": "Billing and delivery address are the same.",
+  "checkout.shipping.edit": "Edit",
+  "checkout.shipping.billingSameCheckbox":
+    "Billing address same as shipping address",
+  "checkout.shipping.email": "Email*",
+  "checkout.shipping.phone": "Phone*",
+  "checkout.shipping.saveFailed": "Failed to save address. Please try again.",
+  "checkout.shipping.saving": "Saving...",
+  "checkout.shipping.continueToDelivery": "Continue to delivery",
+
+  // DeliveryStep
+  "checkout.delivery.title": "Delivery",
+  "checkout.delivery.edit": "Edit",
+  "checkout.delivery.shippingMethod": "Shipping method",
+  "checkout.delivery.subtitle": "How would you like your order delivered",
+  "checkout.delivery.free": "Free",
+  "checkout.delivery.locker": "Locker: {{point}}",
+  "checkout.delivery.loading": "Loading shipping options...",
+  "checkout.delivery.empty": "No shipping options available for your address.",
+  "checkout.delivery.loadFailed":
+    "Failed to load shipping options. Please try again.",
+  "checkout.delivery.updateFailed":
+    "Failed to update shipping method. Please try again.",
+  "checkout.delivery.lockerSaveFailed":
+    "Failed to save locker selection. Please try again.",
+  "checkout.delivery.selectedLocker": "Selected locker:",
+  "checkout.delivery.chooseLocker": "Choose locker",
+  "checkout.delivery.changeLocker": "Change locker",
+  "checkout.delivery.saving": "Saving...",
+  "checkout.delivery.continueToPayment": "Continue to payment",
+
+  // PaymentStep
+  "checkout.payment.title": "Payment",
+  "checkout.payment.testOnly": "Attention: For testing purposes only.",
+  "checkout.payment.loading": "Loading payment options...",
+  "checkout.payment.empty": "No payment options available.",
+  "checkout.payment.loadFailed":
+    "Failed to load payment options. Please try again.",
+  "checkout.payment.setFailed":
+    "Failed to set payment method. Please try again.",
+  "checkout.payment.paymentFailed": "Payment failed. Please try again.",
+  "checkout.payment.placeOrderFailed":
+    "Failed to place order. Please try again.",
+  "checkout.payment.placing": "Placing order...",
+  "checkout.payment.placeOrder": "Place order",
+  "checkout.payment.sepayName": "Bank transfer (SePay)",
+  "checkout.payment.sepayHint":
+    "Scan the QR with your banking app or transfer using the exact reference. The order is confirmed automatically once payment is received.",
+
+  // OrderSummary
+  "checkout.summary.title": "In your Cart",
+  "checkout.summary.subtotal": "Subtotal (excl. shipping and taxes)",
+  "checkout.summary.shipping": "Shipping",
+  "checkout.summary.taxes": "Taxes",
+  "checkout.summary.total": "Total",
+  "checkout.summary.productFallback": "Product",
+  "checkout.summary.variant": "Variant: {{variant}}",
+
+  // InPostGeoWidget
+  "checkout.inpost.close": "Close",
+};

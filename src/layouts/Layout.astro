@@ -1,0 +1,213 @@
+---
+import heroImage from "@assets/hero.webp";
+import { localizePath, useTranslations } from "@i18n";
+import { getRegion } from "@lib/data/regions";
+import { getTaxonomy } from "@lib/data/taxonomy";
+import { CartSidebar } from "@modules/layout/components/CartSidebar";
+import Footer from "@modules/layout/components/Footer.astro";
+import { Nav } from "@modules/layout/components/Nav";
+import albertSansLatin400 from "@fontsource/albert-sans/files/albert-sans-latin-400-normal.woff2?url";
+import albertSansLatinExt400 from "@fontsource/albert-sans/files/albert-sans-latin-ext-400-normal.woff2?url";
+import "@fontsource/albert-sans/400.css";
+import "@fontsource/albert-sans/500.css";
+import "@fontsource/albert-sans/700.css";
+import "@fontsource/albert-sans/900.css";
+import "@styles/global.css";
+import { ClientRouter } from "astro:transitions";
+
+interface Props {
+  title?: string;
+  description?: string;
+  image?: string;
+  type?: "website" | "product";
+  noindex?: boolean;
+  /* Extra woff2 subsets to preload (e.g. the 900 display weight on the
+     homepage hero). Kept opt-in per page so routes that never render
+     weight-900 text don't download it. */
+  preloadFonts?: string[];
+}
+
+const {
+  title,
+  description,
+  image,
+  type = "website",
+  noindex = false,
+  preloadFonts = [],
+} = Astro.props;
+
+const { locale, countryCode } = Astro.locals;
+const t = useTranslations(locale);
+
+// The header mega menu mirrors Medusa: collections that carry products show
+// up here, nothing is hardcoded. `metadata.image` wins when present, the
+// collection's own first product thumbnail keeps the card visual. The "Nổi
+// bật" row reads products flagged `metadata.featured` in the admin (max 5,
+// newest first). A taxonomy failure degrades the nav to the plain "Khám
+// phá" link — never a 503.
+let navCollections: {
+  label: string;
+  href: string;
+  image?: string;
+}[] = [];
+let navFeatured: {
+  label: string;
+  href: string;
+  image?: string;
+}[] = [];
+try {
+  const taxonomy = await getTaxonomy();
+  navCollections = [...taxonomy.collectionByHandle.values()]
+    .filter((collection) =>
+      taxonomy.collectionIdsWithProducts.has(collection.id),
+    )
+    .map((collection) => ({
+      label: collection.title,
+      href: localizePath(locale, `/bo-suu-tap/${collection.handle}`),
+      image:
+        collection.image ??
+        taxonomy.collectionThumbnails.get(collection.id) ??
+        undefined,
+    }));
+  navFeatured = taxonomy.featuredProducts.map((product) => ({
+    label: product.title,
+    href: localizePath(locale, `/store/${product.handle}`),
+    image: product.thumbnail,
+  }));
+} catch (error) {
+  console.error("nav collections unavailable", error);
+}
+
+const siteName = t("site.name");
+const pageTitle = title ? `${title} | ${siteName}` : siteName;
+const metaDescription = description ?? t("site.description");
+// Filter, sort and campaign variants all canonicalise to the clean path;
+// `?page=N` is the single parameter that canonicalises to itself (page 1 is
+// removed from links, so it never appears in a canonical URL either).
+const pageParam = Astro.url.searchParams.get("page");
+const canonicalPath =
+  Astro.url.pathname +
+  (pageParam && pageParam !== "1" && /^\d+$/.test(pageParam)
+    ? `?page=${pageParam}`
+    : "");
+const canonicalUrl = new URL(canonicalPath, Astro.site ?? Astro.url.origin);
+
+// Social crawlers only read absolute image URLs: every page gets the brand
+// hero when it has none of its own (product pages pass their first photo).
+const socialImage = new URL(
+  image ?? heroImage.src,
+  Astro.site ?? Astro.url.origin,
+).href;
+
+const region = await getRegion(countryCode);
+const regionId = region?.id || null;
+---
+
+<!doctype html>
+<html lang={locale}>
+  <head>
+    <ClientRouter />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    {
+      /* Marks that JS is alive before first paint: the scroll-reveal hidden
+        state is scoped to `.has-reveal`, so a page without JS renders fully
+        visible instead of stuck at opacity 0.001. */
+    }
+    <script is:inline>
+      document.documentElement.classList.add("has-reveal");
+    </script>
+    {
+      /* Body copy (weight 400) ships in two subsets — Vietnamese mixes
+        latin ASCII with latin-ext diacritics — so both woff2s are
+        preloaded: first paint shouldn't wait on the CSS → @font-face →
+        fetch chain. `?url` imports keep the preload pointing at the
+        hashed asset. */
+    }
+    <link
+      rel="preload"
+      href={albertSansLatin400}
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href={albertSansLatinExt400}
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    {
+      preloadFonts.map((href) => (
+        <link
+          rel="preload"
+          href={href}
+          as="font"
+          type="font/woff2"
+          crossorigin
+        />
+      ))
+    }
+    <link
+      rel="dns-prefetch"
+      href="//medusa-public-images.s3.eu-west-1.amazonaws.com"
+    />
+    <link
+      rel="preconnect"
+      href="https://medusa-public-images.s3.eu-west-1.amazonaws.com"
+      crossorigin
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="generator" content={Astro.generator} />
+
+    <title>{pageTitle}</title>
+    <meta name="description" content={metaDescription} />
+    <link rel="canonical" href={canonicalUrl.href} />
+
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+
+    <!-- Open Graph -->
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={metaDescription} />
+    <meta property="og:type" content={type} />
+    <meta property="og:url" content={canonicalUrl.href} />
+    <meta property="og:site_name" content={siteName} />
+    <meta property="og:image" content={socialImage} />
+    <meta property="og:image:alt" content={siteName} />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={metaDescription} />
+    <meta name="twitter:image" content={socialImage} />
+  </head>
+  <body class="min-h-screen bg-paper text-ink">
+    <Nav
+      client:load
+      locale={locale}
+      regionId={regionId}
+      currentPath={Astro.url.pathname}
+      collections={navCollections}
+      featured={navFeatured}
+    />
+    <main class="flex-1">
+      <slot />
+    </main>
+    <Footer locale={locale} />
+    <CartSidebar client:load locale={locale} />
+    <script>
+      import "@lib/reveal";
+    </script>
+  </body><style>
+    body {
+      display: flex;
+      flex-direction: column;
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      min-height: 100vh;
+    }
+  </style>
+</html>

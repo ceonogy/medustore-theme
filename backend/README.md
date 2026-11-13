@@ -1,0 +1,340 @@
+# Backend (Medusa v2) — module cần deploy
+
+Thư mục này chứa **bản sao các file cần deploy** của Medusa backend
+(`/home/medusa/apps/backend`) được đặt chung trong repo storefront để mã nguồn
+cửa hàng và backend nằm cạnh nhau, dễ review/version.
+
+> Đây **không phải** một project Medusa chạy độc lập: nó là nguồn để
+> `deploy.sh` đồng bộ sang monorepo Medusa trên máy chủ rồi build + restart.
+> `node_modules/`, `.env`, `.medusa/`, `static/` (ảnh upload lúc chạy) **không**
+> được commit.
+
+## Nội dung
+
+| Đường dẫn                    | Mô tả                                                                 |
+| ---------------------------- | --------------------------------------------------------------------- |
+| `medusa-config.ts`           | Cấu hình Medusa: DB, CORS, module Brevo, image provider, và **đăng ký addon tuỳ chọn** (`medusavn-goship`, `medusavn-sepay`) bằng `require.resolve` |
+| `src/modules/brevo/`         | Notification provider Brevo (email giao dịch, template tiếng Việt)      |
+| `src/subscribers/`           | Email: `order-placed` (xác nhận đơn + QR/VA), `payment-captured` (đã nhận tiền), mã xác thực, đặt lại mật khẩu |
+| `src/api/store/shipping-options/` | Ghi đè route lõi để trả shipping option kèm **cước đã tính** (`listShippingOptionsForCartWithPricingWorkflow`) |
+| `src/api/store/account/orders/` | API đơn hàng của khách — thêm `payment_status` + `fulfillment_status` và khối `shipping` (mã vận đơn, hãng, hành trình, `label_url`); timeline đọc từ module `goship` nếu addon có mặt |
+| `src/workflows/`             | Chỉ còn README mẫu — workflow của addon (vd. `regenerateSepayVaWorkflow`) được nạp từ package |
+| `src/search/`, `src/api/store/promotions/`, … | Tìm kiếm/facet, khuyến mãi, API tài khoản |
+| `scripts/`                   | `sepay-email-selftest.ts` — render email xác nhận đơn (theme-side, chạy được cả khi không cài addon SePay) |
+| `src/scripts/`               | Seed dữ liệu demo |
+
+> **GoShip và SePay không còn nằm trong theme.** Chúng là 2 addon riêng
+> (`medusavn-goship`, `medusavn-sepay`) — xem mục
+> [Addon tuỳ chọn](#addon-tuỳ-chọn-medusavn-goship--medusavn-sepay).
+
+## Triển khai
+
+Từ **thư mục gốc repo storefront**:
+
+```bash
+./deploy.sh               # rsync backend/ → /home/medusa/apps/backend, build, pm2 restart medusa
+./deploy.sh --dry-run     # xem trước các thay đổi rsync
+./deploy.sh --no-build    # sync + restart (khi chỉ đổi .env hoặc thứ không cần build)
+./deploy.sh --no-restart  # sync + build (không restart)
+```
+
+Quy trình script thực hiện:
+
+1. `rsync -a --delete` `backend/` → `$MEDUSA_ROOT/apps/backend`
+   (mặc định `/home/medusa/apps/backend`).
+2. `cd $MEDUSA_ROOT && yarn build` (turbo build backend + admin bundle, ~1–2 phút).
+3. `pm2 restart medusa`, sau đó chờ `GET /health` trả `200` (tối đa ~3 phút).
+
+**Không bao giờ** bị ghi đè/xoá bởi rsync: `.env`, `.env.*`, `node_modules`,
+`.medusa`, `.turbo`, `dist`, `build`, `.cache`, `static`, `uploads`,
+`tsconfig.tsbuildinfo`. Nhờ vậy file `.env` bí mật và ảnh upload trên máy chủ
+được giữ nguyên.
+
+> `yarn build` **không** cài dependency. Nếu `package.json` vừa thêm/bớt addon,
+> chạy `cd /home/medusa && yarn install` trước khi `./deploy.sh`.
+
+Biến môi trường (mặc định hợp lý, chỉ cần đổi khi host khác):
+
+```bash
+MEDUSA_ROOT=/home/medusa           # gốc monorepo Medusa
+MEDUSA_BACKEND_DIR=…/apps/backend  # thư mục đích
+PM2_APP=medusa                     # tên tiến trình pm2
+HEALTH_URL=http://127.0.0.1:9000/health
+```
+
+## Biến môi trường backend
+
+Sao chép `.env.template` rồi điền; **không commit `.env`**. Các khoá bắt buộc
+cho Brevo (luôn dùng) và cho 2 addon tuỳ chọn (SePay/GoShip — chỉ cần khi đã cài
+addon tương ứng):
+
+```env
+DATABASE_URL=postgres://…/medusa_store
+REDIS_URL=redis://localhost:6379
+JWT_SECRET=…
+COOKIE_SECRET=…
+STORE_CORS=https://demostore.ceonogy.com,http://127.0.0.1:3001
+ADMIN_CORS=https://adminstore.ceonogy.com,http://127.0.0.1:9000
+AUTH_CORS=https://adminstore.ceonogy.com,http://127.0.0.1:9000
+MEDUSA_BACKEND_URL=https://adminstore.ceonogy.com
+
+# SePay
+SEPAY_API_TOKEN=…            # token API v2
+SEPAY_BASE_URL=https://userapi-sandbox.sepay.vn/v2
+SEPAY_BANK_ACCOUNT_ID=…
+SEPAY_TID=…
+SEPAY_MODE=va_order         # tạo VA theo đơn
+SEPAY_WEBHOOK_SECRET=…      # khoá HMAC-SHA256 xác thực webhook
+
+# Brevo
+BREVO_API_KEY=…
+BREVO_FROM=no-reply@…
+BREVO_FROM_NAME=Demostore
+BREVO_STORE_URL=https://demostore.ceonogy.com
+
+# GoShip (vận chuyển)
+GOSHIP_BASE_URL=https://sandbox.goship.io/api/v2
+GOSHIP_TOKEN=...               # token API v2 (sandbox khi dev, prod khi go-live)
+GOSHIP_CLIENT_ID=...
+GOSHIP_CLIENT_SECRET=...       # dùng cho chữ ký webhook HMAC-SHA256
+GOSHIP_DEFAULT_SERVICE=economy
+GOSHIP_FALLBACK_FEE=30000      # phí dự phòng (VND) khi chưa gọi được bảng giá
+GOSHIP_ENABLED=false           # CHỈ là dự phòng khi DB chưa có cấu hình; nguồn chính là Admin → GoShip
+# Điểm gửi (mã GoShip) — mặc định Kho HCM; liên hệ in trên vận đơn.
+GOSHIP_ORIGIN_CITY=700000
+GOSHIP_ORIGIN_DISTRICT=701900
+GOSHIP_ORIGIN_WARD=9276
+GOSHIP_ORIGIN_NAME=Kho HCM
+GOSHIP_ORIGIN_PHONE=0900000000
+GOSHIP_ORIGIN_ADDRESS=1 Tân Tạo A
+GOSHIP_PAYER=1                 # 1 = shop trả phí ship, 0 = người nhận trả
+GOSHIP_COD_DEFAULT=0           # tiền thu hộ mặc định khi tạo vận đơn (0 = không COD)
+GOSHIP_DEFAULT_WEIGHT_GRAMS=500  # kiện mặc định khi variant thiếu dữ liệu
+GOSHIP_DEFAULT_LENGTH_CM=20
+GOSHIP_DEFAULT_WIDTH_CM=15
+GOSHIP_DEFAULT_HEIGHT_CM=10
+GOSHIP_PART_DELIVERY=false     # dự phòng "Giao 1 phần" khi DB chưa có cấu hình
+```
+
+> Các khoá `GOSHIP_PAYER`, `GOSHIP_COD_DEFAULT`, `GOSHIP_DEFAULT_*`,
+> `GOSHIP_WEIGHT_UNIT`, `GOSHIP_DIMENSION_UNIT`, `GOSHIP_PART_DELIVERY` chỉ là
+> **giá trị nền**; phần "Thông tin hàng gửi" lưu trong DB (Admin → GoShip) sẽ ghi
+> đè khi có cấu hình.
+
+## Addon tuỳ chọn (`medusavn-goship` / `medusavn-sepay`)
+
+GoShip (vận chuyển) và SePay (thanh toán) được tách thành **2 package độc lập**,
+cài/gỡ riêng, không phụ thuộc theme:
+
+| Addon | Repo | Cung cấp |
+| --- | --- | --- |
+| `medusavn-goship` | `github.com/ceonogy/medusavn-goship` | fulfillment provider `fp_goship_goship`, module `goship` (địa giới + cấu hình), `/store/goship/*`, `/admin/goship/*`, `/webhooks/goship`, trang admin `/app/goship` + widget "Loại hàng", hook ẩn/hiện option |
+| `medusavn-sepay` | `github.com/ceonogy/medusavn-sepay` | payment provider `pp_sepay`, module `sepay` (dedup webhook), `/store/sepay/order/:id[/refresh]`, `/admin/sepay/config`, `/webhooks/sepay`, trang admin `/app/sepay`, workflow `regenerateSepayVaWorkflow` |
+
+Mỗi repo có README hướng dẫn cài đặt đầy đủ (env, migration, admin, storefront,
+uninstall). Tóm tắt cách theme này đang dùng:
+
+```jsonc
+// /home/medusa/package.json (monorepo gốc) — dev: trỏ thẳng thư mục nguồn
+"dependencies": {
+  "medusavn-goship": "file:/home/medusavn-goship",
+  "medusavn-sepay": "file:/home/medusavn-sepay"
+}
+```
+
+`medusa-config.ts` đăng ký **có điều kiện** — thiếu package thì bỏ qua, backend
+vẫn build/chạy với `fp_manual_manual` + `pp_system_default`:
+
+```ts
+const hasPackage = (id: string) => {
+  try { require.resolve(`${id}/package.json`, { paths: [__dirname] }); return true }
+  catch { return false }
+}
+
+plugins: [
+  ...(hasPackage("medusavn-goship") ? [{ resolve: "medusavn-goship", options: {} }] : []),
+  ...(hasPackage("medusavn-sepay") ? [{ resolve: "medusavn-sepay", options: {} }] : []),
+]
+```
+
+Provider vẫn phải khai báo tường minh trong `modules` (`fulfillment`/`payment`)
+vì Medusa không tự đăng ký provider từ plugin — xem file thật để biết chi tiết.
+
+### Cài / gỡ
+
+```bash
+# cài (hoặc sau khi pull addon mới)
+cd /home/medusa && yarn install
+cd /home/medusa/apps/backend && npx medusa db:migrate   # tạo bảng addon
+./deploy.sh --no-restart && pm2 restart medusa          # từ repo storefront
+
+# gỡ: xoá dependency + plugin/provider trong medusa-config.ts
+cd /home/medusa && yarn remove medusavn-goship
+# rồi deploy lại — KHÔNG cần sửa code theme
+```
+
+Khi gỡ GoShip: xoá/đổi 2 shipping option `calculated` sang provider `manual`
+(nếu không checkout sẽ báo lỗi option không còn provider). Khi gỡ SePay:
+`pp_system_default` vẫn còn nên thanh toán thủ công hoạt động bình thường.
+
+### Storefront
+
+Theme gọi addon qua **slot registry** (`../src/lib/addons/`): `addons.goship?.AddressFields`,
+`addons.goship?.getUnits`, `addons.sepay?.PaymentPanel`. Không cài addon thì
+`astro.config.mjs` alias import sang stub `undefined`, theme vẫn build và hiển
+thị fallback (3 ô text cho địa chỉ, không có panel chuyển khoản). Chi tiết ở
+README gốc của repo.
+
+## Vận chuyển: giá cố định (mặc định) & GoShip (tùy chọn)
+
+Hai lớp phương thức giao hàng ở checkout:
+
+- **Giá ship cố định (mặc định)** — 2 shipping option `flat` native của provider
+  `manual_manual` ("Giao hàng tiêu chuẩn" / "Giao hàng nhanh"). Đây là mặc định;
+  không cấu hình giá trong GoShip.
+- **GoShip (tùy chọn)** — provider `goship_goship` CHỈ **tính cước** qua
+  `POST /rates`, hiện 2 option `calculated` ("Tiết kiệm (GoShip)" rẻ nhất /
+  "Nhanh (GoShip)" nhanh nhất).
+
+Bật/tắt GoShip **ngay trong Admin** (khuyến nghị): vào **Cài đặt → GoShip**
+(`/app/goship`) gạt công tắc. Nguồn cờ là bảng `goship_setting` trong DB nên có
+hiệu lực ở request checkout kế tiếp, **không cần sửa `.env` hay restart**.
+
+- BẬT: hiện cả 2 option GoShip, cước tính thật theo địa chỉ + cân nặng.
+- TẮT: ẩn hết option GoShip, chỉ còn 2 option `flat` (giá cố định).
+
+`GOSHIP_ENABLED` trong `.env` chỉ là **giá trị dự phòng** khi DB chưa có cấu hình
+(ví dụ mới deploy). Một khi đã gạt công tắc trong Admin, DB là nguồn chính.
+
+Cơ chế ẩn/hiện: mỗi option GoShip có rule `goship_enabled eq "true"`; hook trong
+addon (`src/workflows/hooks/goship.ts` của `medusavn-goship`) đọc công tắc (DB →
+dự phòng ENV) và bơm cờ vào
+context lọc option của Medusa (`isContextValid`). Khi tắt, cờ = `false` → rule
+fail → option bị loại (fail-closed: lỗi đọc cờ cũng coi như TẮT).
+
+Đồng bộ provider/option (chạy 1 lần, idempotent):
+
+```bash
+cd /home/medusa/apps/backend
+npx medusa exec ./node_modules/medusavn-goship/.medusa/server/src/scripts/goship-sync.js
+```
+
+Script sẽ: gắn `goship_goship` vào kho dùng ở checkout, ghi mã địa giới + liên hệ
+điểm gửi vào metadata kho, tạo/cập nhật 2 option `calculated` kèm rule. Script tự
+khôi phục đúng trạng thái công tắc trước khi chạy.
+
+## "Thông tin hàng gửi" (tuỳ chọn kiện hàng)
+
+API `POST /shipments` của GoShip chỉ nhận `parcel.{cod,amount,weight,width,height,length,metadata}`
+và `shipment.payer`, nên các mục dạng text của form GoShip được **gộp vào
+`parcel.metadata`**. Cấu hình chia 2 tầng:
+
+**1) Chính sách chung — Admin → GoShip → "Thông tin hàng gửi"** (lưu trong
+`goship_setting`, áp dụng cho mọi vận đơn; nền là ENV rồi DB ghi đè):
+
+| Mục | Khoá DB | Ánh xạ GoShip |
+| --- | --- | --- |
+| Người trả phí | `parcel_payer` | `shipment.payer` (0 khách / 1 shop) |
+| Ghi chú giao hàng | `parcel_delivery_note` | `parcel.metadata` (preset "Cho thử hàng"…) |
+| Loại hàng mặc định (tối đa 2) | `parcel_goods_types` | `parcel.metadata` — dùng khi sản phẩm không khai |
+| Khai giá | `parcel_declare_value` | `parcel.amount` (`off` = 0, `order_total` = tổng đơn) |
+| Đơn vị đo | `parcel_weight_unit` (`g`/`kg`), `parcel_dimension_unit` (`cm`/`m`) | quyết định cách quy đổi sang gram/cm |
+| Cân nặng/kích thước mặc định | `parcel_weight_grams`, `parcel_length_cm`, `parcel_width_cm`, `parcel_height_cm` | `parcel.weight/width/height/length` (theo đơn vị đo đã chọn) |
+| Thu hộ mặc định | `parcel_cod_default` | `parcel.cod` |
+| Giao 1 phần | `parcel_is_part_delivery` | `parcel.metadata` (chỉ GHN/GHTK) |
+
+**2) Thuộc tính sản phẩm** (ưu tiên hơn mặc định):
+
+- **Loại hàng**: `variant.metadata.goship_goods_type` → fallback
+  `product.metadata.goship_goods_type` → default global. Khai ở cấp sản phẩm bằng
+  widget **"Loại hàng (GoShip)"** ở trang chi tiết sản phẩm (Admin); cấp variant
+  sửa trong khu **Metadata** của variant. Giá trị là một nhãn trong danh mục 11
+  loại (ví dụ `"Quần áo"`, `"Đồ điện tử"`). **Giá trị không có trong danh mục sẽ
+  bị bỏ** (kèm cảnh báo `[goship] bỏ "loại hàng"…` trong log) — tránh gửi nhãn
+  sai chính tả lên GoShip.
+- **Cân nặng/kích thước**: dùng trường sẵn có của variant (`weight`, `length`,
+  `width`, `height`); thiếu → mặc định global.
+
+### Đơn vị đo (g/kg, cm/m)
+
+Medusa **không có** cấu hình đơn vị cho `product/variant.weight|length|width|height`
+— chúng là số `float` trần (`unit_of_measure` chỉ có ở inventory item và là đơn vị
+**đếm tồn kho**, không liên quan). Vì vậy shop khai đơn vị trong **Admin → GoShip →
+"Đơn vị đo"** (`parcel_weight_unit`, `parcel_dimension_unit`), mặc định `g`/`cm`.
+
+GoShip chỉ nhận **gram + cm**, nên `buildParcel()` nhân hệ số (kg→g ×1000, m→cm
+×100) cho **cả giá trị variant lẫn giá trị mặc định** ở cả hai đường: tính cước
+(`calculatePrice`/`quote`) và tạo vận đơn (`createFulfillment`). Storefront đọc
+`GET /store/goship/config` để hiển thị đúng nhãn (`1.5 kg`, `0.5 × 0.3 × 0.2 m`).
+
+Khi tạo vận đơn, provider đọc bảng `goship_setting` qua knex (không resolve được
+service module), làm giàu item từ `product_variant`/`product`, rồi ghép
+`parcel.metadata = "Loại hàng: X, Y · [Giao 1 phần] · [ghi chú giao hàng] · [ghi chú chung]`.
+
+## Vận đơn & theo dõi trạng thái
+
+- Khi admin **tạo fulfillment** cho đơn có shipping method GoShip, provider gọi
+  `POST /shipments` tạo vận đơn thật (cần SĐT người nhận; thiếu → lỗi rõ ràng),
+  lưu `goship_id` (gcode) vào `fulfillment.data`, gán mã vận đơn vào label.
+- GoShip gọi **webhook** `POST /webhooks/goship` (header
+  `x-goship-hmac-sha256 = base64(HMAC-SHA256(rawBody, GOSHIP_CLIENT_SECRET))`).
+  Route dedup theo `(gcode, status, update_time)`, cập nhật `shipped_at` /
+  `delivered_at` / `canceled_at` → `order.fulfillment_status` đổi theo.
+- Admin có thể **hủy fulfillment** → provider gọi `DELETE /shipments/{gcode}`.
+- Storefront hiển thị khối "Vận chuyển" (hãng, mã vận đơn, hành trình) ở trang
+  chi tiết đơn trong tài khoản khách.
+
+## Nâng cấp core Medusa (an toàn)
+
+Phần tuỳ biến của shop nằm trong `apps/backend/src` (module `brevo`, subscribers,
+API routes, admin routes, `medusa-config.ts`) và trong 2 addon đã publish
+(`medusavn-goship`, `medusavn-sepay`).
+Script **không** sửa gì trong `node_modules` — nên nâng cấp core (đổi version
+`@medusajs/*` + `yarn install`) chỉ thay `node_modules`, **không đụng code mình**,
+và `deploy.sh` luôn lấy `backend/` trong repo làm nguồn sự thật.
+
+Nguyên tắc nâng cấp an toàn:
+
+1. **Pin & khoá version**: giữ version cụ thể trong `package.json` + commit
+   `yarn.lock`; nâng có chủ đích, tránh `latest`.
+2. **Backup DB trước** (migration chỉ đổi schema, nhưng vẫn nên có đường lùi):
+   ```bash
+   PGPASSWORD='...' pg_dump -h localhost -U medusa_user -d medusa_store \
+     -Fc -f ~/backup-medusa-$(date +%F-%H%M).dump
+   ```
+3. **Đổi version → cài → build xác nhận**:
+   ```bash
+   cd /home/medusa && yarn install && yarn build
+   ```
+4. **Chạy test trước khi restart thật**:
+   ```bash
+   cd /home/medusa/apps/backend && yarn test:unit   # unit backend
+   cd /home/storefront && yarn test                 # unit storefront
+   bash /tmp/opencode/test-cases.sh                 # ma trận QA end-to-end
+   ```
+5. **Deploy + theo dõi**: `./deploy.sh` (từ repo) rồi `pm2 logs medusa`.
+6. Migrations của core/module chỉ **thêm/sửa bảng, cột** — không xoá product,
+   variant hay order. Rollback: cài lại version cũ trong `package.json` rồi
+   `yarn install && yarn build`, hoặc restore từ file `pg_dump` ở bước 2.
+
+Code backend chỉ import **package công khai** của Medusa (`@medusajs/framework`,
+`@medusajs/medusa`, `@medusajs/admin-sdk`, `@medusajs/ui`, `@medusajs/icons`,
+`@medusajs/core-flows`) — **không** import đường dẫn internal (`/dist/...`), nên
+ít rủi ro vỡ khi lên version. Rủi ro còn lại: breaking change API/type, hoặc
+component/zone của admin UI đổi — nên kiểm tra lại widget "Loại hàng" và 2
+trang `/app/goship`, `/app/sepay` sau mỗi lần nâng (chúng nằm trong addon, không
+phải trong theme).
+
+## Self-test
+
+Chạy trong `apps/backend` trên máy chủ (sau khi đã build/DB sẵn sàng):
+
+```bash
+cd /home/medusa/apps/backend
+yarn medusa exec scripts/sepay-email-selftest.ts       # render email (theme-side, 11 check)
+yarn medusa exec ./node_modules/medusavn-sepay/scripts/sepay-refund-selftest.mjs   # hoàn tiền Hybrid (6 check)
+yarn medusa exec ./node_modules/medusavn-sepay/scripts/sepay-webhook-selftest.mjs  # xác thực webhook HMAC
+```
+
+Bộ test đầu-cuối (webhook thật, refresh VA, E2E storefront) nằm ngoài repo tại
+`/tmp/opencode/*.sh` và ma trận QA `/tmp/opencode/test-cases.sh`.

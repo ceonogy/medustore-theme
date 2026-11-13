@@ -1,0 +1,21 @@
+---
+import { useTranslations } from "@i18n";
+import Layout from "@layouts/Layout.astro";
+import { loginHref } from "@lib/utils/auth-session";
+import { OrderList } from "@modules/account/components/OrderList";
+
+const { locale } = Astro.locals;
+const t = useTranslations(locale);
+---
+
+<Layout
+  title={t("account.orders.pageTitle")}
+  description={t("account.orders.pageDescription")}
+  noindex
+>
+  <OrderList
+    client:load
+    locale={locale}
+    loginPath={loginHref("/tai-khoan/don-hang")}
+  />
+</Layout>

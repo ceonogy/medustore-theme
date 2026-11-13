@@ -1,0 +1,173 @@
+---
+import { useTranslations, type Locale } from "@i18n";
+import {
+  getCountdownParts,
+  padCountdown,
+  parseDeadline,
+} from "@lib/utils/countdown";
+
+interface Props {
+  /** ISO date / Date from Medusa (a price list's `ends_at`). */
+  endsAt: string | Date | null | undefined;
+  locale: Locale;
+  /** Overrides the default "Kết thúc sau" caption. */
+  label?: string;
+  class?: string;
+  /** Smaller tiles for the product detail page. */
+  compact?: boolean;
+  /** Caption and digits on one row (saves vertical space in page headers). */
+  inline?: boolean;
+}
+
+const {
+  endsAt,
+  locale,
+  label,
+  class: className = "",
+  compact = false,
+  inline = false,
+} = Astro.props;
+
+const t = useTranslations(locale);
+const deadline = parseDeadline(endsAt);
+// Render the first frame on the server so the countdown is visible before
+// the client script runs; the script only re-renders the ticking digits.
+const parts = getCountdownParts(endsAt);
+const visible = deadline !== null && !parts.expired;
+const iso = deadline !== null ? new Date(deadline).toISOString() : "";
+
+const units = [
+  { key: "days", value: parts.days },
+  { key: "hours", value: parts.hours },
+  { key: "minutes", value: parts.minutes },
+  { key: "seconds", value: parts.seconds },
+];
+
+const tileClass = inline
+  ? "min-w-[2.5rem] px-1 py-1"
+  : compact
+    ? "min-w-[2.75rem] px-1.5 py-1"
+    : "min-w-[3.25rem] px-2 py-1.5";
+const valueClass = compact || inline ? "text-base" : "text-lg";
+---
+
+{
+  visible && (
+    <div
+      class={`countdown ${
+        inline ? "flex flex-wrap items-center gap-x-2 gap-y-1" : ""
+      } ${className}`}
+      data-countdown
+      data-ends-at={iso}
+      role="timer"
+      aria-live="off"
+      aria-label={label ?? t("promotions.countdown.label")}
+    >
+      <p class="type-label">{label ?? t("promotions.countdown.label")}</p>
+      <div
+        class={
+          inline
+            ? "flex flex-wrap items-center gap-1"
+            : "mt-2 flex flex-wrap items-center gap-1.5"
+        }
+        data-countdown-parts
+      >
+        {units.map((unit) => (
+          <span
+            class={`flex flex-col items-center rounded-lg bg-ink text-paper ${tileClass}`}
+          >
+            <span
+              data-unit={unit.key}
+              class={`font-bold leading-none tabular-nums ${valueClass}`}
+            >
+              {padCountdown(unit.value)}
+            </span>
+            <span class="mt-1 text-[10px] leading-none tracking-wide text-paper/70 uppercase">
+              {t(`promotions.countdown.${unit.key}`)}
+            </span>
+          </span>
+        ))}
+      </div>
+      <p
+        data-countdown-ended
+        hidden
+        class="mt-2 text-sm font-medium text-muted"
+      >
+        {t("promotions.countdown.ended")}
+      </p>
+    </div>
+  )
+}
+
+<script>
+  // One shared ticker for every countdown on the page. Server-rendered
+  // values stay correct for a no-JS visitor; the script takes over the
+  // digits once it runs and flips to "Đã kết thúc" when the deadline lands.
+  const pad = (value: number) =>
+    String(Math.max(0, Math.trunc(value))).padStart(2, "0");
+
+  const timers = new WeakMap<HTMLElement, number>();
+
+  const tick = (root: HTMLElement) => {
+    // A ClientRouter swap detaches the old page: drop its ticker instead of
+    // keeping an interval alive for a node that is no longer on screen.
+    if (!root.isConnected) {
+      const timer = timers.get(root);
+      if (timer) {
+        window.clearInterval(timer);
+        timers.delete(root);
+      }
+      return;
+    }
+
+    const deadline = Date.parse(root.dataset.endsAt ?? "");
+    if (!Number.isFinite(deadline)) return;
+
+    const remaining = deadline - Date.now();
+    const parts = root.querySelector<HTMLElement>("[data-countdown-parts]");
+    const ended = root.querySelector<HTMLElement>("[data-countdown-ended]");
+
+    if (remaining <= 0) {
+      if (parts) parts.hidden = true;
+      if (ended) ended.hidden = false;
+      const timer = timers.get(root);
+      if (timer) {
+        window.clearInterval(timer);
+        timers.delete(root);
+      }
+      return;
+    }
+
+    const totalSeconds = Math.floor(remaining / 1000);
+    const values: Record<string, number> = {
+      days: Math.floor(totalSeconds / 86_400),
+      hours: Math.floor((totalSeconds % 86_400) / 3_600),
+      minutes: Math.floor((totalSeconds % 3_600) / 60),
+      seconds: totalSeconds % 60,
+    };
+
+    for (const [key, value] of Object.entries(values)) {
+      const node = root.querySelector<HTMLElement>(`[data-unit="${key}"]`);
+      if (node) node.textContent = pad(value);
+    }
+  };
+
+  const start = (root: HTMLElement) => {
+    if (timers.has(root)) return;
+    tick(root);
+    timers.set(
+      root,
+      window.setInterval(() => tick(root), 1000),
+    );
+  };
+
+  const init = () => {
+    document.querySelectorAll<HTMLElement>("[data-countdown]").forEach(start);
+  };
+
+  // `astro:page-load` fires on the first load and again after every
+  // ClientRouter navigation, so re-initialising keeps countdowns alive
+  // across page swaps.
+  document.addEventListener("astro:page-load", init);
+  init();
+</script>

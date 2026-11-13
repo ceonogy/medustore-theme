@@ -1,0 +1,364 @@
+---
+import { Image } from "astro:assets";
+import heroImage from "@assets/hero.webp";
+/* Hero display headline ships at weight 900: both subsets are preloaded on
+   this page only (Layout takes an opt-in list) so the first paint never
+   flashes a fallback face on the largest text of the site. */
+import albertSansLatin900 from "@fontsource/albert-sans/files/albert-sans-latin-900-normal.woff2?url";
+import albertSansLatinExt900 from "@fontsource/albert-sans/files/albert-sans-latin-ext-900-normal.woff2?url";
+import { localizePath, useTranslations } from "@i18n";
+import Layout from "@layouts/Layout.astro";
+import { listProducts } from "@lib/data/products";
+import { getRegion } from "@lib/data/regions";
+import { getTaxonomy } from "@lib/data/taxonomy";
+import {
+  organizationJsonLd,
+  webSiteJsonLd,
+  type JsonLdNode,
+} from "@lib/utils/seo";
+import { Newsletter } from "@modules/layout/components/Newsletter";
+import BenefitIcon from "@modules/layout/components/BenefitIcon.astro";
+import JsonLd from "@modules/layout/components/JsonLd.astro";
+import ProductPreview from "@modules/products/components/product-preview/ProductPreview.astro";
+import ShopTheLook from "@modules/layout/components/ShopTheLook.astro";
+
+const { locale, countryCode } = Astro.locals;
+const t = useTranslations(locale);
+/* The hero headline is one translatable string with an intentional line
+   break; each line gets its own mask for the staggered entrance. */
+const heroLines = t("home.heroTitle").split("\n");
+
+const unavailable = () =>
+  new Response(t("common.serviceUnavailable"), {
+    status: 503,
+    headers: {
+      "Retry-After": "30",
+      "Content-Type": "text/plain; charset=utf-8",
+    },
+  });
+
+// The homepage is built from Medusa on every render: a backend that cannot
+// answer is a 503 (with a retry hint), never a silently empty storefront.
+const region = await getRegion(countryCode);
+if (!region) {
+  console.error("homepage: no region resolves the market");
+  return unavailable();
+}
+
+let products: Awaited<ReturnType<typeof listProducts>>;
+try {
+  products = await listProducts(region.id);
+} catch (error) {
+  console.error(error);
+  return unavailable();
+}
+
+const featured = products.slice(0, 8);
+
+// "Our Collections" mirrors Medusa: add a collection in the admin and it shows
+// up here, collections without products stay hidden. Nothing is hardcoded.
+let collections: {
+  label: string;
+  href: string;
+  image?: string;
+  description?: string;
+}[] = [];
+
+try {
+  const taxonomy = await getTaxonomy();
+
+  // `metadata.image` wins when present, otherwise the collection's own first
+  // product picture keeps the card visual.
+  const thumbnailByCollection = new Map<string, string>();
+  products.forEach((product) => {
+    const collectionId = product.collection?.id;
+    if (
+      collectionId &&
+      product.thumbnail &&
+      !thumbnailByCollection.has(collectionId)
+    ) {
+      thumbnailByCollection.set(collectionId, product.thumbnail);
+    }
+  });
+
+  collections = [...taxonomy.collectionByHandle.values()]
+    .filter((collection) =>
+      taxonomy.collectionIdsWithProducts.has(collection.id),
+    )
+    .map((collection) => ({
+      label: collection.title,
+      href: localizePath(locale, `/bo-suu-tap/${collection.handle}`),
+      image: collection.image ?? thumbnailByCollection.get(collection.id),
+      description: collection.description ?? undefined,
+    }));
+} catch (error) {
+  console.error(error);
+  return unavailable();
+}
+
+const featureNames = ["shipping", "refund", "support", "secure"] as const;
+
+const features = [1, 2, 3, 4].map((n, index) => ({
+  title: t(`home.feature${n}Title`),
+  sub: t(`home.feature${n}Sub`),
+  icon: featureNames[index],
+}));
+
+const origin = Astro.site?.origin ?? Astro.url.origin;
+const structuredData: JsonLdNode[] = [
+  organizationJsonLd(t("site.name"), origin, "/favicon.svg"),
+  webSiteJsonLd(t("site.name"), origin),
+];
+---
+
+<Layout
+  description={t("site.description")}
+  image={heroImage.src}
+  preloadFonts={[albertSansLatin900, albertSansLatinExt900]}
+>
+  <JsonLd data={structuredData} />
+  {/* ------------------------------------------------------------ hero */}
+  <section
+    class="wrap grid h-[calc(100svh_-_65px)] grid-rows-[auto_1fr] items-stretch gap-6 py-5 tablet:grid-cols-[48fr_52fr] tablet:grid-rows-1 tablet:gap-10 tablet:py-8 wide:h-[calc(100svh_-_81px)] wide:gap-16"
+  >
+    <div class="flex flex-col items-start justify-center">
+      <p
+        class="hero-fade type-kicker text-muted"
+        style="--hero-delay: 150ms; --hero-dur: 500ms"
+      >
+        {t("home.heroEyebrow")}
+      </p>
+      <h1
+        class="mt-5 text-[clamp(36px,5vw,76px)] font-black uppercase leading-[1.05] tracking-[-0.03em]"
+      >
+        {
+          heroLines.map((line, index) => (
+            <span class="hero-line">
+              <span
+                class="hero-line-in"
+                style={`--hero-delay: ${400 + index * 150}ms`}
+              >
+                {line}
+              </span>
+            </span>
+          ))
+        }
+      </h1>
+      <p
+        class="hero-fade mt-6 max-w-md text-base leading-relaxed text-muted"
+        style="--hero-delay: 800ms"
+      >
+        {t("home.heroSub")}
+      </p>
+      <div
+        class="hero-fade mt-9 flex flex-wrap items-center gap-x-8 gap-y-4"
+        style="--hero-delay: 900ms"
+      >
+        <a
+          class="btn rounded-[8px] font-semibold active:translate-y-0 active:scale-[0.97] hover:bg-[#1f1f1f]"
+          href={localizePath(locale, "/store")}
+        >
+          {t("home.heroCta")}
+          <span aria-hidden="true" class="hero-cta-arrow">↗</span>
+        </a>
+        <a
+          href="#bo-suu-tap"
+          class="hero-link text-[13px] font-semibold uppercase tracking-[0.12em] text-ink"
+        >
+          {t("home.heroCtaSecondary")}
+        </a>
+      </div>
+    </div>
+
+    <div
+      class="hero-visual group flex flex-col overflow-hidden rounded-lg bg-sand"
+      style="--hero-delay: 260ms"
+    >
+      <div class="hero-visual-in min-h-0 flex-1">
+        <Image
+          src={heroImage}
+          width={1076}
+          height={1461}
+          alt={t("home.heroImageAlt")}
+          widths={[600, 900, 1076]}
+          sizes="(max-width: 809px) 100vw, 50vw"
+          format="webp"
+          quality={80}
+          class="hero-tee h-full w-full object-contain transition-transform duration-[500ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform group-hover:-translate-y-[3px] group-hover:scale-[1.02]"
+        />
+      </div>
+      <div
+        class="hero-labels flex shrink-0 items-center justify-between px-5 pb-4 text-[11px] font-medium uppercase tracking-[0.16em] text-muted"
+        aria-hidden="true"
+        style="--hero-delay: 1450ms; --hero-dur: 600ms"
+      >
+        <span>{t("home.heroImageLabel")}</span>
+        <span>{t("home.heroImageIndex")}</span>
+      </div>
+    </div>
+  </section>
+
+  {/* ------------------------------------------------- new arrivals */}
+  <section class="section">
+    <div class="wrap">
+      <div class="reveal mx-auto max-w-2xl text-center" data-reveal>
+        <p class="type-kicker text-muted">{t("home.newArrivalsEyebrow")}</p>
+        <h2 class="type-title mt-3">{t("home.newArrivalsTitle")}</h2>
+        <p class="type-body mx-auto mt-4 max-w-xl text-muted">
+          {t("home.newArrivalsSub")}
+        </p>
+      </div>
+
+      {
+        featured.length > 0 && (
+          <div class="mt-10 grid grid-cols-2 gap-x-4 gap-y-8 tablet:mt-12 tablet:grid-cols-3 tablet:gap-x-6 wide:grid-cols-4">
+            {featured.map((product, index) => (
+              <div
+                class="reveal"
+                data-reveal
+                style={`--reveal-delay: ${(index % 4) * 80}ms`}
+              >
+                <ProductPreview
+                  handle={product.handle}
+                  variants={product.variants ?? []}
+                  thumbnailUrl={product.thumbnail ?? undefined}
+                  imageUrl={product.images?.[0]?.url}
+                  title={product.title}
+                  priority={index < 4}
+                />
+              </div>
+            ))}
+          </div>
+        )
+      }
+
+      <div class="reveal mt-10 flex justify-center" data-reveal>
+        <a class="btn btn-ghost" href={localizePath(locale, "/store")}>
+          {t("home.browseProducts")}
+        </a>
+      </div>
+    </div>
+  </section>
+
+  {/* ------------------------------------------------ shop the look */}
+  <ShopTheLook products={products} />
+
+  {/* -------------------------------------------------- testimonial */}
+  <section class="section bg-fog">
+    <div class="wrap reveal max-w-3xl text-center" data-reveal>
+      <p class="text-base tracking-[0.4em]" aria-hidden="true">★★★★★</p>
+      <blockquote class="type-title mt-6">“{t("home.quote")}”</blockquote>
+      <p class="type-body mt-5 text-muted">{t("home.quoteAuthor")}</p>
+    </div>
+  </section>
+
+  {/* -------------------------------------------------- collections */}
+  {
+    collections.length > 0 && (
+      /* id="bo-suu-tap": in-page anchor target of the hero's secondary CTA */
+      <section class="section scroll-mt-24" id="bo-suu-tap">
+        <div class="wrap">
+          <div class="reveal mx-auto max-w-2xl text-center" data-reveal>
+            <h2 class="type-title">{t("home.collectionsEyebrow")}</h2>
+            <p class="type-body mx-auto mt-4 max-w-xl text-muted">
+              {t("home.collectionsSub")}
+            </p>
+          </div>
+
+          <div class="mt-10 grid gap-6 tablet:mt-12 tablet:grid-cols-3 tablet:gap-8">
+            {collections.map((collection, index) => (
+              <a
+                href={collection.href}
+                class="group reveal"
+                data-reveal
+                style={`--reveal-delay: ${index * 80}ms`}
+              >
+                <span class="relative block aspect-[3/4] overflow-hidden rounded-xl bg-fog">
+                  {collection.image ? (
+                    <Image
+                      src={collection.image}
+                      width={720}
+                      height={960}
+                      alt={t("home.collectionImageAlt", {
+                        name: collection.label,
+                      })}
+                      widths={[360, 540, 720]}
+                      sizes="(max-width: 809px) 100vw, 33vw"
+                      format="webp"
+                      quality={55}
+                      class="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
+                    />
+                  ) : (
+                    <span class="flex h-full w-full items-center justify-center text-muted">
+                      {collection.label}
+                    </span>
+                  )}
+                </span>
+                <span class="type-label mt-4 flex items-center justify-between">
+                  {collection.label}
+                  <span
+                    aria-hidden="true"
+                    class="transition-transform duration-300 group-hover:translate-x-1"
+                  >
+                    →
+                  </span>
+                </span>
+                {collection.description && (
+                  <span class="type-body mt-1 block text-muted">
+                    {collection.description}
+                  </span>
+                )}
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  {/* ---------------------------------------------------- benefits */}
+  {
+    /* Mirrors the template's Features Section: phone/tablet stack each
+      cell centred with a rule underneath; wide becomes four flush cells
+      split by vertical rules, icon beside the copy — so every item sits
+      on the same justified grid at each breakpoint. */
+  }
+  <section class="section bg-sand">
+    <div
+      class="wrap grid grid-cols-1 gap-4 tablet:grid-cols-2 wide:grid-cols-4 wide:gap-0"
+    >
+      {
+        features.map((feature, index) => (
+          <div
+            class="reveal flex flex-col items-center border-b border-line py-4 text-center [&:last-child]:border-b-0 tablet:[&:nth-last-child(-n+2)]:border-b-0 wide:flex-row wide:items-start wide:gap-5 wide:border-b-0 wide:border-r wide:p-8 wide:text-left wide:last:border-r-0"
+            data-reveal
+            style={`--reveal-delay: ${index * 80}ms`}
+          >
+            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-ink text-sand">
+              <BenefitIcon name={feature.icon} />
+            </span>
+            <div class="mt-2 min-w-0 wide:mt-0 wide:flex-1">
+              <p class="type-label">{feature.title}</p>
+              <p class="type-body mt-1.5 text-muted">{feature.sub}</p>
+            </div>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  {/* ------------------------------------------------- newsletter */}
+  <section class="section">
+    <div class="wrap max-w-3xl text-center">
+      <div class="reveal" data-reveal>
+        <h2 class="type-title">{t("home.newsletterTitle")}</h2>
+        <p class="type-body mx-auto mt-4 max-w-xl text-muted">
+          {t("home.newsletterSub")}
+        </p>
+      </div>
+      <div class="mt-8">
+        <Newsletter client:visible locale={locale} />
+      </div>
+    </div>
+  </section>
+</Layout>

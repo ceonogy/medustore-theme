@@ -1,0 +1,101 @@
+---
+import { useTranslations } from "@i18n";
+import {
+  resolveCanonical,
+  type CatalogState,
+  type PageType,
+} from "@lib/utils/canonical-query";
+
+interface Props {
+  basePath: string;
+  pageType: PageType;
+  state: CatalogState;
+  page: number;
+  pageCount: number;
+}
+
+const { basePath, pageType, state, page, pageCount } = Astro.props;
+const { locale } = Astro.locals;
+const t = useTranslations(locale);
+
+const hrefFor = (target: number): string => {
+  const destination = resolveCanonical({
+    pageType,
+    path: basePath,
+    state: { ...state, page: target > 1 ? target : null },
+  });
+  return `${destination.path}${destination.search}`;
+};
+
+/** Whole run when short, otherwise first · window · last. */
+const pageNumbers = (): (number | "gap")[] => {
+  if (pageCount <= 7) return Array.from({ length: pageCount }, (_, i) => i + 1);
+
+  const candidates = [1, page - 1, page, page + 1, pageCount]
+    .filter((n) => n >= 1 && n <= pageCount)
+    .filter((n, index, all) => all.indexOf(n) === index)
+    .sort((a, b) => a - b);
+
+  const numbers: (number | "gap")[] = [];
+  candidates.forEach((number, index) => {
+    const previous = candidates[index - 1];
+    if (index > 0 && previous !== undefined && number - previous > 1) {
+      numbers.push("gap");
+    }
+    numbers.push(number);
+  });
+  return numbers;
+};
+
+const numbers = pageCount > 1 ? pageNumbers() : [];
+---
+
+{
+  pageCount > 1 && (
+    <nav
+      aria-label={t("products.pagination.label")}
+      class="mt-10 flex flex-wrap items-center justify-center gap-2"
+    >
+      {page > 1 && (
+        <a
+          href={hrefFor(page - 1)}
+          rel="prev"
+          class="flex min-h-11 items-center rounded-full border border-gray-300 px-4 text-sm transition-colors hover:bg-gray-100"
+        >
+          {t("products.pagination.previous")}
+        </a>
+      )}
+
+      {numbers.map((number) =>
+        number === "gap" ? (
+          <span aria-hidden="true" class="px-1 text-sm text-gray-400">
+            &hellip;
+          </span>
+        ) : (
+          <a
+            href={hrefFor(number)}
+            aria-current={number === page ? "page" : undefined}
+            aria-label={`${t("products.pagination.page")} ${number}`}
+            class={`flex min-h-11 min-w-11 items-center justify-center rounded-full border px-3 text-sm transition-colors ${
+              number === page
+                ? "border-black bg-black text-white"
+                : "border-gray-300 text-black hover:bg-gray-100"
+            }`}
+          >
+            {number}
+          </a>
+        ),
+      )}
+
+      {page < pageCount && (
+        <a
+          href={hrefFor(page + 1)}
+          rel="next"
+          class="flex min-h-11 items-center rounded-full border border-gray-300 px-4 text-sm transition-colors hover:bg-gray-100"
+        >
+          {t("products.pagination.next")}
+        </a>
+      )}
+    </nav>
+  )
+}

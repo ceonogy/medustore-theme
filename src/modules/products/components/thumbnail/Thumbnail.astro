@@ -1,0 +1,37 @@
+---
+import { Image } from "astro:assets";
+import PlaceholderImage from "./PlaceholderImage.astro";
+
+interface Props {
+  imageUrl?: string;
+  title: string;
+  priority?: boolean;
+}
+
+const { imageUrl, title, priority = false } = Astro.props;
+---
+
+<div
+  class="hover:shadow-sm ease-in-out duration-200 h-full flex items-center justify-center"
+>
+  <div class="overflow-hidden rounded-xl">
+    {
+      imageUrl ? (
+        <Image
+          src={imageUrl}
+          width={512}
+          height={640}
+          alt={title}
+          widths={[256, 384, 512]}
+          sizes="(max-width: 768px) 50vw, (max-width: 1536px) 33vw, 25vw"
+          format="webp"
+          quality={45}
+          loading={priority ? "eager" : "lazy"}
+          fetchpriority={priority ? "high" : "auto"}
+        />
+      ) : (
+        <PlaceholderImage size={24} />
+      )
+    }
+  </div>
+</div>

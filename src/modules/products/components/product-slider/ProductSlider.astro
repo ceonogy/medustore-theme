@@ -1,0 +1,477 @@
+---
+import type { HttpTypes } from "@medusajs/types";
+import { useTranslations } from "@i18n";
+import ProductPreview from "@modules/products/components/product-preview/ProductPreview.astro";
+
+interface Props {
+  products: HttpTypes.StoreProduct[];
+  /** Accessible name for the list, e.g. the promotion title. */
+  label: string;
+  /** Milliseconds between automatic slides (0 disables autoplay). */
+  autoSlideMs?: number;
+}
+
+const { products, label, autoSlideMs = 6000 } = Astro.props;
+const { locale } = Astro.locals;
+const t = useTranslations(locale);
+---
+
+{
+  products.length > 0 && (
+    <div
+      class="product-slider relative min-w-0 w-full"
+      data-product-slider
+      data-autoplay={String(autoSlideMs)}
+    >
+      <ul
+        aria-label={label}
+        class="flex min-w-0 w-full max-w-full cursor-grab snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain pb-2 [scrollbar-width:none] select-none [&::-webkit-scrollbar]:hidden"
+        data-slider-track
+      >
+        {products.map((product, index) => (
+          <li
+            data-slider-item
+            class="w-[72%] shrink-0 snap-start tablet:w-[38%] lg:w-[31%] xl:w-[30%]"
+          >
+            <ProductPreview
+              handle={product.handle}
+              variants={product.variants ?? []}
+              thumbnailUrl={product.thumbnail ?? undefined}
+              imageUrl={product.images?.[0]?.url}
+              title={product.title}
+              priority={index < 2}
+            />
+          </li>
+        ))}
+      </ul>
+
+      {products.length > 1 && (
+        <div
+          data-slider-controls
+          class="mt-4 flex items-center justify-end gap-2"
+        >
+          <button
+            type="button"
+            data-slider-prev
+            aria-label={t("promotions.slider.prev")}
+            class="flex h-9 w-9 items-center justify-center rounded-full border border-line bg-paper text-ink transition-colors hover:border-ink hover:bg-ink hover:text-paper"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M10 3L5 8l5 5"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+          <button
+            type="button"
+            data-slider-next
+            aria-label={t("promotions.slider.next")}
+            class="flex h-9 w-9 items-center justify-center rounded-full border border-line bg-paper text-ink transition-colors hover:border-ink hover:bg-ink hover:text-paper"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M6 3l5 5-5 5"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+<script>
+  // A tiny carousel engine shared by every promotion slider on the page:
+  //   • rAF + eased scrolling (smoother than a plain smooth-scroll jump)
+  //   • autoplay every `data-autoplay` ms, wrapping at the end
+  //   • native touch swipe (scroll-snap handles the snapping)
+  //   • pointer drag with a mouse, without breaking link clicks
+  //   • autoplay pauses on hover, focus, drag, off-screen, hidden tab and
+  //     prefers-reduced-motion
+  //   • `overscroll-x-contain` keeps horizontal scrolling inside the track
+
+  interface SliderState {
+    timer: number | null;
+    resumeTimer: number | null;
+    frame: number | null;
+    paused: boolean;
+    visible: boolean;
+    hidden: boolean;
+    dragging: boolean;
+    autoMs: number;
+    reduceMotion: boolean;
+    observer: IntersectionObserver | null;
+  }
+
+  const states = new WeakMap<HTMLElement, SliderState>();
+  const roots = new Set<HTMLElement>();
+
+  const easeInOutCubic = (t: number) =>
+    t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+  const maxScroll = (track: HTMLElement) =>
+    Math.max(0, track.scrollWidth - track.clientWidth);
+
+  const stepSize = (track: HTMLElement) => {
+    const first = track.querySelector<HTMLElement>("[data-slider-item]");
+    const gap = Number.parseFloat(getComputedStyle(track).columnGap || "0");
+    const width = first?.getBoundingClientRect().width ?? track.clientWidth;
+    return Math.max(width + (Number.isFinite(gap) ? gap : 0), 1);
+  };
+
+  const animateTo = (
+    track: HTMLElement,
+    state: SliderState,
+    target: number,
+  ) => {
+    if (state.frame !== null) cancelAnimationFrame(state.frame);
+    const clamped = Math.max(0, Math.min(maxScroll(track), target));
+    const start = track.scrollLeft;
+    const distance = clamped - start;
+    if (Math.abs(distance) < 1) return;
+
+    if (state.reduceMotion) {
+      track.scrollLeft = clamped;
+      return;
+    }
+
+    const duration = Math.min(650, Math.max(300, Math.abs(distance) * 0.45));
+    const startedAt = performance.now();
+
+    // Scroll-snap fights a frame-by-frame animation; release it while the
+    // eased rAF runs, then restore so touch swipes keep snapping.
+    track.style.scrollSnapType = "none";
+
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / duration);
+      track.scrollLeft = start + distance * easeInOutCubic(progress);
+      if (progress < 1) {
+        state.frame = requestAnimationFrame(tick);
+      } else {
+        state.frame = null;
+        track.style.scrollSnapType = "";
+      }
+    };
+    state.frame = requestAnimationFrame(tick);
+  };
+
+  const releaseSnap = (track: HTMLElement) => {
+    track.style.scrollSnapType = "";
+  };
+
+  const go = (
+    root: HTMLElement,
+    track: HTMLElement,
+    state: SliderState,
+    direction: 1 | -1,
+  ) => {
+    const max = maxScroll(track);
+    if (max <= 1) return;
+
+    const step = stepSize(track);
+    let target = track.scrollLeft + direction * step;
+    // Wrap instead of dead-ending: next from the end → start, prev from the
+    // start → end. Keeps autoplay looping and both arrows useful.
+    if (direction > 0 && track.scrollLeft >= max - 2) target = 0;
+    if (direction < 0 && track.scrollLeft <= 2) target = max;
+    animateTo(track, state, target);
+  };
+
+  const stopTimer = (state: SliderState) => {
+    if (state.timer !== null) {
+      window.clearInterval(state.timer);
+      state.timer = null;
+    }
+  };
+
+  const refresh = (
+    root: HTMLElement,
+    track: HTMLElement,
+    state: SliderState,
+  ) => {
+    const scrollable = track.scrollWidth > track.clientWidth + 4;
+
+    // Arrows only make sense while the track actually overflows (four cards
+    // can fit on a wide desktop, where they would otherwise be dead buttons).
+    const controls = root.querySelector<HTMLElement>("[data-slider-controls]");
+    if (controls) controls.style.display = scrollable ? "" : "none";
+
+    const shouldPlay =
+      state.autoMs > 0 &&
+      !state.reduceMotion &&
+      !state.paused &&
+      !state.dragging &&
+      state.visible &&
+      !state.hidden &&
+      scrollable;
+
+    if (!shouldPlay) {
+      stopTimer(state);
+      return;
+    }
+    if (state.timer !== null) return;
+
+    state.timer = window.setInterval(() => {
+      if (!root.isConnected) {
+        stopTimer(state);
+        return;
+      }
+      go(root, track, state, 1);
+    }, state.autoMs);
+  };
+
+  /** Pause autoplay for a while after a manual interaction. */
+  const pauseFor = (
+    root: HTMLElement,
+    track: HTMLElement,
+    state: SliderState,
+    ms: number,
+  ) => {
+    state.paused = true;
+    refresh(root, track, state);
+    if (state.resumeTimer !== null) window.clearTimeout(state.resumeTimer);
+    state.resumeTimer = window.setTimeout(() => {
+      state.resumeTimer = null;
+      state.paused = root.contains(document.activeElement);
+      refresh(root, track, state);
+    }, ms);
+  };
+
+  const cancelFrame = (state: SliderState) => {
+    if (state.frame !== null) {
+      cancelAnimationFrame(state.frame);
+      state.frame = null;
+    }
+  };
+
+  const setup = (root: HTMLElement) => {
+    if (states.has(root)) return;
+    const track = root.querySelector<HTMLElement>("[data-slider-track]");
+    if (!track) return;
+
+    const state: SliderState = {
+      timer: null,
+      resumeTimer: null,
+      frame: null,
+      paused: false,
+      visible: true,
+      hidden: document.hidden,
+      dragging: false,
+      autoMs: Number(root.dataset.autoplay || 0),
+      reduceMotion: window.matchMedia("(prefers-reduced-motion: reduce)")
+        .matches,
+      observer: null,
+    };
+    states.set(root, state);
+    roots.add(root);
+
+    const prev = root.querySelector<HTMLButtonElement>("[data-slider-prev]");
+    const next = root.querySelector<HTMLButtonElement>("[data-slider-next]");
+
+    prev?.addEventListener("click", (event) => {
+      if ((event as MouseEvent).detail > 0) {
+        (event.currentTarget as HTMLElement).blur();
+      }
+      pauseFor(root, track, state, 5000);
+      go(root, track, state, -1);
+    });
+    next?.addEventListener("click", (event) => {
+      if ((event as MouseEvent).detail > 0) {
+        (event.currentTarget as HTMLElement).blur();
+      }
+      pauseFor(root, track, state, 5000);
+      go(root, track, state, 1);
+    });
+
+    // --- autoplay pause conditions ----------------------------------------
+    // Hovering does NOT pause: the slider is the page's main motion and a
+    // resting cursor used to freeze it, which read as "autoplay is broken".
+    // It pauses only for intentional interaction — keyboard focus, dragging,
+    // touch/wheel — and for reduced motion, hidden tabs and off-screen use.
+    root.addEventListener("focusin", () => {
+      state.paused = true;
+      refresh(root, track, state);
+    });
+    root.addEventListener("focusout", (event) => {
+      const to = (event as FocusEvent).relatedTarget;
+      if (!(to instanceof Node) || !root.contains(to)) {
+        state.paused = false;
+        refresh(root, track, state);
+      }
+    });
+
+    if ("IntersectionObserver" in window) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          state.visible = entries.some((entry) => entry.isIntersecting);
+          refresh(root, track, state);
+        },
+        { threshold: 0.15 },
+      );
+      observer.observe(root);
+      state.observer = observer;
+    }
+
+    // --- touch: native swipe, just keep autoplay out of the way -----------
+    track.addEventListener(
+      "touchstart",
+      () => {
+        releaseSnap(track);
+        cancelFrame(state);
+        pauseFor(root, track, state, 6000);
+      },
+      { passive: true },
+    );
+    track.addEventListener(
+      "wheel",
+      (event) => {
+        if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
+          releaseSnap(track);
+          cancelFrame(state);
+          pauseFor(root, track, state, 4000);
+        }
+      },
+      { passive: true },
+    );
+
+    // --- mouse drag -------------------------------------------------------
+    let pointerId: number | null = null;
+    let startX = 0;
+    let startLeft = 0;
+    let moved = 0;
+
+    track.addEventListener("pointerdown", (event) => {
+      if (event.pointerType !== "mouse") return;
+      if (event.button !== 0) return;
+      // Freeze snapping while the pointer drags, restore it on release so the
+      // track settles on the nearest card.
+      track.style.scrollSnapType = "none";
+      cancelFrame(state);
+      state.dragging = true;
+      state.paused = true;
+      pointerId = event.pointerId;
+      startX = event.clientX;
+      startLeft = track.scrollLeft;
+      moved = 0;
+      track.classList.add("cursor-grabbing");
+      track.setPointerCapture?.(pointerId);
+      refresh(root, track, state);
+    });
+
+    track.addEventListener("pointermove", (event) => {
+      if (!state.dragging || pointerId !== event.pointerId) return;
+      const dx = event.clientX - startX;
+      moved = Math.max(moved, Math.abs(dx));
+      track.scrollLeft = startLeft - dx;
+    });
+
+    const endDrag = (event: PointerEvent) => {
+      if (!state.dragging || pointerId !== event.pointerId) return;
+      state.dragging = false;
+      pointerId = null;
+      track.classList.remove("cursor-grabbing");
+      // Restoring the CSS snap turns the drag end into a settle on the
+      // nearest card (same feel as a native swipe).
+      track.style.scrollSnapType = "";
+      if (track.hasPointerCapture?.(event.pointerId)) {
+        track.releasePointerCapture(event.pointerId);
+      }
+      // A drag must not turn into a card click.
+      if (moved > 8) {
+        root.dataset.suppressClickUntil = String(Date.now() + 300);
+        pauseFor(root, track, state, 4000);
+      } else {
+        state.paused = false;
+        refresh(root, track, state);
+      }
+    };
+
+    track.addEventListener("pointerup", endDrag);
+    track.addEventListener("pointercancel", endDrag);
+    track.addEventListener("dragstart", (event) => event.preventDefault());
+    track.addEventListener(
+      "click",
+      (event) => {
+        const until = Number(root.dataset.suppressClickUntil || 0);
+        if (Date.now() < until) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      },
+      true,
+    );
+
+    refresh(root, track, state);
+  };
+
+  const init = () => {
+    document
+      .querySelectorAll<HTMLElement>("[data-product-slider]")
+      .forEach(setup);
+  };
+
+  const teardown = () => {
+    for (const root of roots) {
+      const state = states.get(root);
+      if (!state) continue;
+      stopTimer(state);
+      if (state.resumeTimer !== null) window.clearTimeout(state.resumeTimer);
+      cancelFrame(state);
+      state.observer?.disconnect();
+      states.delete(root);
+    }
+    roots.clear();
+  };
+
+  // One visibility listener for every slider keeps hidden tabs from sliding
+  // in the background without adding a listener per component instance.
+  document.addEventListener("visibilitychange", () => {
+    for (const root of roots) {
+      const state = states.get(root);
+      const track = root.querySelector<HTMLElement>("[data-slider-track]");
+      if (!state || !track) continue;
+      state.hidden = document.hidden;
+      refresh(root, track, state);
+    }
+  });
+
+  // Re-evaluate scrollability after a viewport change so arrows/autoplay
+  // switch off when the cards fit and on again on narrow screens.
+  let resizeFrame = 0;
+  window.addEventListener("resize", () => {
+    if (resizeFrame) cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(() => {
+      resizeFrame = 0;
+      for (const root of roots) {
+        const state = states.get(root);
+        const track = root.querySelector<HTMLElement>("[data-slider-track]");
+        if (!state || !track) continue;
+        refresh(root, track, state);
+      }
+    });
+  });
+
+  document.addEventListener("astro:page-load", init);
+  document.addEventListener("astro:before-swap", teardown);
+  init();
+</script>

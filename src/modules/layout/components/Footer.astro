@@ -1,0 +1,91 @@
+---
+import { localizePath, useTranslations, type Locale } from "@i18n";
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = useTranslations(locale);
+const currentYear = new Date().getFullYear();
+
+const shopLinks = [
+  { href: localizePath(locale, "/"), label: t("footer.home") },
+  { href: localizePath(locale, "/store"), label: t("footer.allProducts") },
+  { href: localizePath(locale, "/cart"), label: t("footer.cart") },
+  { href: localizePath(locale, "/checkout"), label: t("footer.checkout") },
+];
+
+const companyLinks = [
+  { href: localizePath(locale, "/privacy"), label: t("footer.privacy") },
+  { href: localizePath(locale, "/terms"), label: t("footer.terms") },
+];
+---
+
+<footer class="bg-ink text-sand">
+  <div class="wrap section">
+    <div
+      class="grid gap-10 tablet:grid-cols-2 wide:grid-cols-[1.6fr_1fr_1fr_1fr]"
+    >
+      <section class="max-w-md">
+        <p class="type-kicker text-sand/60">{t("footer.eyebrow")}</p>
+        <h2 class="mt-4 text-2xl font-medium leading-snug">
+          {t("footer.headline")}
+        </h2>
+        <p class="type-body mt-4 leading-6 text-sand/70">
+          {t("footer.description")}
+        </p>
+        <a class="btn btn-light mt-6" href={localizePath(locale, "/store")}>
+          {t("footer.startShopping")}
+        </a>
+      </section>
+
+      <nav aria-label={t("footer.navShop")}>
+        <p class="type-label">{t("footer.shop")}</p>
+        <ul class="mt-4 space-y-3">
+          {
+            shopLinks.map((link) => (
+              <li>
+                <a
+                  class="type-body text-sand/70 transition-colors hover:text-sand"
+                  href={link.href}
+                >
+                  {link.label}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+
+      <nav aria-label={t("footer.navCompany")}>
+        <p class="type-label">{t("footer.company")}</p>
+        <ul class="mt-4 space-y-3">
+          {
+            companyLinks.map((link) => (
+              <li>
+                <a
+                  class="type-body text-sand/70 transition-colors hover:text-sand"
+                  href={link.href}
+                >
+                  {link.label}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+
+      <section>
+        <p class="type-label">{t("footer.customerCare")}</p>
+        <p class="type-body mt-4 leading-6 text-sand/70">
+          {t("footer.customerCareText")}
+        </p>
+      </section>
+    </div>
+
+    <p class="type-body mt-12 border-t border-white/10 pt-6 text-sand/70">
+      {t("footer.copyright", { year: currentYear })}
+    </p>
+  </div>
+</footer>

@@ -1,0 +1,16 @@
+---
+import { useTranslations } from "@i18n";
+import Layout from "@layouts/Layout.astro";
+import { ForgotPasswordForm } from "@modules/account/components/ForgotPasswordForm";
+
+const { locale } = Astro.locals;
+const t = useTranslations(locale);
+---
+
+<Layout
+  title={t("account.forgot.pageTitle")}
+  description={t("account.forgot.pageDescription")}
+  noindex
+>
+  <ForgotPasswordForm client:load locale={locale} />
+</Layout>

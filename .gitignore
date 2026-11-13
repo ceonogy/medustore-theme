@@ -1,0 +1,58 @@
+# build output
+dist/
+
+# generated types
+.astro/
+
+# dependencies
+node_modules/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# environment variables
+.env
+.env.production
+
+# backend (Medusa) — secrets, deps and runtime/build artifacts (source is tracked)
+backend/.env
+backend/.env.production
+backend/node_modules/
+backend/.medusa/
+backend/.turbo/
+backend/dist/
+backend/build/
+backend/.cache/
+backend/static/
+backend/uploads/
+backend/tsconfig.tsbuildinfo
+
+# server-side caches (taxonomy snapshots, handle history)
+.cache/
+
+# machine-specific tool config (see config.example.json)
+tools/admin-vi-i18n/config.json
+
+# macOS-specific files
+.DS_Store
+
+# jetbrains setting folder
+.idea/
+
+# yarn
+.yarn/install-state.gz
+
+# cloudflare
+.wrangler/
+
+# ai
+# Skills and workflows in .ai/ are tracked in git so every task worktree
+# gets them from the checkout. Cezar runtime is excluded via .ai/cezar/.gitignore.
+.ai/cezar/drafts/
+.ai/cezar/ui-state.json
+.ai/qa/artifacts_*/
+.ai/qa/test-env.json
+.ai/qa/test-env.env

@@ -1,0 +1,1088 @@
+@import "tailwindcss";
+
+/* ============================================================================
+   Design tokens — read out of the reference template's published theme:
+   Albert Sans, black on white with warm sand accents, three breakpoints
+   (810 / 1440) and the template's 72–80px section rhythm.
+   ========================================================================== */
+@theme {
+  --font-sans:
+    "Albert Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+
+  --color-ink: #000000;
+  --color-paper: #ffffff;
+  --color-fog: #f4f4f4;
+  --color-sand: #f0ebe7;
+  --color-tan: #d1b7a4;
+  --color-muted: #605f5f;
+  --color-sale: #ff7b54;
+  --color-stock: #0fa443;
+  --color-line: #e6e1dc;
+
+  /* the template's breakpoints: phone ≤809 · tablet 810–1439 · desktop ≥1440 */
+  --breakpoint-tablet: 810px;
+  --breakpoint-wide: 1440px;
+
+  --ease-reveal: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    /* Reserve the classic-scrollbar gutter on every page. Short pages (e.g.
+       /cart) are not scrollable while long ones are, so on Windows/Linux the
+       ~15px scrollbar appears and disappears between navigations and the
+       centered 1440px wrap (brand included) shifts in/out by half of it.
+       Overlay scrollbars (macOS/mobile) ignore this property — no effect. */
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.5;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: var(--color-ink);
+    color: var(--color-paper);
+  }
+
+  /* Buttons are clickable by default. Browsers leave <button> on the
+     arrow cursor, which reads as dead pixels on every header toggle,
+     drawer close and icon button; only a genuinely disabled control
+     keeps the not-allowed cue. */
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@layer components {
+  /* ---------------------------------------------------------------- layout */
+  /* Framer "Container": max-width 1440, 16px gutters on phone, 24px from 810 */
+  .wrap {
+    margin-inline: auto;
+    width: 100%;
+    max-width: 1440px;
+    padding-inline: 16px;
+  }
+
+  @media (min-width: 810px) {
+    .wrap {
+      padding-inline: 24px;
+    }
+  }
+
+  /* section rhythm: 72px phone / 80px tablet+ (template's padding blocks) */
+  .section {
+    padding-block: 72px;
+  }
+
+  @media (min-width: 810px) {
+    .section {
+      padding-block: 80px;
+    }
+  }
+
+  /* ------------------------------------------------------------ typography */
+  /* Framer heading presets, mirrored: 36 → 42 → 54 (w700, lh 1.2) */
+  .type-display {
+    font-size: 36px;
+    line-height: 1.2;
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  @media (min-width: 810px) {
+    .type-display {
+      font-size: 42px;
+    }
+  }
+
+  @media (min-width: 1440px) {
+    .type-display {
+      font-size: 54px;
+    }
+  }
+
+  /* section heading: 28 → 34 → 42 (w500, centred) */
+  .type-title {
+    font-size: 28px;
+    line-height: 1.2;
+    font-weight: 500;
+    text-align: center;
+  }
+
+  @media (min-width: 810px) {
+    .type-title {
+      font-size: 34px;
+    }
+  }
+
+  @media (min-width: 1440px) {
+    .type-title {
+      font-size: 42px;
+    }
+  }
+
+  .type-label {
+    font-size: 18px;
+    line-height: 1.4;
+    font-weight: 500;
+  }
+
+  .type-body {
+    font-size: 14px;
+    line-height: 1.4;
+    font-weight: 400;
+  }
+
+  /* small uppercase kicker, e.g. "Wear like a Pro" */
+  .type-kicker {
+    font-size: 13px;
+    line-height: 1.4;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  /* --------------------------------------------------------------- buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 48px;
+    padding-inline: 24px;
+    border-radius: 12px;
+    background-color: var(--color-ink);
+    color: var(--color-paper);
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+      transform 0.3s var(--ease-reveal),
+      background-color 0.3s var(--ease-reveal),
+      color 0.3s var(--ease-reveal);
+  }
+
+  .btn:hover {
+    transform: translateY(-2px);
+  }
+
+  .btn-ghost {
+    background-color: transparent;
+    color: var(--color-ink);
+    box-shadow: inset 0 0 0 1px var(--color-ink);
+  }
+
+  .btn-ghost:hover {
+    background-color: var(--color-ink);
+    color: var(--color-paper);
+  }
+
+  .btn-light {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+  }
+
+  /* ---------------------------------------------------------- product card */
+  .product-media {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 1;
+    border-radius: 12px;
+    background-color: var(--color-fog);
+  }
+
+  .product-media > img {
+    transition: transform 0.6s var(--ease-reveal);
+  }
+
+  .product:hover .product-media > img,
+  .product:focus-visible .product-media > img {
+    transform: scale(1.04);
+  }
+
+  /* hover CTA slides up over the image, as "VIEW PRODUCT" does in the source */
+  .product-cta {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    background-color: var(--color-ink);
+    color: var(--color-paper);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    transform: translateY(100%);
+    transition: transform 0.35s var(--ease-reveal);
+  }
+
+  .product:hover .product-cta,
+  .product:focus-visible .product-cta {
+    transform: none;
+  }
+
+  /* ------------------------------------------------------------- form field */
+  .field {
+    width: 100%;
+    min-height: 48px;
+    border-radius: 12px;
+    border: 1px solid var(--color-line);
+    background-color: var(--color-paper);
+    padding-inline: 16px;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s var(--ease-reveal);
+  }
+
+  .field:focus {
+    border-color: var(--color-ink);
+  }
+
+  /* ---------------------------------------------------------- scroll reveal */
+  /* Mirrors the template's Framer "Appear" effect: nodes start at
+     opacity 0.001 with translateY(30px) (or translateX(-40px) for the
+     left-entering hero copy) and settle when scrolled into view.
+
+     The hidden state is scoped to `.has-reveal`, a class an inline head
+     script adds before first paint — so with JS disabled or broken the
+     content is simply visible instead of stuck at opacity 0. */
+  .has-reveal .reveal {
+    opacity: 0.001;
+    transform: translateY(30px);
+    transition:
+      opacity 0.7s var(--ease-reveal),
+      transform 0.7s var(--ease-reveal);
+    transition-delay: var(--reveal-delay, 0s);
+    will-change: transform, opacity;
+  }
+
+  .has-reveal .reveal-left {
+    transform: translateX(-40px);
+  }
+
+  .has-reveal .reveal-nav {
+    transform: translateY(-30px);
+  }
+
+  .has-reveal .reveal.is-in {
+    opacity: 1;
+    transform: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .has-reveal .reveal,
+    .has-reveal .reveal-left,
+    .has-reveal .reveal-nav {
+      transform: none;
+      transition: opacity 0.5s ease;
+      transition-delay: var(--reveal-delay, 0s);
+      will-change: auto;
+    }
+
+    .has-reveal .reveal.is-in {
+      opacity: 1;
+      transform: none;
+    }
+
+    /* Spatial hovers are dropped, not snapped: with `transition: none`
+       the product zoom and the CTA slide JUMP into place (a transform
+       with no easing reads as a jolt). The zoom simply doesn't happen;
+       the CTA cross-fades in instead of sliding. `.btn` is deliberately
+       absent — its 2px eased lift is a micro-hover, and killing its
+       transition made the auth submit button snap on hover (user
+       report, 2026-10-27). */
+    .product-media > img,
+    .product:hover .product-media > img,
+    .product:focus-visible .product-media > img {
+      transition: none;
+      transform: none;
+    }
+
+    .product-cta {
+      transform: none;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .product:hover .product-cta,
+    .product:focus-visible .product-cta {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+
+  /* CTA arrow nudges right on hover; the button keeps the design
+     system's lift plus the page's darken + press utilities. */
+  .hero-cta-arrow {
+    display: inline-block;
+    transition: transform 250ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .btn:hover .hero-cta-arrow {
+    transform: translateX(4px);
+  }
+
+  /* Secondary link: underline draws in left → right on hover/focus. */
+  .hero-link {
+    position: relative;
+    padding-bottom: 5px;
+  }
+
+  .hero-link::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 1px;
+    background-color: currentColor;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .hero-link:hover::after,
+  .hero-link:focus-visible::after {
+    transform: scaleX(1);
+  }
+}
+
+/* ============================================ shop-the-look hotspots
+   Shoppable pins on the lookbook frame. Each spot owns a dot and a
+   product card; the card flips sides via [data-dir] and lifts with
+   --vshift — both measured by the script against the frame so a card
+   can never hang off the image. The card fades without translating;
+   only the dot's pulse rings move, and reduced motion kills those. */
+/* The spot is only a hover/focus group pairing a dot with its card;
+   it has no box of its own, so both children anchor to the frame
+   (--x/--y inherit) and a docked card can hug the frame edge. */
+.hs-dot {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  translate: -50% -50%;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 9999px;
+  cursor: pointer;
+}
+
+.hs-dot::before,
+.hs-dot::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  border: 1px solid rgb(0 0 0 / 0.45);
+  animation: hs-pulse 2.8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.hs-dot::after {
+  animation-delay: 1.4s;
+}
+
+@keyframes hs-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+
+  70%,
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+.hs-dot-core {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: var(--color-paper);
+  border: 1.5px solid var(--color-ink);
+  box-shadow: 0 1px 6px rgb(0 0 0 / 0.2);
+  transition:
+    background-color 220ms ease,
+    scale 220ms ease;
+}
+
+.hs-dot:hover .hs-dot-core,
+.hs-dot:focus-visible .hs-dot-core,
+.hs-spot.is-open .hs-dot-core {
+  background: var(--color-ink);
+  scale: 1.2;
+}
+
+.hs-dot:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 1px;
+}
+
+.hs-card {
+  position: absolute;
+  top: var(--y);
+  left: calc(var(--x) + 10px);
+  width: 236px;
+  padding: 10px;
+  background: var(--color-paper);
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  box-shadow: 0 14px 34px rgb(0 0 0 / 0.14);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(calc(-50% + var(--vshift, 0px))) translateX(4px);
+  transition:
+    opacity 220ms ease,
+    transform 220ms ease,
+    visibility 0s linear 220ms;
+  z-index: 5;
+}
+
+.hs-spot[data-dir="left"] .hs-card {
+  left: auto;
+  right: calc(100% - var(--x) + 10px);
+  transform: translateY(calc(-50% + var(--vshift, 0px))) translateX(-4px);
+}
+
+.hs-spot.is-open .hs-card {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(calc(-50% + var(--vshift, 0px))) translateX(0);
+  transition-delay: 0s;
+}
+
+/* Phone-width frames: when neither side of the dot clears the card,
+   it docks to the bottom edge of the picture instead — still one card
+   at a time, still fully inside the image. */
+.hs-spot.hs-sheet .hs-card {
+  left: 8px;
+  right: 8px;
+  width: auto;
+  top: auto;
+  bottom: 8px;
+  transform: none;
+}
+
+.hs-card-link {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.hs-card-img {
+  width: 52px;
+  height: 65px;
+  flex: none;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--color-sand);
+}
+
+.hs-card-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.hs-card-title {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.hs-card-prices {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.hs-card-was {
+  font-size: 11px;
+  color: var(--color-muted);
+  text-decoration: line-through;
+}
+
+.hs-card-price {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.hs-card-go {
+  margin-left: auto;
+  font-size: 14px;
+  color: var(--color-muted);
+  transition: translate 220ms ease;
+}
+
+.hs-card-link:hover .hs-card-go {
+  translate: 3px 0;
+}
+
+/* Itemized set list under the lookbook copy: numbered editorial rows
+   mirroring the pins, so the text column is content, not air. */
+.hs-look-row {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1.1fr) minmax(0, 1fr) 176px;
+  gap: 14px;
+  align-items: baseline;
+  padding-block: 13px;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.hs-look-idx {
+  width: 26px;
+  flex: none;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--color-muted);
+}
+
+.hs-look-name {
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+  transition: text-decoration-color 220ms ease;
+}
+
+/* The first product attribute (Kích cỡ / Chất liệu) sits between the name
+   and the price. Muted so it reads as secondary; one ellipsised line keeps
+   every row on the same height. */
+.hs-look-attr {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--color-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.hs-look-meta {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  justify-self: end;
+  white-space: nowrap;
+}
+
+/* Narrow panels (phones): price stays flush right on the first line, the
+   attribute drops below the title instead of squeezing both onto one row. */
+@media (max-width: 639px) {
+  .hs-look-row {
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "idx name meta"
+      "idx attr attr";
+    row-gap: 3px;
+  }
+
+  .hs-look-idx {
+    grid-area: idx;
+  }
+
+  .hs-look-name {
+    grid-area: name;
+  }
+
+  .hs-look-attr {
+    grid-area: attr;
+    font-size: 12px;
+  }
+
+  .hs-look-meta {
+    grid-area: meta;
+  }
+}
+
+.hs-look-was {
+  font-size: 12px;
+  color: var(--color-muted);
+  text-decoration: line-through;
+}
+
+.hs-look-price {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.hs-look-arrow {
+  color: var(--color-muted);
+  transition: translate 220ms ease;
+}
+
+.hs-look-row:hover .hs-look-arrow {
+  translate: 4px 0;
+}
+
+.hs-look-row:hover .hs-look-name {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Quiet print-grid texture: a fading ink dot field anchored to the
+   section's top-right corner, kept at 8% opacity so it reads as paper
+   grain of a catalogue spread — never as content (pointer-events off). */
+.hs-texture {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: min(420px, 46vw);
+  aspect-ratio: 1;
+  background-image: radial-gradient(var(--color-ink) 1px, transparent 1.4px);
+  background-size: 16px 16px;
+  opacity: 0.08;
+  pointer-events: none;
+  user-select: none;
+  -webkit-mask-image: radial-gradient(
+    ellipse at top right,
+    #000 12%,
+    transparent 70%
+  );
+  mask-image: radial-gradient(ellipse at top right, #000 12%, transparent 70%);
+}
+
+/* ================================================================
+   Hero entrance — UNLAYERED on purpose.
+   Keyframes and animation rules live outside every @layer: layered
+   @keyframes have a history of interop bugs (WebKit resolving
+   animation-name against keyframes declared inside a layer), and
+   nothing here needs to compete with utilities — the elements carry
+   no animation utilities of their own. Unlayered also means these
+   rules can never be outranked by something they must not lose to.
+   ================================================================ */
+
+/* ================================================================
+   Homepage hero entrance + micro-interactions — pure CSS: no JS and
+   no animation library. It lives in the global sheet (not an Astro
+   page-style block) so it ships inside the main bundled stylesheet —
+   the one asset every browser demonstrably applies — and follows the
+   convention the scroll-reveal block below already set.
+
+   The entrance is gated by pure CSS state, not by a script: CSS
+   animations run without JavaScript, so the rules below apply
+   unconditionally. Two safety nets restore the static state where
+   an animation could not run anyway: `scripting: none` (JS off at
+   the browser level — never hide content from a visitor who can't
+   run scripts) and `@supports not (animation-name: …)` for engines
+   without keyframe support.
+
+     eyebrow      fade-up        500ms  @   150ms
+     headline L1  masked rise   1050ms  @   400ms
+     headline L2  masked rise   1050ms  @   550ms
+     description  fade-up        700ms  @   800ms
+     CTA row      fade-up        700ms  @   900ms
+     tee visual   veil + slide  1100ms  @   200ms
+     labels       fade-up        600ms  @  1450ms
+
+   Easing: cubic-bezier(0.5, 0, 0.15, 1) — a slow-start, long-landing
+   curve. The originally tried expo-out (0.16,1,0.3,1) front-loaded
+   ~98% of every travel into the first frames, so the entrance read
+   as "everything just appeared"; this curve keeps visible motion
+   across the whole duration. Like the site-wide scroll
+   reveal, every hidden state is scoped under `.has-reveal` — the
+   inline head script that marks JS alive before first paint — so
+   with JS disabled the hero simply renders in its final state.
+   Transform and opacity only: no layout involvement, no CLS.
+   ================================================================ */
+
+@keyframes hero-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+}
+
+@keyframes hero-line-up {
+  from {
+    transform: translateY(120%);
+  }
+}
+
+@keyframes hero-veil {
+  from {
+    opacity: 0;
+    transform: scale(0.99);
+  }
+}
+
+@keyframes hero-tee-in {
+  from {
+    transform: translateX(56px) scale(0.96);
+  }
+}
+
+/* Reduced-motion variant: the same staged entrance as a pure opacity
+   choreography — zero translation or scale (the compromise macOS
+   itself uses: fades are not motion), still clearly visible. */
+@keyframes hero-fade-soft {
+  from {
+    opacity: 0;
+  }
+}
+
+.hero-fade {
+  animation-name: hero-fade-up;
+  animation-duration: var(--hero-dur, 700ms);
+  animation-timing-function: cubic-bezier(0.5, 0, 0.15, 1);
+  animation-delay: var(--hero-delay, 0ms);
+  animation-fill-mode: both;
+}
+
+/* Per-line mask for the headline. The mask carries symmetric padding
+   so stacked Vietnamese diacritics (Ầ above the caps, Ặ above AND
+   below the baseline) never clip while the line rises; matching
+   negative margins keep the layout box — and the type rhythm —
+   exactly where the static design put it. */
+.hero-line {
+  display: block;
+  overflow: hidden;
+  padding-block: 0.2em;
+  margin-block: -0.2em;
+}
+
+.hero-line-in {
+  display: block;
+  will-change: transform;
+  animation-name: hero-line-up;
+  animation-duration: 1050ms;
+  animation-timing-function: cubic-bezier(0.5, 0, 0.15, 1);
+  animation-delay: var(--hero-delay, 0ms);
+  animation-fill-mode: both;
+}
+
+.hero-visual {
+  animation-name: hero-veil;
+  animation-duration: 900ms;
+  animation-timing-function: cubic-bezier(0.5, 0, 0.15, 1);
+  animation-delay: var(--hero-delay, 0ms);
+  animation-fill-mode: both;
+}
+
+.hero-visual-in {
+  animation-name: hero-tee-in;
+  animation-duration: 1100ms;
+  animation-timing-function: cubic-bezier(0.5, 0, 0.15, 1);
+  animation-delay: 200ms;
+  animation-fill-mode: both;
+}
+
+.hero-labels {
+  animation-name: hero-fade-up;
+  animation-duration: var(--hero-dur, 600ms);
+  animation-timing-function: cubic-bezier(0.5, 0, 0.15, 1);
+  animation-delay: var(--hero-delay, 0ms);
+  animation-fill-mode: both;
+}
+
+/* Never hide the hero when an animation could not run anyway. */
+@media (scripting: none) {
+  .hero-fade,
+  .hero-line-in,
+  .hero-visual,
+  .hero-visual-in,
+  .hero-labels {
+    animation: none;
+  }
+}
+
+@supports not (animation-name: hero-probe) {
+  .hero-fade,
+  .hero-line-in,
+  .hero-visual,
+  .hero-visual-in,
+  .hero-labels {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------- hero, reduced motion
+   Deliberately outside @layer components: these rules must outrank the
+   Tailwind utilities (group-hover scale/lift, transition-transform) that
+   would otherwise keep moving things when the visitor asked for less
+   motion. Unlayered CSS beats every layer. */
+@media (prefers-reduced-motion: reduce) {
+  /* The entrance still plays under reduced motion — as a pure
+     opacity choreography with the same stagger: no translation,
+     no scale, nothing spatial. Fades are not motion; the visitor
+     asked for less movement, not for a dead page. */
+  .hero-fade,
+  .hero-labels {
+    animation-name: hero-fade-soft;
+    animation-duration: 450ms;
+  }
+
+  .hero-line-in {
+    animation-name: hero-fade-soft;
+    animation-duration: 550ms;
+  }
+
+  .hero-visual,
+  .hero-visual-in {
+    animation-name: hero-fade-soft;
+    animation-duration: 600ms;
+  }
+
+  .hero-cta-arrow,
+  .hero-link::after {
+    transition: none;
+  }
+
+  .btn:hover .hero-cta-arrow {
+    transform: none;
+  }
+
+  /* Motion-free hover feedback: the tee answers with a short tonal
+     dip (an opacity fade — nothing spatial, so nothing snaps when
+     motion is off) instead of the scale/lift, which would either
+     jump instantly or feel like broken motion. */
+  .hero-tee {
+    will-change: auto;
+    transition: opacity 0.2s linear;
+  }
+
+  .group:hover .hero-tee {
+    scale: 1;
+    translate: none;
+    opacity: 0.9;
+  }
+
+  /* Lookbook hotspots: no pulse rings; cards fade in place — the
+     --vshift clamp stays, it is layout, not motion. */
+  .hs-dot::before,
+  .hs-dot::after {
+    animation: none;
+  }
+
+  .hs-card,
+  .hs-spot[data-dir="left"] .hs-card {
+    transition: opacity 0.2s linear;
+    transform: translateY(calc(-50% + var(--vshift, 0px)));
+  }
+
+  .hs-spot.hs-sheet .hs-card {
+    transition: opacity 0.2s linear;
+    transform: none;
+  }
+}
+
+/* ================================================================
+   Header dropdowns — UNLAYERED, CSS-driven open state. Two panels:
+   #mega-featured ("Nổi Bật" menu) and #mega-collections ("Bộ sưu
+   tập"). Visibility must never depend on hydration: a panel opens on
+   :hover / :focus-visible of its own trigger even when the island's
+   JS is blocked, mid-restart, or still loading. React only owns
+   aria-expanded and the Escape lock (data-mega-locked, cleared on
+   the next trigger mouseenter). `:has()` sits inside the baseline
+   this Tailwind v4 theme already requires.
+   ================================================================ */
+#mega-featured,
+#mega-collections {
+  opacity: 0;
+  visibility: hidden;
+  translate: 0 -8px;
+  /* Close defaults: 180ms grace + 0.22s fade. The open rule (below) and
+     the switch rule retune the same transition through these custom
+     properties — instead of redeclaring `transition` — so the
+     prefers-reduced-motion block, which replaces `transition` outright,
+     keeps winning. */
+  transition:
+    opacity var(--mega-dur, 0.22s) var(--mega-ease, ease)
+      var(--mega-delay, 0.18s),
+    translate var(--mega-dur, 0.22s) var(--mega-ease, ease)
+      var(--mega-delay, 0.18s),
+    visibility 0s linear var(--mega-vis, 0.4s);
+}
+
+header:not([data-mega-locked]):has([data-mega-trigger="featured"]:hover)
+  #mega-featured,
+header:not([data-mega-locked]):has([data-mega-trigger="featured"]:focus-visible)
+  #mega-featured,
+header:not([data-mega-locked]) #mega-featured:hover,
+header:not([data-mega-locked]) #mega-featured:focus-within,
+header:not([data-mega-locked])[data-mega-open="featured"] #mega-featured,
+header:not([data-mega-locked]):has([data-mega-trigger="collections"]:hover)
+  #mega-collections,
+header:not([data-mega-locked]):has(
+    [data-mega-trigger="collections"]:focus-visible
+  )
+  #mega-collections,
+header:not([data-mega-locked]) #mega-collections:hover,
+header:not([data-mega-locked]) #mega-collections:focus-within,
+header:not([data-mega-locked])[data-mega-open="collections"] #mega-collections {
+  opacity: 1;
+  visibility: visible;
+  translate: 0 0;
+  /* Paint the active panel above a still-fading one so a switch never
+     shows the outgoing panel on top (both are full-width and overlap). */
+  z-index: 1;
+  /* Open (hover in / click / keyboard): a longer, softer ease than the
+     close. `transition-delay: 0s` is a concrete override (it beats the
+     base graces and keeps the panel interactive the instant it opens,
+     including under prefers-reduced-motion). */
+  --mega-dur: 0.28s;
+  --mega-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: 0s;
+}
+
+/* Direct-interaction wins the stacking order. data-mega-open is mirrored by
+   React in an effect *after* paint, so for the first frames of a trigger
+   switch the outgoing panel still matches its `[data-mega-open]` rule while
+   the incoming one already matches its `:hover` rule: both are "open" and,
+   with equal z-index, the later-DOM panel (#mega-collections) paints on top
+   and steals the pointer — descending into the visible menu then hit-tested
+   the *old* panel and switched back (probe: /tmp/opencode/qa/
+   probe-nav-zorder-window). Give the trigger/panel-hovered and focus cases a
+   higher z-index so the menu the pointer is actually on always wins; the
+   attribute-only case keeps z-index 1. */
+header:not([data-mega-locked]):has([data-mega-trigger="featured"]:hover)
+  #mega-featured,
+header:not([data-mega-locked]):has([data-mega-trigger="featured"]:focus-visible)
+  #mega-featured,
+header:not([data-mega-locked]) #mega-featured:hover,
+header:not([data-mega-locked]) #mega-featured:focus-within,
+header:not([data-mega-locked]):has([data-mega-trigger="collections"]:hover)
+  #mega-collections,
+header:not([data-mega-locked]):has(
+    [data-mega-trigger="collections"]:focus-visible
+  )
+  #mega-collections,
+header:not([data-mega-locked]) #mega-collections:hover,
+header:not([data-mega-locked]) #mega-collections:focus-within {
+  z-index: 2;
+}
+
+/* Switching menus — hover "Bộ sưu tập" then "Nổi Bật" (or click/keyboard):
+   the outgoing panel must not sit on top of the incoming one for the whole
+   close grace. When one panel is the active one (data-mega-open, with JS)
+   or its trigger is hovered (no-JS), the *other* panel drops its 180ms
+   grace and fades out with the incoming panel instead. Selectors mirror the
+   open rule above; this block must come after it. Under reduced motion the
+   base `transition` is replaced wholesale, so these vars are inert and the
+   swap is instant. */
+header:not([data-mega-locked])[data-mega-open="featured"] #mega-collections,
+header:not([data-mega-locked])[data-mega-open="collections"] #mega-featured,
+header:not([data-mega-locked]):has([data-mega-trigger="featured"]:hover)
+  #mega-collections,
+header:not([data-mega-locked]):has([data-mega-trigger="collections"]:hover)
+  #mega-featured {
+  --mega-dur: 0.14s;
+  --mega-ease: ease;
+  --mega-delay: 0s;
+  --mega-vis: 0.14s;
+}
+
+/* Hover bridge: a transparent extension below each trigger so the
+   cursor crossing the header's bottom edge (trigger → panel) never
+   stops matching :hover — the crossing cannot blink the panel shut
+   at any cursor speed, including under prefers-reduced-motion where
+   `transition: none` used to hide it instantly (reproduced by
+   /tmp/opencode/qa/probe-hover-gap). The pseudo exists only while
+   the trigger is hovered (and only on hover-capable pointers), so
+   it never blocks page content when the menu is closed. The 40px
+   height covers the widest trigger→header-edge gap (h-20); the
+   overlap with the panel's top is harmless — the panel paints above
+   it and keeps :hover itself. */
+@media (hover: hover) {
+  [data-mega-trigger] {
+    position: relative;
+  }
+  [data-mega-trigger]:hover::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: 100%;
+    height: 2.5rem;
+  }
+}
+
+@keyframes mega-in {
+  from {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+/* Mobile accordion content, mounted on tap. */
+.mega-in {
+  animation: mega-in 0.2s ease-out;
+}
+
+/* Mobile nav drawer. Always mounted — `data-open` toggles it — so opening
+   and closing animate instead of flashing in. The height is eased with the
+   `grid-template-rows: 0fr↔1fr` trick (smooth height with no magic pixel
+   value: the header grows with whatever the drawer contains) plus a short
+   fade. `inert` on the wrapper keeps the closed links out of the tab order,
+   and the 810px cutover mirrors the template's `tablet:` breakpoint. */
+.nav-drawer {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    grid-template-rows 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.2s ease;
+}
+
+.nav-drawer[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.nav-drawer > * {
+  min-height: 0;
+}
+
+/* No separator line while collapsed — otherwise the inner `border-t` adds a
+   stray 1px band under the header even with a 0fr row. */
+.nav-drawer[data-open="false"] > * {
+  border-top-width: 0;
+}
+
+@media (min-width: 810px) {
+  .nav-drawer {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* No animation, but keep the hoverable grace window: with a flat
+     `transition: none` the panel vanished the instant the cursor
+     left the title — impossible to reach by hover. The opacity/
+     translate flips are dropped (instant), visibility keeps its
+     grace so the panel can still be hovered back open. */
+  #mega-featured,
+  #mega-collections {
+    transition: visibility 0s linear 0.4s;
+  }
+  .mega-in {
+    animation: none;
+  }
+  .nav-drawer {
+    transition: none;
+  }
+}

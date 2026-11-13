@@ -1,0 +1,16 @@
+---
+import { useTranslations } from "@i18n";
+import Layout from "@layouts/Layout.astro";
+import { AuthForm } from "@modules/account/components/AuthForm";
+
+const { locale } = Astro.locals;
+const t = useTranslations(locale);
+---
+
+<Layout
+  title={t("account.login.pageTitle")}
+  description={t("account.login.pageDescription")}
+  noindex
+>
+  <AuthForm client:load locale={locale} mode="login" />
+</Layout>
