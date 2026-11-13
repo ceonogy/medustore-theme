@@ -4,6 +4,9 @@ A blazing-fast, open-source ecommerce storefront built with **Astro**, **React**
 
 Server-rendered with edge-cache headers. Interactive where it matters. Zero compromise on performance.
 
+> **Full setup guide:** [INSTALL.md](./INSTALL.md) — storefront env, Medusa backend,
+> optional GoShip/SePay addons, deploy and verification.
+
 ## Tech Stack
 
 | Layer      | Technology                                                                                             |
@@ -221,8 +224,8 @@ theme**. They ship as two independent Medusa v2 packages that can be installed
 and removed separately — see their READMEs for the full backend + storefront
 guide:
 
-- [`medusavn-goship`](https://github.com/ceonogy/medusavn-goship)
-- [`medusavn-sepay`](https://github.com/ceonogy/medusavn-sepay)
+- [`medusavn-goship`](https://github.com/ceonogy/medusavn-goship) · [install guide](https://github.com/ceonogy/medusavn-goship/blob/main/INSTALL.md)
+- [`medusavn-sepay`](https://github.com/ceonogy/medusavn-sepay) · [install guide](https://github.com/ceonogy/medusavn-sepay/blob/main/INSTALL.md)
 
 ### How the theme consumes them
 
