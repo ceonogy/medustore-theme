@@ -3509,7 +3509,7 @@ __metadata:
 
 "medusavn-goship@file:/home/medusavn-goship::locator=astro-medusa-starter%40workspace%3A.":
   version: 0.1.0
-  resolution: "medusavn-goship@file:/home/medusavn-goship#/home/medusavn-goship::hash=a041cb&locator=astro-medusa-starter%40workspace%3A."
+  resolution: "medusavn-goship@file:/home/medusavn-goship#/home/medusavn-goship::hash=9367ae&locator=astro-medusa-starter%40workspace%3A."
   peerDependencies:
     "@medusajs/admin-sdk": 2.21.1
     "@medusajs/cli": 2.21.1
@@ -3539,13 +3539,13 @@ __metadata:
       optional: true
     react-router-dom:
       optional: true
-  checksum: 10c0/525226a060e43be53b0c5685ad1e95b8a8a23082c09538442f00a3a7de4e257401d9d81982180e15522571d1f7e980cacde6efa1da7b55b8b434462fb8aaabd4
+  checksum: 10c0/b636ef800e7c08409d4ab3aab81f71d337167f0ac49065ab8eeec4250b8edc325476341dcf49a00cebc4a71416a41276a2ab3f71477a806524b131a277efa343
   languageName: node
   linkType: hard
 
 "medusavn-sepay@file:/home/medusavn-sepay::locator=astro-medusa-starter%40workspace%3A.":
   version: 0.1.0
-  resolution: "medusavn-sepay@file:/home/medusavn-sepay#/home/medusavn-sepay::hash=d87e45&locator=astro-medusa-starter%40workspace%3A."
+  resolution: "medusavn-sepay@file:/home/medusavn-sepay#/home/medusavn-sepay::hash=5a5538&locator=astro-medusa-starter%40workspace%3A."
   peerDependencies:
     "@medusajs/admin-sdk": 2.21.1
     "@medusajs/cli": 2.21.1
@@ -3575,7 +3575,7 @@ __metadata:
       optional: true
     react-router-dom:
       optional: true
-  checksum: 10c0/74253be2b8939b8c10ce58b5118e7dec4d55d60a000cc3866244c5475cb26008cb6ad108e68745cc7ad32d462daa421102794e1a2b02c3f69e7331299cccc098
+  checksum: 10c0/d568731edcd84f09ab70d2b33587564b80de76e522bbca08e6fc8f3e4bab087d41bf98ecef9cbbcc446dcfc58125d17422ebdbc453d7567991805a5f56c2debb
   languageName: node
   linkType: hard
 
