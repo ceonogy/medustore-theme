@@ -5,7 +5,28 @@ A blazing-fast, open-source ecommerce storefront built with **Astro**, **React**
 Server-rendered with edge-cache headers. Interactive where it matters. Zero compromise on performance.
 
 > **Full setup guide:** [INSTALL.md](./INSTALL.md) — storefront env, Medusa backend,
-> optional GoShip/SePay addons, deploy and verification.
+> optional GoShip/SePay addons, domains/TLS, deployment order and verification.
+
+## Quick start
+
+```bash
+git clone https://github.com/ceonogy/medustore-theme.git
+cd medustore-theme
+corepack enable && yarn install
+
+# half-automatic: checks the backend, validates the publishable key,
+# writes .env (mode 600), builds, then verifies a deployed domain
+node scripts/setup.mjs \
+  --backend-url https://adminstore.example.com \
+  --publishable-key pk_... --region vn --yes
+
+pm2 start ecosystem.config.cjs        # app: storefront, 127.0.0.1:3001
+node scripts/setup.mjs --verify-only --site-url https://storefront.example.com
+```
+
+`node scripts/setup.mjs --help` lists every flag. What the script automates,
+what stays manual (admin bootstrap, DNS, TLS, vhosts) and the recommended
+deployment order are in [INSTALL.md](./INSTALL.md) §4–§5.
 
 ## Tech Stack
 
@@ -125,6 +146,26 @@ yarn dev        # Start dev server on localhost:3001
 yarn build      # Production build (Node adapter → dist/)
 yarn preview    # Preview the production build locally
 ```
+
+### Connecting to a backend
+
+`scripts/setup.mjs` is the half-automatic installer: prerequisite check,
+`GET /health`, publishable-key validation against `/store/regions`, optional
+Admin API login to list keys/regions, `.env` write (mode 600, comments kept,
+refuses to overwrite when a check fails), `yarn install` + `yarn build`, and a
+`--verify-only --site-url` mode that probes the live pages, the `/medusa` proxy
+and the optional addon routes.
+
+```bash
+node scripts/setup.mjs --help
+node scripts/setup.mjs --backend-url https://adminstore.example.com \
+  --publishable-key pk_... --region vn --yes
+node scripts/setup.mjs --verify-only --site-url https://storefront.example.com
+```
+
+Exit code `0` means every hard check passed. Manual steps (admin bootstrap,
+DNS, TLS, vhosts, CORS) and the deployment order are in
+[INSTALL.md](./INSTALL.md) §4–§5.
 
 ### Backups
 
